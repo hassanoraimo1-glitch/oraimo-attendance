@@ -1,0 +1,18 @@
+{
+  "name": "Oraimo HR System",
+  "short_name": "Oraimo HR",
+  "description": "نظام حضور ومبيعات أورايمو",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#00C853",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "oraimo-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

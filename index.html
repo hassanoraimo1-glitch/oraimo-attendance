@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a1a1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Oraimo HR">
+<link rel="manifest" href="manifest.json">
+<title>Oraimo HR System</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #00C853;
+    --green-dark: #00952f;
+    --green-light: #69f0ae;
+    --black: #0a0a0a;
+    --dark: #141414;
+    --card: #1e1e1e;
+    --card2: #252525;
+    --border: #2e2e2e;
+    --text: #f0f0f0;
+    --text-muted: #888;
+    --red: #ff4444;
+    --yellow: #FFD600;
+    --blue: #2979FF;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { font-family:'Cairo',sans-serif; background:var(--black); color:var(--text); min-height:100vh; overflow-x:hidden; }
+
+  /* SPLASH */
+  #splash { position:fixed; inset:0; background:var(--black); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; transition:opacity .5s; }
+  #splash.hide { opacity:0; pointer-events:none; }
+  .splash-logo { width:120px; margin-bottom:20px; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+  .splash-bar { width:200px; height:3px; background:var(--border); border-radius:2px; overflow:hidden; margin-top:30px; }
+  .splash-fill { height:100%; background:var(--green); border-radius:2px; animation:fill 1.8s ease forwards; }
+  @keyframes fill { from{width:0} to{width:100%} }
+
+  /* PAGES */
+  .page { display:none; min-height:100vh; }
+  .page.active { display:block; }
+
+  /* LOGIN */
+  #login-page { background:var(--black); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px 20px; }
+  .login-logo { width:100px; margin-bottom:10px; }
+  .login-title { font-size:22px; font-weight:900; color:var(--green); margin-bottom:4px; }
+  .login-sub { font-size:13px; color:var(--text-muted); margin-bottom:40px; }
+  .login-form { width:100%; max-width:360px; }
+  .input-group { margin-bottom:16px; }
+  .input-group label { display:block; font-size:13px; color:var(--text-muted); margin-bottom:6px; }
+  .input-group input, .input-group select { width:100%; padding:14px 16px; background:var(--card); border:1.5px solid var(--border); border-radius:12px; color:var(--text); font-family:'Cairo',sans-serif; font-size:15px; outline:none; transition:.2s; }
+  .input-group input:focus, .input-group select:focus { border-color:var(--green); }
+  .btn { width:100%; padding:15px; border:none; border-radius:12px; font-family:'Cairo',sans-serif; font-size:16px; font-weight:700; cursor:pointer; transition:.2s; }
+  .btn-green { background:var(--green); color:#000; }
+  .btn-green:active { background:var(--green-dark); transform:scale(.98); }
+  .btn-outline { background:transparent; color:var(--green); border:1.5px solid var(--green); margin-top:10px; }
+  .err-msg { color:var(--red); font-size:13px; text-align:center; margin-top:10px; min-height:20px; }
+
+  /* TOP BAR */
+  .topbar { position:sticky; top:0; z-index:100; background:var(--dark); border-bottom:1px solid var(--border); padding:12px 16px; display:flex; align-items:center; justify-content:space-between; }
+  .topbar-logo { height:28px; }
+  .topbar-title { font-size:16px; font-weight:700; color:var(--green); }
+  .topbar-right { display:flex; align-items:center; gap:10px; }
+  .avatar { width:36px; height:36px; border-radius:50%; background:var(--green); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; color:#000; }
+  .icon-btn { background:none; border:none; color:var(--text-muted); font-size:22px; cursor:pointer; padding:4px; }
+
+  /* BOTTOM NAV */
+  .bottom-nav { position:fixed; bottom:0; left:0; right:0; background:var(--dark); border-top:1px solid var(--border); display:flex; z-index:100; padding-bottom:env(safe-area-inset-bottom); }
+  .nav-item { flex:1; display:flex; flex-direction:column; align-items:center; padding:10px 4px; cursor:pointer; transition:.2s; }
+  .nav-item .nav-icon { font-size:22px; }
+  .nav-item .nav-label { font-size:10px; margin-top:2px; color:var(--text-muted); }
+  .nav-item.active .nav-label { color:var(--green); }
+  .nav-item.active .nav-icon { filter:drop-shadow(0 0 6px var(--green)); }
+
+  /* CONTENT */
+  .content { padding:16px; padding-bottom:80px; }
+
+  /* CARDS */
+  .card { background:var(--card); border-radius:16px; padding:16px; margin-bottom:12px; border:1px solid var(--border); }
+  .card-title { font-size:13px; color:var(--text-muted); margin-bottom:4px; }
+  .card-value { font-size:24px; font-weight:900; }
+  .card-value.green { color:var(--green); }
+  .card-value.yellow { color:var(--yellow); }
+  .card-value.red { color:var(--red); }
+
+  /* STATS GRID */
+  .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .stat-card { background:var(--card); border-radius:14px; padding:14px; border:1px solid var(--border); }
+  .stat-label { font-size:11px; color:var(--text-muted); margin-bottom:4px; }
+  .stat-val { font-size:20px; font-weight:900; }
+
+  /* ATTENDANCE BUTTON */
+  .attend-wrap { display:flex; flex-direction:column; align-items:center; padding:20px 0; }
+  .attend-btn { width:160px; height:160px; border-radius:50%; border:4px solid var(--green); background:var(--card); display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; transition:.3s; box-shadow:0 0 30px rgba(0,200,83,.2); }
+  .attend-btn:active { transform:scale(.95); }
+  .attend-btn.checked-in { border-color:var(--red); box-shadow:0 0 30px rgba(255,68,68,.2); }
+  .attend-icon { font-size:48px; }
+  .attend-label { font-size:14px; font-weight:700; margin-top:6px; }
+  .attend-time { font-size:28px; font-weight:900; color:var(--green); margin-bottom:4px; }
+  .attend-date { font-size:13px; color:var(--text-muted); }
+
+  /* CAMERA */
+  #camera-modal { display:none; position:fixed; inset:0; background:#000; z-index:500; flex-direction:column; }
+  #camera-modal.open { display:flex; }
+  #video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+  .camera-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding:40px 20px; background:linear-gradient(to top, rgba(0,0,0,.7) 0%, transparent 50%); }
+  .capture-btn { width:70px; height:70px; border-radius:50%; background:white; border:4px solid rgba(255,255,255,.5); cursor:pointer; }
+  .camera-cancel { color:white; font-size:14px; margin-top:16px; cursor:pointer; }
+  #canvas { display:none; }
+
+  /* SALES */
+  .product-search { width:100%; padding:12px 16px; background:var(--card); border:1.5px solid var(--border); border-radius:12px; color:var(--text); font-family:'Cairo',sans-serif; font-size:15px; outline:none; margin-bottom:12px; }
+  .product-search:focus { border-color:var(--green); }
+  .product-list { max-height:300px; overflow-y:auto; border:1px solid var(--border); border-radius:12px; }
+  .product-item { padding:12px 16px; border-bottom:1px solid var(--border); cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition:.15s; }
+  .product-item:last-child { border-bottom:none; }
+  .product-item:active { background:var(--card2); }
+  .product-name { font-size:13px; font-weight:600; }
+  .product-price { font-size:13px; color:var(--green); font-weight:700; }
+
+  .sale-form { background:var(--card2); border-radius:14px; padding:16px; margin-top:12px; border:1px solid var(--green); }
+  .sale-form h3 { font-size:14px; margin-bottom:12px; color:var(--green); }
+  .qty-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .qty-btn { width:40px; height:40px; border-radius:10px; background:var(--border); border:none; color:var(--text); font-size:20px; cursor:pointer; }
+  .qty-val { flex:1; text-align:center; font-size:20px; font-weight:700; }
+  .total-row { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-top:1px solid var(--border); }
+  .total-label { font-size:14px; color:var(--text-muted); }
+  .total-val { font-size:22px; font-weight:900; color:var(--green); }
+
+  /* HISTORY LIST */
+  .history-item { background:var(--card); border-radius:12px; padding:14px; margin-bottom:8px; border:1px solid var(--border); }
+  .hist-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .hist-name { font-size:13px; font-weight:700; }
+  .hist-amount { font-size:15px; font-weight:900; color:var(--green); }
+  .hist-bottom { display:flex; justify-content:space-between; }
+  .hist-meta { font-size:11px; color:var(--text-muted); }
+
+  /* BADGE */
+  .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+  .badge-green { background:rgba(0,200,83,.15); color:var(--green); }
+  .badge-red { background:rgba(255,68,68,.15); color:var(--red); }
+  .badge-yellow { background:rgba(255,214,0,.15); color:var(--yellow); }
+  .badge-blue { background:rgba(41,121,255,.15); color:var(--blue); }
+
+  /* TARGET BAR */
+  .target-wrap { margin:12px 0; }
+  .target-top { display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px; }
+  .target-bar { height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
+  .target-fill { height:100%; background:var(--green); border-radius:4px; transition:width .5s ease; }
+
+  /* ADMIN TABS */
+  .tabs { display:flex; background:var(--card); border-radius:12px; padding:4px; margin-bottom:16px; gap:4px; overflow-x:auto; }
+  .tab { flex:1; min-width:70px; padding:8px 4px; border:none; background:none; color:var(--text-muted); font-family:'Cairo',sans-serif; font-size:12px; border-radius:8px; cursor:pointer; transition:.2s; white-space:nowrap; }
+  .tab.active { background:var(--green); color:#000; font-weight:700; }
+
+  /* TABLE */
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { background:var(--card2); padding:10px 12px; text-align:right; color:var(--text-muted); font-weight:600; white-space:nowrap; }
+  td { padding:10px 12px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:var(--card2); }
+
+  /* EMPLOYEE CARD */
+  .emp-card { background:var(--card); border-radius:14px; padding:14px; margin-bottom:10px; border:1px solid var(--border); display:flex; align-items:center; gap:12px; }
+  .emp-avatar { width:44px; height:44px; border-radius:50%; background:var(--green); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:16px; color:#000; flex-shrink:0; }
+  .emp-info { flex:1; }
+  .emp-name { font-size:15px; font-weight:700; }
+  .emp-branch { font-size:12px; color:var(--text-muted); }
+  .emp-actions { display:flex; gap:6px; }
+  .action-btn { padding:6px 12px; border-radius:8px; border:none; font-family:'Cairo',sans-serif; font-size:12px; cursor:pointer; font-weight:600; }
+  .action-btn.edit { background:rgba(41,121,255,.15); color:var(--blue); }
+  .action-btn.del { background:rgba(255,68,68,.15); color:var(--red); }
+
+  /* MODAL */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:300; align-items:flex-end; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:var(--card); border-radius:20px 20px 0 0; padding:24px 20px; width:100%; max-height:85vh; overflow-y:auto; }
+  .modal h2 { font-size:18px; font-weight:900; margin-bottom:20px; }
+  .modal .input-group { margin-bottom:14px; }
+  .modal-close { float:left; font-size:22px; color:var(--text-muted); cursor:pointer; line-height:1; }
+
+  /* PERMISSION REQUEST */
+  .perm-card { background:var(--card2); border-radius:14px; padding:16px; margin-bottom:10px; border:1px solid var(--border); }
+  .perm-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+  .perm-name { font-size:14px; font-weight:700; }
+  .perm-reason { font-size:13px; color:var(--text-muted); margin-bottom:10px; }
+  .perm-actions { display:flex; gap:8px; }
+  .perm-btn { flex:1; padding:8px; border-radius:8px; border:none; font-family:'Cairo',sans-serif; font-size:13px; font-weight:700; cursor:pointer; }
+  .perm-btn.approve { background:rgba(0,200,83,.2); color:var(--green); }
+  .perm-btn.reject { background:rgba(255,68,68,.2); color:var(--red); }
+
+  /* SELFIE PREVIEW */
+  .selfie-preview { width:80px; height:80px; border-radius:10px; object-fit:cover; border:2px solid var(--green); }
+
+  /* LOADER */
+  .loader { display:inline-block; width:20px; height:20px; border:2px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .full-loader { display:flex; align-items:center; justify-content:center; padding:40px; }
+
+  /* NOTIFICATIONS */
+  .notif { position:fixed; top:16px; left:50%; transform:translateX(-50%); background:var(--card2); border:1px solid var(--border); border-radius:12px; padding:12px 20px; font-size:14px; z-index:9000; animation:slideDown .3s ease; white-space:nowrap; }
+  .notif.success { border-color:var(--green); color:var(--green); }
+  .notif.error { border-color:var(--red); color:var(--red); }
+  @keyframes slideDown { from{top:0;opacity:0} to{top:16px;opacity:1} }
+
+  /* SECTION HEADER */
+  .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .section-title { font-size:16px; font-weight:700; }
+  .section-action { font-size:12px; color:var(--green); cursor:pointer; }
+
+  /* EMPTY STATE */
+  .empty { text-align:center; padding:40px 20px; color:var(--text-muted); }
+  .empty-icon { font-size:48px; margin-bottom:12px; }
+
+  /* SELECTED PRODUCT */
+  .selected-product-tag { display:flex; align-items:center; justify-content:space-between; background:rgba(0,200,83,.1); border:1px solid var(--green); border-radius:10px; padding:10px 14px; margin-bottom:12px; }
+  .tag-name { font-size:13px; font-weight:600; }
+  .tag-price { font-size:13px; color:var(--green); }
+
+  select option { background:#1e1e1e; }
+
+  .day-off-select { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:8px; }
+  .day-chip { padding:8px 4px; text-align:center; border-radius:8px; background:var(--border); border:1.5px solid transparent; font-size:12px; cursor:pointer; transition:.15s; }
+  .day-chip.selected { border-color:var(--green); background:rgba(0,200,83,.15); color:var(--green); }
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <img src="oraimo-logo.svg" class="splash-logo" alt="Oraimo">
+  <div style="color:#888;font-size:13px;margin-top:8px">نظام الموارد البشرية والمبيعات</div>
+  <div class="splash-bar"><div class="splash-fill"></div></div>
+</div>
+
+<!-- CAMERA MODAL -->
+<div id="camera-modal">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+  <div class="camera-overlay">
+    <div style="color:white;font-size:14px;margin-bottom:20px">📸 التقط صورة سيلفي للتحقق</div>
+    <button class="capture-btn" onclick="capturePhoto()"></button>
+    <div class="camera-cancel" onclick="closeCamera()">إلغاء</div>
+  </div>
+</div>
+
+<!-- LOGIN PAGE -->
+<div id="login-page" class="page active">
+  <img src="oraimo-logo.svg" class="login-logo" alt="Oraimo">
+  <div class="login-title">Oraimo HR</div>
+  <div class="login-sub">نظام الحضور والمبيعات</div>
+  <div class="login-form">
+    <div class="input-group">
+      <label>رقم الموظف أو اسم المستخدم</label>
+      <input type="text" id="login-user" placeholder="أدخل اسم المستخدم">
+    </div>
+    <div class="input-group">
+      <label>كلمة المرور</label>
+      <input type="password" id="login-pass" placeholder="أدخل كلمة المرور">
+    </div>
+    <button class="btn btn-green" onclick="doLogin()">دخول</button>
+    <div class="err-msg" id="login-err"></div>
+  </div>
+</div>
+
+<!-- EMPLOYEE APP -->
+<div id="emp-app" class="page">
+  <div class="topbar">
+    <img src="oraimo-logo.svg" class="topbar-logo" alt="Oraimo">
+    <div class="topbar-title" id="emp-name-top">موظف</div>
+    <div class="topbar-right">
+      <button class="icon-btn" onclick="doLogout()">🚪</button>
+    </div>
+  </div>
+
+  <!-- HOME TAB -->
+  <div id="emp-home" class="content">
+    <div class="attend-wrap">
+      <div class="attend-time" id="live-clock">00:00:00</div>
+      <div class="attend-date" id="live-date"></div>
+      <br>
+      <div class="attend-btn" id="attend-btn" onclick="startAttendance('in')">
+        <div class="attend-icon">🟢</div>
+        <div class="attend-label">تسجيل حضور</div>
+      </div>
+      <div style="margin-top:16px;font-size:13px;color:var(--text-muted)" id="attend-status">لم تسجل حضور اليوم</div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">أيام الحضور (الشهر)</div>
+        <div class="stat-val green" id="emp-attend-count">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">أيام الغياب</div>
+        <div class="stat-val red" id="emp-absent-count">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">إجمالي المبيعات</div>
+        <div class="stat-val green" id="emp-sales-total">0 ج</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">إجمالي التأخيرات</div>
+        <div class="stat-val yellow" id="emp-late-total">0 د</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">التارجت الشهري</div>
+      <div class="target-top">
+        <span id="target-achieved">0 ج</span>
+        <span id="target-goal">الهدف: 0 ج</span>
+      </div>
+      <div class="target-bar">
+        <div class="target-fill" id="target-fill" style="width:0%"></div>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:6px" id="target-pct">0% من الهدف</div>
+    </div>
+
+    <!-- Leave Request -->
+    <div class="card">
+      <div class="section-header">
+        <div class="section-title">طلب إذن تأخير</div>
+      </div>
+      <div class="input-group">
+        <label>سبب التأخير</label>
+        <input type="text" id="leave-reason" placeholder="اكتب السبب...">
+      </div>
+      <div class="input-group">
+        <label>مدة التأخير</label>
+        <select id="leave-duration">
+          <option value="30">30 دقيقة</option>
+          <option value="60">ساعة</option>
+          <option value="90">ساعة ونص</option>
+          <option value="120">ساعتين</option>
+        </select>
+      </div>
+      <button class="btn btn-outline" onclick="sendLeaveRequest()" style="width:auto;padding:10px 20px">إرسال الطلب</button>
+    </div>
+
+    <div class="card">
+      <div class="section-header">
+        <div class="section-title">📋 آخر سجلات الحضور</div>
+      </div>
+      <div id="emp-attend-history"></div>
+    </div>
+  </div>
+
+  <!-- SALES TAB -->
+  <div id="emp-sales" class="content" style="display:none">
+    <div class="section-header">
+      <div class="section-title">🛒 تسجيل بيعة جديدة</div>
+    </div>
+
+    <input class="product-search" id="product-search" placeholder="🔍 ابحث عن المنتج..." oninput="filterProducts()">
+    <div class="product-list" id="product-list"></div>
+
+    <div id="sale-form-wrap" style="display:none">
+      <div class="sale-form">
+        <h3 id="selected-product-name">اسم المنتج</h3>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">السعر: <span id="selected-product-price" style="color:var(--green);font-weight:700"></span> ج</div>
+        <div class="qty-row">
+          <button class="qty-btn" onclick="changeQty(-1)">−</button>
+          <div class="qty-val" id="qty-val">1</div>
+          <button class="qty-btn" onclick="changeQty(1)">+</button>
+        </div>
+        <div class="total-row">
+          <div class="total-label">الإجمالي</div>
+          <div class="total-val" id="sale-total">0 ج</div>
+        </div>
+        <button class="btn btn-green" onclick="submitSale()" style="margin-top:8px">✅ تسجيل البيعة</button>
+        <button class="btn btn-outline" onclick="cancelSale()" style="margin-top:8px">إلغاء</button>
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <div class="section-header">
+        <div class="section-title">📊 مبيعاتي اليوم</div>
+        <div class="section-action" id="emp-today-total" style="color:var(--green);font-weight:700">0 ج</div>
+      </div>
+      <div id="emp-sales-list"></div>
+    </div>
+  </div>
+
+  <!-- PROFILE TAB -->
+  <div id="emp-profile" class="content" style="display:none">
+    <div class="card" style="text-align:center;padding:24px">
+      <div class="avatar" style="width:70px;height:70px;font-size:24px;margin:0 auto 12px">👤</div>
+      <div style="font-size:18px;font-weight:900" id="profile-name">-</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:4px" id="profile-branch">-</div>
+      <div style="margin-top:10px" id="profile-dayoff"></div>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-bottom:12px">📅 تقرير الشهر الحالي</div>
+      <div id="monthly-report-emp"></div>
+    </div>
+    <button class="btn btn-outline" onclick="doLogout()" style="margin-top:10px">🚪 تسجيل الخروج</button>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="empTab('home',this)">
+      <div class="nav-icon">🏠</div>
+      <div class="nav-label">الرئيسية</div>
+    </div>
+    <div class="nav-item" onclick="empTab('sales',this)">
+      <div class="nav-icon">🛒</div>
+      <div class="nav-label">المبيعات</div>
+    </div>
+    <div class="nav-item" onclick="empTab('profile',this)">
+      <div class="nav-icon">👤</div>
+      <div class="nav-label">ملفي</div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN APP -->
+<div id="admin-app" class="page">
+  <div class="topbar">
+    <img src="oraimo-logo.svg" class="topbar-logo" alt="Oraimo">
+    <div class="topbar-title">لوحة الإدارة</div>
+    <div class="topbar-right">
+      <button class="icon-btn" onclick="doLogout()">🚪</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD TAB -->
+  <div id="admin-dashboard" class="content">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">حاضرين اليوم</div>
+        <div class="stat-val green" id="adm-present">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">غائبين اليوم</div>
+        <div class="stat-val red" id="adm-absent">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">مبيعات اليوم</div>
+        <div class="stat-val green" id="adm-sales-today">0 ج</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">مبيعات الشهر</div>
+        <div class="stat-val green" id="adm-sales-month">0 ج</div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">👥 الموظفون اليوم</div>
+    </div>
+    <div id="adm-emp-today"></div>
+
+    <div class="section-header" style="margin-top:16px">
+      <div class="section-title">⏳ طلبات التأخير</div>
+    </div>
+    <div id="adm-leave-requests"></div>
+  </div>
+
+  <!-- EMPLOYEES TAB -->
+  <div id="admin-employees" class="content" style="display:none">
+    <div class="section-header">
+      <div class="section-title">إدارة الموظفين</div>
+      <div class="section-action" onclick="openAddEmp()">+ إضافة موظف</div>
+    </div>
+    <div id="adm-emp-list"></div>
+  </div>
+
+  <!-- REPORTS TAB -->
+  <div id="admin-reports" class="content" style="display:none">
+    <div class="card">
+      <div class="section-title" style="margin-bottom:12px">📊 تقرير الموظفين - الشهر الحالي</div>
+      <div class="input-group">
+        <label>اختر الموظف</label>
+        <select id="report-emp-select" onchange="loadEmpReport()">
+          <option value="">-- اختر موظف --</option>
+        </select>
+      </div>
+    </div>
+    <div id="report-content"></div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div id="admin-settings" class="content" style="display:none">
+    <div class="section-header">
+      <div class="section-title">⚙️ الإعدادات العامة</div>
+    </div>
+    <div class="card">
+      <div class="input-group">
+        <label>وقت بداية الدوام</label>
+        <input type="time" id="work-start" value="14:00">
+      </div>
+      <div class="input-group">
+        <label>وقت نهاية الدوام</label>
+        <input type="time" id="work-end" value="22:00">
+      </div>
+      <button class="btn btn-green" onclick="saveWorkTime()">حفظ مواعيد الدوام</button>
+    </div>
+
+    <div class="section-header" style="margin-top:16px">
+      <div class="section-title">🏪 إدارة الفروع</div>
+      <div class="section-action" onclick="openAddBranch()">+ إضافة فرع</div>
+    </div>
+    <div id="branches-list"></div>
+
+    <div class="section-header" style="margin-top:16px">
+      <div class="section-title">💰 تارجت الموظفين</div>
+    </div>
+    <div id="targets-list"></div>
+
+    <div class="section-header" style="margin-top:16px">
+      <div class="section-title">📦 أسعار المنتجات</div>
+    </div>
+    <div id="products-settings-list"></div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="adminTab('dashboard',this)">
+      <div class="nav-icon">📊</div>
+      <div class="nav-label">الرئيسية</div>
+    </div>
+    <div class="nav-item" onclick="adminTab('employees',this)">
+      <div class="nav-icon">👥</div>
+      <div class="nav-label">الموظفون</div>
+    </div>
+    <div class="nav-item" onclick="adminTab('reports',this)">
+      <div class="nav-icon">📈</div>
+      <div class="nav-label">التقارير</div>
+    </div>
+    <div class="nav-item" onclick="adminTab('settings',this)">
+      <div class="nav-icon">⚙️</div>
+      <div class="nav-label">الإعدادات</div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD EMPLOYEE MODAL -->
+<div class="modal-overlay" id="add-emp-modal">
+  <div class="modal">
+    <span class="modal-close" onclick="closeModal('add-emp-modal')">✕</span>
+    <h2 id="emp-modal-title">إضافة موظف جديد</h2>
+    <input type="hidden" id="edit-emp-id">
+    <div class="input-group">
+      <label>الاسم الكامل</label>
+      <input type="text" id="emp-form-name" placeholder="اسم الموظف">
+    </div>
+    <div class="input-group">
+      <label>اسم المستخدم</label>
+      <input type="text" id="emp-form-username" placeholder="للدخول على التطبيق">
+    </div>
+    <div class="input-group" id="emp-pass-group">
+      <label>كلمة المرور</label>
+      <input type="password" id="emp-form-pass" placeholder="كلمة المرور">
+    </div>
+    <div class="input-group">
+      <label>الفرع</label>
+      <select id="emp-form-branch"></select>
+    </div>
+    <div class="input-group">
+      <label>يوم الإجازة الأسبوعية</label>
+      <div class="day-off-select" id="dayoff-picker">
+        <div class="day-chip" data-day="0" onclick="selectDay(0)">الأحد</div>
+        <div class="day-chip" data-day="1" onclick="selectDay(1)">الاثنين</div>
+        <div class="day-chip" data-day="2" onclick="selectDay(2)">الثلاثاء</div>
+        <div class="day-chip" data-day="3" onclick="selectDay(3)">الأربعاء</div>
+        <div class="day-chip" data-day="4" onclick="selectDay(4)">الخميس</div>
+        <div class="day-chip" data-day="5" onclick="selectDay(5)">الجمعة</div>
+        <div class="day-chip" data-day="6" onclick="selectDay(6)">السبت</div>
+      </div>
+    </div>
+    <button class="btn btn-green" onclick="saveEmployee()">حفظ</button>
+  </div>
+</div>
+
+<!-- ADD BRANCH MODAL -->
+<div class="modal-overlay" id="add-branch-modal">
+  <div class="modal">
+    <span class="modal-close" onclick="closeModal('add-branch-modal')">✕</span>
+    <h2 id="branch-modal-title">إضافة فرع</h2>
+    <input type="hidden" id="edit-branch-id">
+    <div class="input-group">
+      <label>اسم الفرع</label>
+      <input type="text" id="branch-form-name" placeholder="اسم الفرع">
+    </div>
+    <button class="btn btn-green" onclick="saveBranch()">حفظ</button>
+  </div>
+</div>
+
+<!-- TARGET MODAL -->
+<div class="modal-overlay" id="target-modal">
+  <div class="modal">
+    <span class="modal-close" onclick="closeModal('target-modal')">✕</span>
+    <h2>تحديد التارجت الشهري</h2>
+    <div class="input-group">
+      <label>الموظف</label>
+      <select id="target-emp-select"></select>
+    </div>
+    <div class="input-group">
+      <label>الشهر</label>
+      <input type="month" id="target-month">
+    </div>
+    <div class="input-group">
+      <label>التارجت (بالجنيه)</label>
+      <input type="number" id="target-amount" placeholder="مثلاً: 50000">
+    </div>
+    <button class="btn btn-green" onclick="saveTarget()">حفظ التارجت</button>
+  </div>
+</div>
+
+<!-- SELFIE REVIEW MODAL -->
+<div class="modal-overlay" id="selfie-modal">
+  <div class="modal" style="text-align:center">
+    <h2>تأكيد الحضور</h2>
+    <img id="selfie-preview-img" style="width:180px;height:180px;border-radius:50%;object-fit:cover;border:3px solid var(--green);margin:16px auto;display:block" src="">
+    <div id="location-status" style="font-size:13px;color:var(--text-muted);margin-bottom:16px">📍 جاري تحديد الموقع...</div>
+    <button class="btn btn-green" onclick="confirmAttendance()" id="confirm-attend-btn">✅ تأكيد الحضور</button>
+    <button class="btn btn-outline" onclick="closeModal('selfie-modal')" style="margin-top:8px">إعادة التصوير</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const SUPABASE_URL = 'https://lmszelfnosejdemxhodm.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_HCOQxXf5sEyulaPkqlSEzg_IK7elCQb';
+
+const DAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+
+const PRODUCTS = [
+  {"name":"Oraimo A to C Cable OCDC3200 3A 1M","price":85},
+  {"name":"Oraimo BT Headphone OHP-610S","price":1517},
+  {"name":"Oraimo C to C Cable OCD-154CC 3A 1.5M","price":105},
+  {"name":"Oraimo CH OCW5183E +L53 PD 18W with Cable","price":235},
+  {"name":"Oraimo Cable C to C 3M 100W OCD-173CC","price":366},
+  {"name":"Oraimo Cable C to Lightning OCD-CL54 2.4A 1M","price":142},
+  {"name":"Oraimo Cable C:C 60W OCD114CC","price":113},
+  {"name":"Oraimo Car Mount OCM-12","price":235},
+  {"name":"Oraimo Car Charger 48W OCC73D","price":466},
+  {"name":"Oraimo Charger 18W Gift","price":584},
+  {"name":"Oraimo Charger OCW7331E 33W GaN Fast Dual","price":466},
+  {"name":"Oraimo Charger QC3+PD3 20W OCW5203ECC","price":290},
+  {"name":"Oraimo Charger Kit OCW-E106S-CL55","price":290},
+  {"name":"Oraimo Data Cable Type-C OCD-C53 2A 1M","price":75},
+  {"name":"Oraimo Earphone Type-C OEP-650","price":185},
+  {"name":"Oraimo Neckband OEB611 ANC","price":1396},
+  {"name":"Oraimo OCD 152C USB A to C 1m Fast","price":85},
+  {"name":"Oraimo OCW-5451ECC 45W GaN Ultra PD","price":599},
+  {"name":"Oraimo P.Bank OPB-7103C 22.5W 10K","price":1279},
+  {"name":"Oraimo Portable Speaker OBS382","price":1165},
+  {"name":"Oraimo Power Bank 10K OPB-7100Q","price":698},
+  {"name":"Oraimo Power Bank 10K OPB-P5101","price":698},
+  {"name":"Oraimo Power Bank 10K OPB-P7101","price":930},
+  {"name":"Oraimo PowerHub OWSE3420 20W 6in1","price":837},
+  {"name":"Oraimo PowerJet 130 OPB-727SQ 27600mAh","price":3499},
+  {"name":"Oraimo PowerNova L21 OPB-7203C 30W 20K","price":1749},
+  {"name":"Oraimo Smart Watch 6N OSW-8000N","price":930},
+  {"name":"Oraimo Smart Watch Nova2 OSW814","price":2326},
+  {"name":"Oraimo Smart Watch OSW-20BK","price":1619},
+  {"name":"Oraimo Smart Watch OSW-30","price":1517},
+  {"name":"Oraimo Smart Watch OSW-42","price":1862},
+  {"name":"Oraimo Smart Watch OSW-801","price":1365},
+  {"name":"Oraimo Smart Watch OSW-802N","price":2443},
+  {"name":"Oraimo Smart Watch OSW-804","price":1165},
+  {"name":"Oraimo Smart Watch OSW-805","price":1046},
+  {"name":"Oraimo Smart Watch OSW-810","price":1988},
+  {"name":"Oraimo Smart Watch OSW-812","price":1628},
+  {"name":"Oraimo Smart Watch OSW-850H","price":6906},
+  {"name":"Oraimo TWS E02D","price":859},
+  {"name":"Oraimo TWS Earbuds Lite OTW-330","price":657},
+  {"name":"Oraimo TWS OEB-E104DC","price":1012},
+  {"name":"Oraimo TWS OEB-E108D","price":2095},
+  {"name":"Oraimo TWS OHP317","price":1222},
+  {"name":"Oraimo TWS OTW-323","price":698},
+  {"name":"Oraimo TWS OTW-330","price":607},
+  {"name":"Oraimo TWS OTW-330S Speed","price":640},
+  {"name":"Oraimo TWS OTW-625 SpaceBuds Z ANC","price":1165},
+  {"name":"Oraimo TWS OTW-630","price":2124},
+  {"name":"Oraimo TWS OTW-930","price":3954},
+  {"name":"Oraimo TWS OTW323","price":698},
+  {"name":"Oraimo TWS OTW323P Speed","price":1046},
+  {"name":"Oraimo TWS OTW323SP","price":1165},
+  {"name":"Oraimo TWS OTW324 SpaceBuds Lite","price":698},
+  {"name":"Oraimo TWS OpenArc OPN675","price":3024},
+  {"name":"Oraimo TWS Openpods OPN-50D","price":2209},
+  {"name":"Oraimo Type-C Cable OCD-C54","price":100},
+  {"name":"Oraimo USB A to Lightning OCD-L32","price":95},
+  {"name":"Oraimo Wall Charger 18W OCW-E97S","price":228},
+  {"name":"Oraimo Wall Charger 25W OCW-E100D","price":407},
+  {"name":"Oraimo Watch OSW-16","price":708},
+  {"name":"Oraimo Wired Earphone OEP320","price":95},
+  {"name":"Oraimo Wired Earphone OEP320S","price":118},
+  {"name":"Oraimo Wireless Charger 15W OWH-1151","price":576},
+  {"name":"Oraimo Wireless Headset OHP917","price":2198},
+  {"name":"Oraimo Wireless Speaker SpaceBox Pro 80W OBS682","price":4604},
+  {"name":"Oraimo Watch Strap WB03","price":101},
+  {"name":"Oraimo Wired Headphone OEP-E11","price":85},
+  {"name":"Oraimo Wired Headphone OEP-E21P","price":122}
+];
+
+// ============================================================
+// SUPABASE HELPERS
+// ============================================================
+async function sb(method, table, body=null, query='') {
+  const opts = {
+    method,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': method==='POST' ? 'return=representation' : ''
+    }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, opts);
+  if (!r.ok && r.status !== 204) {
+    const e = await r.json().catch(()=>({}));
+    throw new Error(e.message || r.status);
+  }
+  if (r.status === 204) return null;
+  return r.json();
+}
+const dbGet = (t,q='') => sb('GET',t,null,q);
+const dbPost = (t,b) => sb('POST',t,b);
+const dbPatch = (t,b,q) => sb('PATCH',t,b,q);
+const dbDelete = (t,q) => sb('DELETE',t,null,q);
+
+// ============================================================
+// STATE
+// ============================================================
+let currentUser = null;
+let selectedProduct = null;
+let selectedQty = 1;
+let selectedDayOff = -1;
+let capturedPhoto = null;
+let capturedLocation = null;
+let attendMode = 'in';
+let videoStream = null;
+let allEmployees = [];
+let allBranches = [];
+let workSettings = { start: '14:00', end: '22:00' };
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('load', async () => {
+  await initDB();
+  const saved = localStorage.getItem('oraimo_user');
+  if (saved) {
+    currentUser = JSON.parse(saved);
+    setTimeout(()=>{ hideSplash(); showApp(); }, 2000);
+  } else {
+    setTimeout(hideSplash, 2000);
+  }
+  startClock();
+});
+
+async function initDB() {
+  try {
+    // Create tables via RPC if not exist - we'll use raw SQL via pg endpoint
+    // Tables are created via Supabase dashboard SQL editor
+    // Here we just verify connection
+    await dbGet('employees', '?limit=1');
+  } catch(e) {
+    console.log('DB init needed');
+  }
+}
+
+function hideSplash() {
+  document.getElementById('splash').classList.add('hide');
+}
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showApp() {
+  if (!currentUser) return showPage('login-page');
+  if (currentUser.role === 'admin') {
+    showPage('admin-app');
+    loadAdminDashboard();
+    loadAllEmployees();
+    loadBranches();
+  } else {
+    showPage('emp-app');
+    document.getElementById('emp-name-top').textContent = currentUser.name;
+    document.getElementById('profile-name').textContent = currentUser.name;
+    document.getElementById('profile-branch').textContent = currentUser.branch || '';
+    document.getElementById('profile-dayoff').innerHTML = `<span class="badge badge-blue">يوم الراحة: ${DAYS[currentUser.day_off] || '-'}</span>`;
+    loadEmpData();
+    renderProducts();
+  }
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+async function doLogin() {
+  const username = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value.trim();
+  if (!username || !pass) return showErr('login-err', 'أدخل بيانات الدخول');
+
+  // Check admin
+  if (username === 'admin' && pass === 'Oraimo@Admin2026') {
+    currentUser = { role: 'admin', name: 'المدير' };
+    localStorage.setItem('oraimo_user', JSON.stringify(currentUser));
+    hideSplash();
+    showApp();
+    return;
+  }
+
+  try {
+    const res = await dbGet('employees', `?username=eq.${username}&password=eq.${pass}&select=*`);
+    if (!res || res.length === 0) return showErr('login-err', 'بيانات الدخول غير صحيحة');
+    const emp = res[0];
+    currentUser = { ...emp, role: 'employee' };
+    localStorage.setItem('oraimo_user', JSON.stringify(currentUser));
+    showApp();
+  } catch(e) {
+    showErr('login-err', 'حدث خطأ، حاول مرة أخرى');
+  }
+}
+
+function doLogout() {
+  localStorage.removeItem('oraimo_user');
+  currentUser = null;
+  showPage('login-page');
+}
+
+// ============================================================
+// CLOCK
+// ============================================================
+function startClock() {
+  function tick() {
+    const now = new Date();
+    const t = now.toLocaleTimeString('ar-EG', { hour12: false });
+    const d = now.toLocaleDateString('ar-EG', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+    const el = document.getElementById('live-clock');
+    const del = document.getElementById('live-date');
+    if (el) el.textContent = t;
+    if (del) del.textContent = d;
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ============================================================
+// EMPLOYEE - ATTENDANCE
+// ============================================================
+async function loadEmpData() {
+  try {
+    const today = todayStr();
+    const monthStart = today.substring(0,7) + '-01';
+
+    // Today attendance
+    const todayAtt = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`);
+    updateAttendBtn(todayAtt && todayAtt.length > 0 ? todayAtt[0] : null);
+
+    // Month stats
+    const monthAtt = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=gte.${monthStart}&select=*`);
+    document.getElementById('emp-attend-count').textContent = monthAtt ? monthAtt.length : 0;
+
+    // Late minutes
+    let lateTotal = 0;
+    if (monthAtt) monthAtt.forEach(a => { lateTotal += (a.late_minutes || 0); });
+    document.getElementById('emp-late-total').textContent = lateTotal + ' د';
+
+    // Month sales
+    const monthSales = await dbGet('sales', `?employee_id=eq.${currentUser.id}&date=gte.${monthStart}&select=*`);
+    let salesTotal = 0;
+    if (monthSales) monthSales.forEach(s => { salesTotal += (s.total_amount || 0); });
+    document.getElementById('emp-sales-total').textContent = salesTotal.toLocaleString() + ' ج';
+
+    // Target
+    const mon = today.substring(0,7);
+    const targetRes = await dbGet('targets', `?employee_id=eq.${currentUser.id}&month=eq.${mon}&select=*`);
+    const target = targetRes && targetRes.length > 0 ? targetRes[0].amount : 0;
+    document.getElementById('target-achieved').textContent = salesTotal.toLocaleString() + ' ج';
+    document.getElementById('target-goal').textContent = 'الهدف: ' + target.toLocaleString() + ' ج';
+    const pct = target > 0 ? Math.min(100, Math.round(salesTotal/target*100)) : 0;
+    document.getElementById('target-fill').style.width = pct + '%';
+    document.getElementById('target-pct').textContent = pct + '% من الهدف';
+
+    // Absent count (working days minus attendance)
+    const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate();
+    const today_d = new Date().getDate();
+    let absent = 0;
+    for (let i=1; i<=today_d; i++) {
+      const d = new Date(new Date().getFullYear(), new Date().getMonth(), i);
+      if (d.getDay() === currentUser.day_off) continue;
+      const ds = d.toISOString().split('T')[0];
+      const found = monthAtt && monthAtt.find(a => a.date === ds);
+      if (!found) absent++;
+    }
+    document.getElementById('emp-absent-count').textContent = absent;
+
+    // Recent attendance
+    const recent = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&order=date.desc&limit=5&select=*`);
+    renderAttendHistory(recent);
+
+    // Today sales
+    loadTodaySales();
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function updateAttendBtn(record) {
+  const btn = document.getElementById('attend-btn');
+  const status = document.getElementById('attend-status');
+  if (!btn) return;
+  if (record && record.check_in && !record.check_out) {
+    btn.classList.add('checked-in');
+    btn.querySelector('.attend-icon').textContent = '🔴';
+    btn.querySelector('.attend-label').textContent = 'تسجيل انصراف';
+    btn.onclick = () => startAttendance('out');
+    status.textContent = `حضرت الساعة ${record.check_in} ${record.late_minutes > 0 ? '(تأخير ' + record.late_minutes + ' د)' : ''}`;
+  } else if (record && record.check_out) {
+    btn.classList.remove('checked-in');
+    btn.querySelector('.attend-icon').textContent = '✅';
+    btn.querySelector('.attend-label').textContent = 'تم التسجيل';
+    btn.onclick = null;
+    status.textContent = `حضور ${record.check_in} - انصراف ${record.check_out}`;
+  } else {
+    btn.classList.remove('checked-in');
+    btn.querySelector('.attend-icon').textContent = '🟢';
+    btn.querySelector('.attend-label').textContent = 'تسجيل حضور';
+    btn.onclick = () => startAttendance('in');
+    status.textContent = 'لم تسجل حضور اليوم';
+  }
+}
+
+function renderAttendHistory(records) {
+  const el = document.getElementById('emp-attend-history');
+  if (!el) return;
+  if (!records || records.length === 0) { el.innerHTML = '<div class="empty"><div class="empty-icon">📭</div>لا يوجد سجلات</div>'; return; }
+  el.innerHTML = records.map(r => `
+    <div class="history-item">
+      <div class="hist-top">
+        <div class="hist-name">${r.date}</div>
+        <span class="badge ${r.late_minutes > 0 ? 'badge-yellow' : 'badge-green'}">${r.late_minutes > 0 ? 'تأخير ' + r.late_minutes + 'د' : 'في الوقت'}</span>
+      </div>
+      <div class="hist-bottom">
+        <div class="hist-meta">حضور: ${r.check_in || '-'}</div>
+        <div class="hist-meta">انصراف: ${r.check_out || '-'}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function startAttendance(mode) {
+  attendMode = mode;
+  await openCamera();
+}
+
+async function openCamera() {
+  try {
+    videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    document.getElementById('video').srcObject = videoStream;
+    document.getElementById('camera-modal').classList.add('open');
+  } catch(e) {
+    notify('تعذر فتح الكاميرا: ' + e.message, 'error');
+  }
+}
+
+function closeCamera() {
+  if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
+  document.getElementById('camera-modal').classList.remove('open');
+}
+
+function capturePhoto() {
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0);
+  capturedPhoto = canvas.toDataURL('image/jpeg', 0.7);
+  closeCamera();
+
+  document.getElementById('selfie-preview-img').src = capturedPhoto;
+  document.getElementById('selfie-modal').classList.add('open');
+  document.getElementById('confirm-attend-btn').disabled = true;
+
+  // Get location
+  document.getElementById('location-status').textContent = '📍 جاري تحديد الموقع...';
+  navigator.geolocation.getCurrentPosition(pos => {
+    capturedLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
+    document.getElementById('location-status').textContent = `📍 تم تحديد الموقع (دقة ${Math.round(pos.coords.accuracy)}م)`;
+    document.getElementById('confirm-attend-btn').disabled = false;
+  }, err => {
+    capturedLocation = null;
+    document.getElementById('location-status').textContent = '⚠️ تعذر تحديد الموقع - سيتم التسجيل بدونه';
+    document.getElementById('confirm-attend-btn').disabled = false;
+  }, { timeout: 10000, enableHighAccuracy: true });
+}
+
+async function confirmAttendance() {
+  const today = todayStr();
+  const now = new Date();
+  const timeStr = now.toTimeString().substring(0,5);
+
+  try {
+    const todayAtt = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`);
+
+    if (attendMode === 'in') {
+      // Calculate late minutes
+      const [wh, wm] = workSettings.start.split(':').map(Number);
+      const [ah, am] = timeStr.split(':').map(Number);
+      const workMinutes = wh * 60 + wm;
+      const arriveMinutes = ah * 60 + am;
+      const lateMin = Math.max(0, arriveMinutes - workMinutes);
+
+      await dbPost('attendance', {
+        employee_id: currentUser.id,
+        date: today,
+        check_in: timeStr,
+        late_minutes: lateMin,
+        selfie_in: capturedPhoto,
+        location_lat: capturedLocation?.lat,
+        location_lng: capturedLocation?.lng
+      });
+      notify('تم تسجيل الحضور ✅', 'success');
+    } else {
+      if (todayAtt && todayAtt.length > 0) {
+        await dbPatch('attendance', { check_out: timeStr, selfie_out: capturedPhoto },
+          `?employee_id=eq.${currentUser.id}&date=eq.${today}`);
+        notify('تم تسجيل الانصراف ✅', 'success');
+      }
+    }
+
+    closeModal('selfie-modal');
+    loadEmpData();
+  } catch(e) {
+    notify('خطأ: ' + e.message, 'error');
+  }
+}
+
+// ============================================================
+// EMPLOYEE - SALES
+// ============================================================
+let filteredProducts = [...PRODUCTS];
+
+function renderProducts() {
+  filteredProducts = [...PRODUCTS];
+  displayProducts();
+}
+
+function filterProducts() {
+  const q = document.getElementById('product-search').value.toLowerCase();
+  filteredProducts = PRODUCTS.filter(p => p.name.toLowerCase().includes(q));
+  displayProducts();
+}
+
+function displayProducts() {
+  const el = document.getElementById('product-list');
+  if (!el) return;
+  if (filteredProducts.length === 0) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">لا يوجد نتائج</div>'; return; }
+  el.innerHTML = filteredProducts.slice(0,30).map(p => `
+    <div class="product-item" onclick="selectProduct('${p.name.replace(/'/g,"\\'")}', ${p.price})">
+      <div class="product-name">${p.name}</div>
+      <div class="product-price">${p.price.toLocaleString()} ج</div>
+    </div>
+  `).join('');
+}
+
+function selectProduct(name, price) {
+  selectedProduct = { name, price };
+  selectedQty = 1;
+  document.getElementById('selected-product-name').textContent = name;
+  document.getElementById('selected-product-price').textContent = price.toLocaleString();
+  document.getElementById('qty-val').textContent = 1;
+  document.getElementById('sale-total').textContent = price.toLocaleString() + ' ج';
+  document.getElementById('sale-form-wrap').style.display = 'block';
+  document.getElementById('product-search').value = '';
+  document.getElementById('product-list').innerHTML = '';
+}
+
+function changeQty(d) {
+  selectedQty = Math.max(1, selectedQty + d);
+  document.getElementById('qty-val').textContent = selectedQty;
+  document.getElementById('sale-total').textContent = (selectedProduct.price * selectedQty).toLocaleString() + ' ج';
+}
+
+function cancelSale() {
+  selectedProduct = null;
+  document.getElementById('sale-form-wrap').style.display = 'none';
+  renderProducts();
+}
+
+async function submitSale() {
+  if (!selectedProduct) return;
+  const today = todayStr();
+  const total = selectedProduct.price * selectedQty;
+  try {
+    await dbPost('sales', {
+      employee_id: currentUser.id,
+      date: today,
+      product_name: selectedProduct.name,
+      unit_price: selectedProduct.price,
+      quantity: selectedQty,
+      total_amount: total
+    });
+    notify('تم تسجيل البيعة ✅', 'success');
+    cancelSale();
+    loadTodaySales();
+    loadEmpData();
+  } catch(e) {
+    notify('خطأ: ' + e.message, 'error');
+  }
+}
+
+async function loadTodaySales() {
+  const today = todayStr();
+  const sales = await dbGet('sales', `?employee_id=eq.${currentUser.id}&date=eq.${today}&order=created_at.desc&select=*`);
+  const el = document.getElementById('emp-sales-list');
+  let total = 0;
+  if (!sales || sales.length === 0) {
+    if (el) el.innerHTML = '<div class="empty"><div class="empty-icon">🛒</div>لا يوجد مبيعات اليوم</div>';
+  } else {
+    sales.forEach(s => total += s.total_amount);
+    if (el) el.innerHTML = sales.map(s => `
+      <div class="history-item">
+        <div class="hist-top">
+          <div class="hist-name">${s.product_name}</div>
+          <div class="hist-amount">${s.total_amount.toLocaleString()} ج</div>
+        </div>
+        <div class="hist-bottom">
+          <div class="hist-meta">الكمية: ${s.quantity}</div>
+          <div class="hist-meta">السعر: ${s.unit_price.toLocaleString()} ج</div>
+        </div>
+      </div>
+    `).join('');
+  }
+  const tel = document.getElementById('emp-today-total');
+  if (tel) tel.textContent = total.toLocaleString() + ' ج';
+}
+
+async function sendLeaveRequest() {
+  const reason = document.getElementById('leave-reason').value.trim();
+  const duration = document.getElementById('leave-duration').value;
+  if (!reason) return notify('اكتب سبب التأخير', 'error');
+  try {
+    await dbPost('leave_requests', {
+      employee_id: currentUser.id,
+      employee_name: currentUser.name,
+      reason,
+      duration_minutes: parseInt(duration),
+      status: 'pending',
+      date: todayStr()
+    });
+    notify('تم إرسال الطلب ✅', 'success');
+    document.getElementById('leave-reason').value = '';
+  } catch(e) {
+    notify('خطأ: ' + e.message, 'error');
+  }
+}
+
+// ============================================================
+// ADMIN
+// ============================================================
+async function loadAdminDashboard() {
+  try {
+    const today = todayStr();
+    const monthStart = today.substring(0,7) + '-01';
+
+    const allEmp = await dbGet('employees', '?select=*');
+    allEmployees = allEmp || [];
+
+    const todayAtt = await dbGet('attendance', `?date=eq.${today}&select=*`);
+    const present = todayAtt ? todayAtt.length : 0;
+    const absent = allEmployees.length - present;
+
+    document.getElementById('adm-present').textContent = present;
+    document.getElementById('adm-absent').textContent = Math.max(0, absent);
+
+    const todaySales = await dbGet('sales', `?date=eq.${today}&select=total_amount`);
+    const monthSales = await dbGet('sales', `?date=gte.${monthStart}&select=total_amount`);
+
+    let todayTotal = 0, monthTotal = 0;
+    if (todaySales) todaySales.forEach(s => todayTotal += s.total_amount);
+    if (monthSales) monthSales.forEach(s => monthTotal += s.total_amount);
+
+    document.getElementById('adm-sales-today').textContent = todayTotal.toLocaleString() + ' ج';
+    document.getElementById('adm-sales-month').textContent = monthTotal.toLocaleString() + ' ج';
+
+    // Employee today status
+    const el = document.getElementById('adm-emp-today');
+    if (el) {
+      if (allEmployees.length === 0) {
+        el.innerHTML = '<div class="empty"><div class="empty-icon">👥</div>لا يوجد موظفون</div>';
+      } else {
+        el.innerHTML = allEmployees.map(emp => {
+          const att = todayAtt && todayAtt.find(a => a.employee_id === emp.id);
+          return `
+            <div class="emp-card">
+              <div class="emp-avatar">${emp.name[0]}</div>
+              <div class="emp-info">
+                <div class="emp-name">${emp.name}</div>
+                <div class="emp-branch">${emp.branch || '-'}</div>
+                ${att ? `<div style="font-size:11px;color:var(--green)">حضر ${att.check_in} ${att.late_minutes > 0 ? '(تأخير '+att.late_minutes+'د)' : ''}</div>` : ''}
+              </div>
+              <span class="badge ${att ? (att.check_out ? 'badge-blue' : 'badge-green') : 'badge-red'}">${att ? (att.check_out ? 'انصرف' : 'حاضر') : 'غائب'}</span>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // Leave requests
+    const leaves = await dbGet('leave_requests', `?status=eq.pending&select=*`);
+    const lel = document.getElementById('adm-leave-requests');
+    if (lel) {
+      if (!leaves || leaves.length === 0) {
+        lel.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:10px">لا يوجد طلبات معلقة</div>';
+      } else {
+        lel.innerHTML = leaves.map(l => `
+          <div class="perm-card">
+            <div class="perm-top">
+              <div class="perm-name">${l.employee_name}</div>
+              <span class="badge badge-yellow">معلق</span>
+            </div>
+            <div class="perm-reason">${l.reason} - ${l.duration_minutes} دقيقة</div>
+            <div class="perm-actions">
+              <button class="perm-btn approve" onclick="respondLeave(${l.id},'approved')">✅ موافقة</button>
+              <button class="perm-btn reject" onclick="respondLeave(${l.id},'rejected')">❌ رفض</button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+async function respondLeave(id, status) {
+  try {
+    await dbPatch('leave_requests', { status }, `?id=eq.${id}`);
+    notify(status === 'approved' ? 'تمت الموافقة ✅' : 'تم الرفض', status === 'approved' ? 'success' : 'error');
+    loadAdminDashboard();
+  } catch(e) { notify('خطأ', 'error'); }
+}
+
+async function loadAllEmployees() {
+  try {
+    allEmployees = await dbGet('employees', '?select=*&order=name') || [];
+    renderEmpList();
+    populateReportSelect();
+    populateTargetSelect();
+  } catch(e) {}
+}
+
+function renderEmpList() {
+  const el = document.getElementById('adm-emp-list');
+  if (!el) return;
+  if (allEmployees.length === 0) { el.innerHTML = '<div class="empty"><div class="empty-icon">👥</div>لا يوجد موظفون</div>'; return; }
+  el.innerHTML = allEmployees.map(emp => `
+    <div class="emp-card">
+      <div class="emp-avatar">${emp.name[0]}</div>
+      <div class="emp-info">
+        <div class="emp-name">${emp.name}</div>
+        <div class="emp-branch">${emp.branch || '-'} | يوم الراحة: ${DAYS[emp.day_off] || '-'}</div>
+      </div>
+      <div class="emp-actions">
+        <button class="action-btn edit" onclick="openEditEmp(${emp.id})">✏️</button>
+        <button class="action-btn del" onclick="deleteEmp(${emp.id})">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function populateReportSelect() {
+  const sel = document.getElementById('report-emp-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- اختر موظف --</option>' +
+    allEmployees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+}
+
+function populateTargetSelect() {
+  const sel = document.getElementById('target-emp-select');
+  if (!sel) return;
+  sel.innerHTML = allEmployees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+}
+
+async function loadEmpReport() {
+  const empId = document.getElementById('report-emp-select').value;
+  if (!empId) return;
+  const el = document.getElementById('report-content');
+  el.innerHTML = '<div class="full-loader"><div class="loader"></div></div>';
+
+  const today = todayStr();
+  const monthStart = today.substring(0,7) + '-01';
+  const emp = allEmployees.find(e => e.id == empId);
+
+  const [att, sales, target] = await Promise.all([
+    dbGet('attendance', `?employee_id=eq.${empId}&date=gte.${monthStart}&select=*`),
+    dbGet('sales', `?employee_id=eq.${empId}&date=gte.${monthStart}&select=*&order=date.desc`),
+    dbGet('targets', `?employee_id=eq.${empId}&month=eq.${today.substring(0,7)}&select=*`)
+  ]);
+
+  let salesTotal = 0, lateTotal = 0;
+  (sales||[]).forEach(s => salesTotal += s.total_amount);
+  (att||[]).forEach(a => lateTotal += (a.late_minutes||0));
+  const targetAmt = target && target.length > 0 ? target[0].amount : 0;
+  const pct = targetAmt > 0 ? Math.min(100, Math.round(salesTotal/targetAmt*100)) : 0;
+
+  el.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">أيام الحضور</div><div class="stat-val green">${(att||[]).length}</div></div>
+      <div class="stat-card"><div class="stat-label">إجمالي التأخيرات</div><div class="stat-val yellow">${lateTotal} د</div></div>
+      <div class="stat-card"><div class="stat-label">إجمالي المبيعات</div><div class="stat-val green">${salesTotal.toLocaleString()} ج</div></div>
+      <div class="stat-card"><div class="stat-label">التارجت</div><div class="stat-val">${targetAmt.toLocaleString()} ج</div></div>
+    </div>
+    <div class="card">
+      <div class="target-top"><span>${salesTotal.toLocaleString()} ج</span><span>الهدف: ${targetAmt.toLocaleString()} ج</span></div>
+      <div class="target-bar"><div class="target-fill" style="width:${pct}%"></div></div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:6px">${pct}% من الهدف</div>
+    </div>
+    <div class="section-title" style="margin:16px 0 10px">سجل المبيعات</div>
+    ${(sales||[]).length === 0 ? '<div class="empty"><div class="empty-icon">🛒</div>لا يوجد مبيعات</div>' :
+      (sales||[]).map(s => `
+        <div class="history-item">
+          <div class="hist-top"><div class="hist-name">${s.product_name}</div><div class="hist-amount">${s.total_amount.toLocaleString()} ج</div></div>
+          <div class="hist-bottom"><div class="hist-meta">${s.date}</div><div class="hist-meta">ك: ${s.quantity} × ${s.unit_price.toLocaleString()} ج</div></div>
+        </div>
+      `).join('')}
+    <div class="section-title" style="margin:16px 0 10px">سجل الحضور</div>
+    <div class="table-wrap">
+      <table>
+        <tr><th>التاريخ</th><th>حضور</th><th>انصراف</th><th>تأخير</th></tr>
+        ${(att||[]).map(a => `
+          <tr>
+            <td>${a.date}</td>
+            <td>${a.check_in||'-'}</td>
+            <td>${a.check_out||'-'}</td>
+            <td>${a.late_minutes > 0 ? '<span class="badge badge-yellow">'+a.late_minutes+' د</span>' : '<span class="badge badge-green">في الوقت</span>'}</td>
+          </tr>
+        `).join('')}
+      </table>
+    </div>
+  `;
+}
+
+// ============================================================
+// BRANCHES
+// ============================================================
+async function loadBranches() {
+  try {
+    allBranches = await dbGet('branches', '?select=*&order=name') || [];
+    renderBranches();
+    populateBranchSelects();
+  } catch(e) {}
+}
+
+function renderBranches() {
+  const el = document.getElementById('branches-list');
+  if (!el) return;
+  el.innerHTML = allBranches.map(b => `
+    <div class="emp-card">
+      <div class="emp-info"><div class="emp-name">🏪 ${b.name}</div></div>
+      <div class="emp-actions">
+        <button class="action-btn edit" onclick="openEditBranch(${b.id},'${b.name}')">✏️</button>
+        <button class="action-btn del" onclick="deleteBranch(${b.id})">🗑️</button>
+      </div>
+    </div>
+  `).join('') || '<div style="color:var(--text-muted);font-size:13px">لا يوجد فروع</div>';
+}
+
+function populateBranchSelects() {
+  ['emp-form-branch'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = allBranches.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
+  });
+}
+
+function openAddBranch() {
+  document.getElementById('branch-modal-title').textContent = 'إضافة فرع';
+  document.getElementById('branch-form-name').value = '';
+  document.getElementById('edit-branch-id').value = '';
+  document.getElementById('add-branch-modal').classList.add('open');
+}
+
+function openEditBranch(id, name) {
+  document.getElementById('branch-modal-title').textContent = 'تعديل الفرع';
+  document.getElementById('branch-form-name').value = name;
+  document.getElementById('edit-branch-id').value = id;
+  document.getElementById('add-branch-modal').classList.add('open');
+}
+
+async function saveBranch() {
+  const name = document.getElementById('branch-form-name').value.trim();
+  const id = document.getElementById('edit-branch-id').value;
+  if (!name) return notify('أدخل اسم الفرع', 'error');
+  try {
+    if (id) await dbPatch('branches', { name }, `?id=eq.${id}`);
+    else await dbPost('branches', { name });
+    notify('تم الحفظ ✅', 'success');
+    closeModal('add-branch-modal');
+    loadBranches();
+  } catch(e) { notify('خطأ: ' + e.message, 'error'); }
+}
+
+async function deleteBranch(id) {
+  if (!confirm('حذف الفرع؟')) return;
+  await dbDelete('branches', `?id=eq.${id}`);
+  loadBranches();
+}
+
+// ============================================================
+// EMPLOYEES CRUD
+// ============================================================
+function openAddEmp() {
+  document.getElementById('emp-modal-title').textContent = 'إضافة موظف جديد';
+  document.getElementById('edit-emp-id').value = '';
+  document.getElementById('emp-form-name').value = '';
+  document.getElementById('emp-form-username').value = '';
+  document.getElementById('emp-form-pass').value = '';
+  document.getElementById('emp-pass-group').style.display = 'block';
+  selectedDayOff = -1;
+  document.querySelectorAll('.day-chip').forEach(c => c.classList.remove('selected'));
+  populateBranchSelects();
+  document.getElementById('add-emp-modal').classList.add('open');
+}
+
+function openEditEmp(id) {
+  const emp = allEmployees.find(e => e.id === id);
+  if (!emp) return;
+  document.getElementById('emp-modal-title').textContent = 'تعديل موظف';
+  document.getElementById('edit-emp-id').value = id;
+  document.getElementById('emp-form-name').value = emp.name;
+  document.getElementById('emp-form-username').value = emp.username;
+  document.getElementById('emp-pass-group').style.display = 'none';
+  selectedDayOff = emp.day_off;
+  populateBranchSelects();
+  document.getElementById('emp-form-branch').value = emp.branch;
+  document.querySelectorAll('.day-chip').forEach(c => {
+    c.classList.toggle('selected', parseInt(c.dataset.day) === emp.day_off);
+  });
+  document.getElementById('add-emp-modal').classList.add('open');
+}
+
+function selectDay(day) {
+  selectedDayOff = day;
+  document.querySelectorAll('.day-chip').forEach(c => {
+    c.classList.toggle('selected', parseInt(c.dataset.day) === day);
+  });
+}
+
+async function saveEmployee() {
+  const id = document.getElementById('edit-emp-id').value;
+  const name = document.getElementById('emp-form-name').value.trim();
+  const username = document.getElementById('emp-form-username').value.trim();
+  const pass = document.getElementById('emp-form-pass').value.trim();
+  const branch = document.getElementById('emp-form-branch').value;
+  if (!name || !username) return notify('أدخل الاسم واسم المستخدم', 'error');
+  if (!id && !pass) return notify('أدخل كلمة المرور', 'error');
+  if (selectedDayOff < 0) return notify('اختر يوم الإجازة', 'error');
+  try {
+    if (id) {
+      await dbPatch('employees', { name, username, branch, day_off: selectedDayOff }, `?id=eq.${id}`);
+    } else {
+      await dbPost('employees', { name, username, password: pass, branch, day_off: selectedDayOff });
+    }
+    notify('تم الحفظ ✅', 'success');
+    closeModal('add-emp-modal');
+    loadAllEmployees();
+  } catch(e) { notify('خطأ: ' + e.message, 'error'); }
+}
+
+async function deleteEmp(id) {
+  if (!confirm('حذف الموظف؟ سيتم حذف كل بياناته!')) return;
+  await dbDelete('employees', `?id=eq.${id}`);
+  loadAllEmployees();
+}
+
+// ============================================================
+// TARGETS
+// ============================================================
+async function loadTargetsList() {
+  const el = document.getElementById('targets-list');
+  if (!el) return;
+  const today = todayStr();
+  const mon = today.substring(0,7);
+  el.innerHTML = `
+    <div class="section-action" style="margin-bottom:12px" onclick="openTargetModal()">+ تحديد تارجت موظف</div>
+    <div id="targets-content"></div>
+  `;
+  const targets = await dbGet('targets', `?month=eq.${mon}&select=*`) || [];
+  const tc = document.getElementById('targets-content');
+  if (targets.length === 0) { tc.innerHTML = '<div style="color:var(--text-muted);font-size:13px">لا يوجد تارجت محدد لهذا الشهر</div>'; return; }
+  tc.innerHTML = targets.map(t => {
+    const emp = allEmployees.find(e => e.id === t.employee_id);
+    return `<div class="history-item"><div class="hist-top"><div class="hist-name">${emp ? emp.name : 'موظف'}</div><div class="hist-amount">${t.amount.toLocaleString()} ج</div></div><div class="hist-meta">${t.month}</div></div>`;
+  }).join('');
+}
+
+function openTargetModal() {
+  populateTargetSelect();
+  const today = todayStr();
+  document.getElementById('target-month').value = today.substring(0,7);
+  document.getElementById('target-amount').value = '';
+  document.getElementById('target-modal').classList.add('open');
+}
+
+async function saveTarget() {
+  const empId = document.getElementById('target-emp-select').value;
+  const month = document.getElementById('target-month').value;
+  const amount = parseInt(document.getElementById('target-amount').value);
+  if (!empId || !month || !amount) return notify('أكمل البيانات', 'error');
+  try {
+    const existing = await dbGet('targets', `?employee_id=eq.${empId}&month=eq.${month}&select=*`);
+    if (existing && existing.length > 0) {
+      await dbPatch('targets', { amount }, `?employee_id=eq.${empId}&month=eq.${month}`);
+    } else {
+      await dbPost('targets', { employee_id: empId, month, amount });
+    }
+    notify('تم حفظ التارجت ✅', 'success');
+    closeModal('target-modal');
+    loadTargetsList();
+  } catch(e) { notify('خطأ: ' + e.message, 'error'); }
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+async function saveWorkTime() {
+  const start = document.getElementById('work-start').value;
+  const end = document.getElementById('work-end').value;
+  try {
+    const existing = await dbGet('settings', '?select=*');
+    if (existing && existing.length > 0) {
+      await dbPatch('settings', { work_start: start, work_end: end }, '?id=gte.0');
+    } else {
+      await dbPost('settings', { work_start: start, work_end: end });
+    }
+    workSettings = { start, end };
+    notify('تم حفظ مواعيد الدوام ✅', 'success');
+  } catch(e) { notify('خطأ', 'error'); }
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function empTab(tab, el) {
+  ['home','sales','profile'].forEach(t => {
+    document.getElementById('emp-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('#emp-app .nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  if (tab === 'sales') { renderProducts(); loadTodaySales(); }
+  if (tab === 'profile') loadEmpMonthlyReport();
+}
+
+function adminTab(tab, el) {
+  ['dashboard','employees','reports','settings'].forEach(t => {
+    document.getElementById('admin-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('#admin-app .nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  if (tab === 'dashboard') loadAdminDashboard();
+  if (tab === 'employees') { loadAllEmployees(); }
+  if (tab === 'settings') { loadBranches(); loadTargetsList(); loadProductsSettings(); }
+  if (tab === 'reports') { loadAllEmployees(); }
+}
+
+async function loadEmpMonthlyReport() {
+  const today = todayStr();
+  const monthStart = today.substring(0,7) + '-01';
+  const [att, sales] = await Promise.all([
+    dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=gte.${monthStart}&select=*&order=date.desc`),
+    dbGet('sales', `?employee_id=eq.${currentUser.id}&date=gte.${monthStart}&select=*&order=date.desc`)
+  ]);
+  const el = document.getElementById('monthly-report-emp');
+  if (!el) return;
+  let salesTotal = 0;
+  (sales||[]).forEach(s => salesTotal += s.total_amount);
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="color:var(--text-muted)">أيام الحضور</span><span class="badge badge-green">${(att||[]).length} يوم</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="color:var(--text-muted)">إجمالي المبيعات</span><span style="color:var(--green);font-weight:700">${salesTotal.toLocaleString()} ج</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0">
+      <span style="color:var(--text-muted)">عدد الصفقات</span><span>${(sales||[]).length}</span>
+    </div>
+  `;
+}
+
+async function loadProductsSettings() {
+  const el = document.getElementById('products-settings-list');
+  if (!el) return;
+  // Load custom prices from DB if any
+  const custom = await dbGet('product_prices', '?select=*').catch(()=>[]) || [];
+  el.innerHTML = PRODUCTS.map(p => {
+    const custom_p = custom.find(c => c.name === p.name);
+    const price = custom_p ? custom_p.price : p.price;
+    return `
+      <div class="history-item">
+        <div class="hist-top">
+          <div class="hist-name" style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+          <input type="number" value="${price}" id="price-${p.name.replace(/\s/g,'_').replace(/[^a-zA-Z0-9_]/g,'')}" 
+            style="flex:1;padding:6px;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Cairo,sans-serif" >
+          <button class="action-btn edit" onclick="saveProductPrice('${p.name.replace(/'/g,"\\'")}','${p.name.replace(/\s/g,'_').replace(/[^a-zA-Z0-9_]/g,'')}')">حفظ</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function saveProductPrice(name, inputId) {
+  const val = parseInt(document.getElementById('price-' + inputId).value);
+  if (!val) return notify('أدخل سعراً صحيحاً', 'error');
+  try {
+    const existing = await dbGet('product_prices', `?name=eq.${encodeURIComponent(name)}&select=*`);
+    if (existing && existing.length > 0) await dbPatch('product_prices', { price: val }, `?name=eq.${encodeURIComponent(name)}`);
+    else await dbPost('product_prices', { name, price: val });
+    notify('تم حفظ السعر ✅', 'success');
+  } catch(e) { notify('خطأ', 'error'); }
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = msg; setTimeout(()=>{ el.textContent=''; }, 3000); }
+}
+
+function notify(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `notif ${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 3000);
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+});
+
+// Prevent double-tap zoom
+let lastTap = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now();
+  if (now - lastTap < 300) e.preventDefault();
+  lastTap = now;
+}, { passive: false });
+</script>
+</body>
+</html>

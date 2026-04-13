@@ -1,3 +1,4 @@
+<!-- Modified version with RTL + Language Toggle + Horizontal Navigation -->
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
@@ -1589,3 +1590,48 @@ document.addEventListener('touchend',e=>{const now=Date.now();if(now-lastTap<300
 </script>
 </body>
 </html>
+
+
+<style>
+html[dir="rtl"] { direction: rtl; }
+.page {
+  position: absolute;
+  width: 100%;
+  top: 0;
+  left: 0;
+  transition: transform 0.4s ease;
+}
+.page.hidden { transform: translateX(100%); }
+.page.active { transform: translateX(0); }
+</style>
+
+<button onclick="toggleLang()" id="langBtn" style="position:fixed;top:10px;right:10px;z-index:9999;">AR</button>
+
+<script>
+let currentLang = localStorage.getItem("lang") || "en";
+
+function toggleLang(){
+  currentLang = currentLang === "en" ? "ar" : "en";
+  localStorage.setItem("lang", currentLang);
+  applyLang();
+}
+
+function applyLang(){
+  document.documentElement.dir = currentLang === "ar" ? "rtl" : "ltr";
+}
+
+applyLang();
+
+// Simple page navigation example
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>{
+    p.classList.remove('active');
+    p.classList.add('hidden');
+  });
+  const el = document.getElementById(id);
+  if(el){
+    el.classList.add('active');
+    el.classList.remove('hidden');
+  }
+}
+</script>

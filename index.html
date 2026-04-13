@@ -1014,7 +1014,7 @@ function showPage(id){
   document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active','slide-in-right','slide-in-left');p.style.display='none'});
   const el=document.getElementById(id);
   if(el){
-    el.style.display='';
+    el.style.display='block';
     el.classList.add('active');
     if(nextIdx<prevIdx) el.classList.add('slide-in-left');
     else if(nextIdx>prevIdx) el.classList.add('slide-in-right');
@@ -1515,7 +1515,8 @@ function handleBranchUpload(event){
   const reader=new FileReader();
   reader.onload=function(e){
     try{
-      const text=e.target.result,lines=text.split(/?
+      const text=e.target.result,lines=text.split(/
+?
 /).filter(l=>l.trim());
       if(lines.length<2){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px;padding:8px">${ar?'الملف فارغ':'Empty file'}</div>`;return}
       const parsed=[];

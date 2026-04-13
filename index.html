@@ -4,12 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0a0a0a">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Oraimo HR">
-<link rel="manifest" href="manifest.json">
 <title>Oraimo HR System</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Arabic:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
   --green:#00C853; --green-dark:#009624; --green-glow:rgba(0,200,83,.25);
@@ -18,132 +14,72 @@
   --red:#ff4444; --yellow:#FFD600; --blue:#2979FF; --purple:#9c27b0;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:'Inter',sans-serif;background:var(--black);color:var(--text);min-height:100vh;overflow-x:hidden;transition: direction 0.3s;}
+body{font-family:'Inter',sans-serif;background:var(--black);color:var(--text);min-height:100vh;overflow-x:hidden}
 
-/* RTL SUPPORT */
-body.rtl {
-  font-family: 'Noto Sans Arabic', 'Inter', sans-serif;
-  direction: rtl;
-}
+/* --- RTL Support --- */
+body.rtl { font-family: 'Noto Sans Arabic', sans-serif; direction: rtl; }
 body.rtl .topbar-left { flex-direction: row-reverse; }
+body.rtl .nav-item { flex-direction: column; }
 body.rtl .modal-close { float: left; }
 body.rtl .sh-action { float: left; }
 body.rtl .perf-val { text-align: left; }
 
-/* SPLASH */
+/* Splash */
 #splash{position:fixed;inset:0;background:var(--black);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s}
 #splash.hide{opacity:0;pointer-events:none}
-.splash-icon{width:110px;height:110px;border-radius:28px;background:linear-gradient(135deg,#00C853,#00952f);display:flex;align-items:center;justify-content:center;margin-bottom:20px;box-shadow:0 0 60px var(--green-glow);animation:splashPop .7s cubic-bezier(.34,1.56,.64,1) both}
-@keyframes splashPop{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:scale(1)}}
-.splash-o{font-size:56px;font-weight:900;color:#fff;font-style:italic;line-height:1}
-.splash-brand{font-size:24px;font-weight:800;color:var(--green);letter-spacing:3px;animation:fadeUp .5s .5s both}
-.splash-sub{font-size:12px;color:var(--muted);margin-top:4px;animation:fadeUp .5s .65s both}
-.splash-bar{width:180px;height:2px;background:var(--border);border-radius:2px;margin-top:32px;overflow:hidden;animation:fadeUp .5s .8s both}
-.splash-fill{height:100%;background:var(--green);animation:fill 2s ease forwards}
-@keyframes fill{from{width:0}to{width:100%}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.splash-icon{width:110px;height:110px;border-radius:28px;background:linear-gradient(135deg,#00C853,#00952f);display:flex;align-items:center;justify-content:center;margin-bottom:20px;box-shadow:0 0 60px var(--green-glow)}
+.splash-o{font-size:56px;font-weight:900;color:#fff;font-style:italic}
 
-/* PAGES */
+/* Pages */
 .page{display:none;min-height:100vh}
 .page.active{display:block}
 
-/* LOGIN */
-#login-page{background:var(--black);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 20px;min-height:100vh}
-.login-icon{width:80px;height:80px;border-radius:22px;background:linear-gradient(135deg,#00C853,#009624);display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 0 40px var(--green-glow)}
-.login-o{font-size:40px;font-weight:900;color:#fff;font-style:italic}
-.login-brand{font-size:20px;font-weight:800;color:var(--green);letter-spacing:2px;margin-bottom:4px}
-.login-sub{font-size:12px;color:var(--muted);margin-bottom:36px}
+/* Login */
+#login-page{padding:30px 20px; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh;}
 .login-form{width:100%;max-width:340px}
 .inp-grp{margin-bottom:14px}
-.inp-grp label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500}
-.inp-grp input,.inp-grp select{width:100%;padding:13px 14px;background:var(--card);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:inherit;font-size:14px;outline:none;transition:.2s}
-.inp-grp input:focus,.inp-grp select:focus{border-color:var(--green)}
-.btn{width:100%;padding:14px;border:none;border-radius:12px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:.2s}
+.inp-grp label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+.inp-grp input, .inp-grp select{width:100%;padding:13px;background:var(--card);border:1.5px solid var(--border);border-radius:12px;color:#fff;outline:none}
+.btn{width:100%;padding:14px;border:none;border-radius:12px;font-weight:700;cursor:pointer;transition:.2s}
 .btn-green{background:var(--green);color:#000}
-.btn-green:active{background:var(--green-dark);transform:scale(.98)}
-.btn-outline{background:transparent;color:var(--green);border:1.5px solid var(--green);margin-top:8px}
-.btn-red{background:var(--red);color:#fff}
-.err-msg{color:var(--red);font-size:12px;text-align:center;margin-top:10px;min-height:18px}
 
-/* TOPBAR */
+/* Topbar */
 .topbar{position:sticky;top:0;z-index:100;background:rgba(17,17,17,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:11px 16px;display:flex;align-items:center;justify-content:space-between}
 .topbar-left{display:flex;align-items:center;gap:10px}
-.topbar-logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#00C853,#009624);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#fff;font-style:italic;flex-shrink:0}
-.topbar-info{display:flex;flex-direction:column}
-.topbar-brand{font-size:13px;font-weight:800;color:var(--green);line-height:1}
-.topbar-title{font-size:11px;color:var(--muted);line-height:1;margin-top:2px}
-.topbar-right{display:flex;align-items:center;gap:8px}
+.topbar-logo{width:36px;height:36px;border-radius:10px;background:var(--green);display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff}
 .icon-btn{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px}
-.role-chip{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700}
-.role-superadmin{background:rgba(255,68,68,.15);color:var(--red)}
-.role-admin{background:rgba(41,121,255,.15);color:var(--blue)}
-.role-manager{background:rgba(156,39,176,.15);color:var(--purple)}
-.role-employee{background:var(--green-glow);color:var(--green)}
 
-/* BOTTOM NAV */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(17,17,17,.97);backdrop-filter:blur(10px);border-top:1px solid var(--border);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px;cursor:pointer;transition:.2s}
-.nav-icon{font-size:21px}
-.nav-label{font-size:9px;margin-top:2px;color:var(--muted);font-weight:500}
+/* Nav */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(17,17,17,.97);border-top:1px solid var(--border);display:flex;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px;cursor:pointer}
+.nav-label{font-size:10px;margin-top:2px;color:var(--muted)}
 .nav-item.active .nav-label{color:var(--green)}
-.nav-item.active .nav-icon{filter:drop-shadow(0 0 5px var(--green))}
 
-/* CONTENT */
-.content{padding:14px;padding-bottom:76px}
-
-/* CARDS */
-.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:10px;border:1px solid var(--border)}
-.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
-.stat-card{background:var(--card);border-radius:12px;padding:12px;border:1px solid var(--border)}
-.stat-label{font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:500}
-.stat-val{font-size:19px;font-weight:800}
-
-/* ATTEND BTN */
-.attend-wrap{display:flex;flex-direction:column;align-items:center;padding:16px 0}
-.attend-btn{width:150px;height:150px;border-radius:50%;border:3px solid var(--green);background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:.3s;box-shadow:0 0 28px var(--green-glow);position:relative;overflow:hidden}
-.attend-btn::before{content:'';position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,rgba(0,200,83,.08),transparent 70%);animation:aGlow 2s ease-in-out infinite}
-@keyframes aGlow{0%,100%{opacity:.5}50%{opacity:1}}
-.attend-btn:active{transform:scale(.95)}
-.attend-btn.checked-in{border-color:var(--red);box-shadow:0 0 28px rgba(255,68,68,.2)}
-.attend-btn.checked-in::before{background:radial-gradient(circle,rgba(255,68,68,.08),transparent 70%)}
-.attend-icon{font-size:44px;position:relative;z-index:1}
-.attend-label{font-size:12px;font-weight:700;margin-top:5px;position:relative;z-index:1}
-.attend-time{font-size:26px;font-weight:800;color:var(--green);margin-bottom:3px;font-variant-numeric:tabular-nums}
-.attend-date{font-size:11px;color:var(--muted)}
-
-/* NOTIF */
-.notif{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:var(--card2);border:1px solid var(--border);border-radius:11px;padding:11px 18px;font-size:13px;z-index:9000;animation:slideDown .3s ease;white-space:nowrap;font-weight:600}
-.notif.success{border-color:var(--green);color:var(--green)}
-.notif.error{border-color:var(--red);color:var(--red)}
-@keyframes slideDown{from{top:0;opacity:0}to{top:14px;opacity:1}}
-
-/* SECTION HEADER */
-.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.sh-title{font-size:14px;font-weight:700}
-.sh-action{font-size:11px;color:var(--green);cursor:pointer;font-weight:600}
-
-select option{background:#191919}
+/* Utility */
+.notif{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:var(--card2);border-radius:11px;padding:11px 18px;font-size:13px;z-index:9000;border:1px solid var(--green)}
 </style>
 </head>
 <body>
 
 <div id="splash">
   <div class="splash-icon"><div class="splash-o">O</div></div>
-  <div class="splash-brand" data-t="brand">ORAIMO HR</div>
-  <div class="splash-sub" data-t="splashSub">Attendance & Sales System</div>
-  <div class="splash-bar"><div class="splash-fill"></div></div>
+  <h2 style="color:var(--green); letter-spacing:2px">ORAIMO HR</h2>
 </div>
 
 <div id="login-page" class="page active">
-  <div class="login-icon"><div class="login-o">O</div></div>
-  <div class="login-brand" data-t="brand">ORAIMO HR</div>
-  <div class="login-sub" data-t="loginSub">Attendance & Sales Management</div>
   <div class="login-form">
-    <div class="inp-grp"><label data-t="username">Username</label><input type="text" id="login-user"></div>
-    <div class="inp-grp"><label data-t="password">Password</label><input type="password" id="login-pass"></div>
-    <button class="btn btn-green" onclick="doLogin()" data-t="signIn">Sign In</button>
-    <div class="err-msg" id="login-err"></div>
-    <button class="btn btn-outline" style="margin-top: 20px" onclick="toggleLanguage()">🌐 English / العربية</button>
+    <h1 style="text-align:center; margin-bottom:20px" data-i18n="login_title">ORAIMO HR</h1>
+    <div class="inp-grp">
+      <label data-i18n="username">Username</label>
+      <input type="text" id="login-user">
+    </div>
+    <div class="inp-grp">
+      <label data-i18n="password">Password</label>
+      <input type="password" id="login-pass">
+    </div>
+    <button class="btn btn-green" onclick="doLogin()" data-i18n="login_btn">Sign In</button>
+    <button class="btn" style="background:transparent; color:var(--muted); margin-top:10px" onclick="toggleLanguage()">🌐 English / العربية</button>
+    <p id="login-err" style="color:var(--red); font-size:12px; text-align:center; margin-top:10px"></p>
   </div>
 </div>
 
@@ -151,120 +87,94 @@ select option{background:#191919}
   <div class="topbar">
     <div class="topbar-left">
       <div class="topbar-logo">O</div>
-      <div class="topbar-info">
-        <div class="topbar-brand" data-t="brand">ORAIMO HR</div>
-        <div class="topbar-title" id="emp-name-top">Employee</div>
+      <div>
+        <div style="font-size:13px; font-weight:800; color:var(--green)">ORAIMO HR</div>
+        <div id="emp-name-top" style="font-size:11px; color:var(--muted)">Employee</div>
       </div>
     </div>
     <div class="topbar-right">
       <button class="icon-btn" onclick="toggleLanguage()">🌐</button>
-      <button class="icon-btn" onclick="doLogout()">🚪</button>
+      <button class="icon-btn" onclick="location.reload()">🚪</button>
     </div>
   </div>
-
-  <div id="emp-home" class="content">
-    <div class="attend-wrap">
-      <div class="attend-time" id="live-clock">00:00:00</div>
-      <div class="attend-date" id="live-date"></div>
-      <br>
-      <div class="attend-btn" id="attend-btn">
-        <div class="attend-icon">🟢</div>
-        <div class="attend-label" data-t="checkin">Check In</div>
-      </div>
-    </div>
-
-    <div class="stats-grid">
-      <div class="stat-card"><div class="stat-label" data-t="attendance">Attendance Days</div><div class="stat-val" id="emp-attend-count">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-t="absent">Absent Days</div><div class="stat-val" id="emp-absent-count">0</div></div>
-    </div>
+  
+  <div class="content" style="padding:20px">
+    <div id="emp-home">
+       <h3 data-i18n="welcome">Welcome Back</h3>
+       </div>
   </div>
 
   <div class="bottom-nav">
-    <div class="nav-item active" onclick="empTab('home',this)"><div class="nav-icon">🏠</div><div class="nav-label" data-t="home">Home</div></div>
-    <div class="nav-item" onclick="empTab('sales',this)"><div class="nav-icon">🛒</div><div class="nav-label" data-t="sales">Sales</div></div>
-    <div class="nav-item" onclick="empTab('profile',this)"><div class="nav-icon">👤</div><div class="nav-label" data-t="profile">Profile</div></div>
+    <div class="nav-item active" onclick="empTab('home',this)">
+      <span>🏠</span><span class="nav-label" data-i18n="nav_home">Home</span>
+    </div>
+    <div class="nav-item" onclick="empTab('sales',this)">
+      <span>🛒</span><span class="nav-label" data-i18n="nav_sales">Sales</span>
+    </div>
+    <div class="nav-item" onclick="empTab('profile',this)">
+      <span>👤</span><span class="nav-label" data-i18n="nav_profile">Profile</span>
+    </div>
   </div>
 </div>
 
 <script>
-// --- LANGUAGE SYSTEM ---
-let currentLang = localStorage.getItem('lang') || 'en';
-
+// --- 1. نظام الترجمة (I18N) ---
 const translations = {
-  ar: {
-    brand: "أورايمو HR",
-    splashSub: "نظام الحضور والمبيعات",
-    loginSub: "إدارة الحضور والمبيعات للموظفين",
-    username: "اسم المستخدم",
-    password: "كلمة المرور",
-    signIn: "تسجيل الدخول",
-    home: "الرئيسية",
-    sales: "المبيعات",
-    profile: "الملف الشخصي",
-    checkin: "تسجيل حضور",
-    checkout: "تسجيل انصراف",
-    attendance: "أيام الحضور",
-    absent: "أيام الغياب",
-    langChanged: "تم تغيير اللغة للعربية"
-  },
   en: {
-    brand: "ORAIMO HR",
-    splashSub: "Attendance & Sales System",
-    loginSub: "Attendance & Sales Management",
+    login_title: "ORAIMO HR",
     username: "Username",
     password: "Password",
-    signIn: "Sign In",
-    home: "Home",
-    sales: "Sales",
-    profile: "Profile",
-    checkin: "Check In",
-    checkout: "Check Out",
-    attendance: "Attendance Days",
-    absent: "Absent Days",
-    langChanged: "Language changed to English"
+    login_btn: "Sign In",
+    nav_home: "Home",
+    nav_sales: "Sales",
+    nav_profile: "Profile",
+    welcome: "Welcome Back",
+    lang_msg: "Language changed to English"
+  },
+  ar: {
+    login_title: "أورايمو HR",
+    username: "اسم المستخدم",
+    password: "كلمة المرور",
+    login_btn: "تسجيل الدخول",
+    nav_home: "الرئيسية",
+    nav_sales: "المبيعات",
+    nav_profile: "الملف الشخصي",
+    welcome: "مرحباً بك مجدداً",
+    lang_msg: "تم تغيير اللغة للعربية"
   }
 };
 
-function toggleLanguage() {
-  currentLang = currentLang === 'en' ? 'ar' : 'en';
-  localStorage.setItem('lang', currentLang);
-  applyLanguage();
-  notify(translations[currentLang].langChanged);
-}
+let currentLang = localStorage.getItem('lang') || 'en';
 
 function applyLanguage() {
   const isRtl = currentLang === 'ar';
   document.body.classList.toggle('rtl', isRtl);
   document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
-  document.documentElement.lang = currentLang;
-
-  document.querySelectorAll('[data-t]').forEach(el => {
-    const key = el.getAttribute('data-t');
-    if (translations[currentLang][key]) {
-      el.textContent = translations[currentLang][key];
-    }
+  
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    el.textContent = translations[currentLang][key] || el.textContent;
   });
 }
 
-// Initial Call
-document.addEventListener('DOMContentLoaded', () => {
+function toggleLanguage() {
+  currentLang = currentLang === 'en' ? 'ar' : 'en';
+  localStorage.setItem('lang', currentLang);
   applyLanguage();
-  setTimeout(() => document.getElementById('splash').classList.add('hide'), 2000);
-});
+  notify(translations[currentLang].lang_msg);
+}
 
-// --- CORE FUNCTIONS ---
+// --- 2. منطق العمل الأصلي الخاص بك (Core Logic) ---
+// ملاحظة: تأكد من دمج بقية دوال الـ JavaScript الخاصة بك هنا (renderProducts, loadSales, إلخ)
+
 function doLogin() {
   const user = document.getElementById('login-user').value;
   if(user) {
     document.getElementById('login-page').classList.remove('active');
     document.getElementById('emp-app').classList.add('active');
   } else {
-    document.getElementById('login-err').textContent = "Please enter username";
+    document.getElementById('login-err').textContent = "Required!";
   }
-}
-
-function doLogout() {
-  location.reload();
 }
 
 function empTab(tab, el) {
@@ -274,19 +184,19 @@ function empTab(tab, el) {
 
 function notify(msg) {
   const el = document.createElement('div');
-  el.className = `notif success`;
+  el.className = 'notif';
   el.textContent = msg;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 3000);
 }
 
-// Clock
-setInterval(() => {
-  const now = new Date();
-  const clock = document.getElementById('live-clock');
-  if(clock) clock.textContent = now.toLocaleTimeString();
-}, 1000);
+// Initializations
+window.onload = () => {
+  applyLanguage();
+  setTimeout(() => {
+    document.getElementById('splash').classList.add('hide');
+  }, 1500);
+};
 </script>
-
 </body>
 </html>

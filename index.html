@@ -1285,7 +1285,7 @@ function displayProducts(){
   const el=document.getElementById('product-list');if(!el)return;
   const ar=currentLang==='ar';
   if(filteredProducts.length===0){el.innerHTML=`<div style="padding:16px;text-align:center;color:var(--muted)">${ar?'لا توجد نتائج':'No results'}</div>`;return}
-  el.innerHTML=filteredProducts.slice(0,30).map(p=>`<div class="product-item" onclick="selectProduct('${p.name.replace(/'/g,"\'")}',${p.price})"><div class="product-name">${p.name}</div><div class="product-price">${p.price.toLocaleString()} EGP</div></div>`).join('');
+  el.innerHTML=filteredProducts.slice(0,30).map(p=>`<div class="product-item" onclick="selectProduct('${p.name.replace(/'/g,"\\'")}',${p.price})"><div class="product-name">${p.name}</div><div class="product-price">${p.price.toLocaleString()} EGP</div></div>`).join('');
 }
 function selectProduct(name,price){
   selectedProduct={name,price};selectedQty=1;
@@ -1515,9 +1515,7 @@ function handleBranchUpload(event){
   const reader=new FileReader();
   reader.onload=function(e){
     try{
-      const text=e.target.result,lines=text.split(/
-?
-/).filter(l=>l.trim());
+      const text=e.target.result,lines=text.split(/\r?\n/).filter(l=>l.trim());
       if(lines.length<2){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px;padding:8px">${ar?'الملف فارغ':'Empty file'}</div>`;return}
       const parsed=[];
       for(let i=1;i<lines.length;i++){const cols=lines[i].split(',');if(cols.length>=2&&cols[0].trim()&&!isNaN(cols[1]))parsed.push({name:cols[0].trim(),sales:parseInt(cols[1])||0});}
@@ -1735,7 +1733,7 @@ async function saveWorkTime(){
 async function loadProductsSettings(){
   const el=document.getElementById('products-settings-list');if(!el)return;
   const custom=await dbGet('product_prices','?select=*').catch(()=>[])||[];
-  el.innerHTML=PRODUCTS.map(p=>{const cp=custom.find(c=>c.name===p.name),price=cp?cp.price:p.price;const inputId='price-'+p.name.replace(/\s/g,'_').replace(/[^a-zA-Z0-9_]/g,'');return`<div class="history-item"><div class="hist-name" style="font-size:11px;margin-bottom:6px;direction:ltr">${p.name}</div><div style="display:flex;gap:7px;align-items:center"><input type="number" value="${price}" id="${inputId}" style="flex:1;padding:6px;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px"><button class="action-btn edit" onclick="saveProductPrice('${p.name.replace(/'/g,"\'")}','${inputId}')">${currentLang==='ar'?'حفظ':'Save'}</button></div></div>`;}).join('');
+  el.innerHTML=PRODUCTS.map(p=>{const cp=custom.find(c=>c.name===p.name),price=cp?cp.price:p.price;const inputId='price-'+p.name.replace(/\s/g,'_').replace(/[^a-zA-Z0-9_]/g,'');return`<div class="history-item"><div class="hist-name" style="font-size:11px;margin-bottom:6px;direction:ltr">${p.name}</div><div style="display:flex;gap:7px;align-items:center"><input type="number" value="${price}" id="${inputId}" style="flex:1;padding:6px;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px"><button class="action-btn edit" onclick="saveProductPrice('${p.name.replace(/'/g,"\\'")}','${inputId}')">${currentLang==='ar'?'حفظ':'Save'}</button></div></div>`;}).join('');
 }
 async function saveProductPrice(name,inputId){const val=parseInt(document.getElementById(inputId).value);const ar=currentLang==='ar';if(!val)return notify(ar?'أدخل سعراً صحيحاً':'Enter valid price','error');try{const existing=await dbGet('product_prices',`?name=eq.${encodeURIComponent(name)}&select=*`);if(existing&&existing.length>0)await dbPatch('product_prices',{price:val},`?name=eq.${encodeURIComponent(name)}`);else await dbPost('product_prices',{name,price:val});notify(ar?'تم حفظ السعر ✅':'Price saved ✅','success');}catch(e){notify('Error','error')}}
 async function clearOldPhotos(){const ar=currentLang==='ar';if(!confirm(ar?'حذف صور الأقدم من 30 يوماً؟':'Remove photos older than 30 days?'))return;try{const cutoff=fmtDate(new Date(Date.now()-30*24*60*60*1000));const old=await dbGet('attendance',`?date=lt.${cutoff}&selfie_in=not.is.null&select=id`)||[];if(old.length===0){notify(ar?'لا توجد صور قديمة':'No old photos','success');return}for(const r of old){await dbPatch('attendance',{selfie_in:null,selfie_out:null},`?id=eq.${r.id}`)}notify(`${ar?'تم حذف':'Cleared'} ${old.length} ${ar?'صورة':'photos'} ✅`,'success');}catch(e){notify('Error','error')}}

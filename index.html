@@ -79,7 +79,7 @@ body{font-family:'Inter',sans-serif;background:var(--black);color:var(--text);mi
 .nav-item.active .nav-icon{filter:drop-shadow(0 0 5px var(--green))}
 
 /* CONTENT */
-.content{padding:14px;padding-bottom:90px}
+.content{padding:14px;padding-bottom:76px}
 
 /* CARDS */
 .card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:10px;border:1px solid var(--border)}
@@ -250,9 +250,6 @@ select option{background:#191919}
 </head>
 <body>
 
-<!-- LANG TOGGLE -->
-<div id="lang-btn" onclick="toggleLang()" style="position:fixed;bottom:70px;left:10px;z-index:200;background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:var(--green);cursor:pointer">ع</div>
-
 <!-- SPLASH -->
 <div id="splash">
   <div class="splash-icon"><div class="splash-o">O</div></div>
@@ -284,8 +281,10 @@ select option{background:#191919}
   <div class="login-brand">ORAIMO HR</div>
   <div class="login-sub">Attendance & Sales Management</div>
   <div class="login-form">
-    <div class="inp-grp"><label>Username</label><input type="text" id="login-user" placeholder="Enter username"></div>
-    <div class="inp-grp"><label>Password</label><input type="password" id="login-pass" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div style="display:flex;gap:10px;margin-bottom:14px">
+      <div style="flex:1"><label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500">Username</label><input type="text" id="login-user" placeholder="Username" style="width:100%;padding:13px 14px;background:var(--card);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;transition:.2s" onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border)'"></div>
+      <div style="flex:1"><label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500">Password</label><input type="password" id="login-pass" placeholder="Password" style="width:100%;padding:13px 14px;background:var(--card);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;transition:.2s" onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border)'" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    </div>
     <button class="btn btn-green" onclick="doLogin()">Sign In</button>
     <div class="err-msg" id="login-err"></div>
   </div>
@@ -515,6 +514,14 @@ select option{background:#191919}
       <div id="admins-list"></div>
     </div>
 
+    <div id="tl-section">
+      <div class="sh" style="margin-top:14px"><div class="sh-title">🟣 Team Leaders</div><div class="sh-action" onclick="openAddTL()">+ Add</div></div>
+      <div id="tl-list"></div>
+    </div>
+
+    <div class="sh" style="margin-top:14px"><div class="sh-title">👥 Assign Employees to Team</div></div>
+    <div id="assign-team-list"></div>
+
     <div class="sh" style="margin-top:14px"><div class="sh-title">🏪 Branches</div><div class="sh-action" onclick="openAddBranch()">+ Add</div></div>
     <div id="branches-list"></div>
 
@@ -523,6 +530,16 @@ select option{background:#191919}
 
     <div class="sh" style="margin-top:14px"><div class="sh-title">📦 Product Prices</div></div>
     <div id="products-settings-list"></div>
+
+    <div class="card" style="margin-top:14px;border-color:rgba(0,200,83,.2)">
+      <div class="sh-title" style="color:var(--green);margin-bottom:10px">📥 Export Data to Excel</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Export attendance & sales data for current payroll month.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="action-btn view" style="padding:9px 16px;font-size:12px" onclick="exportAttendanceExcel()">📋 Attendance</button>
+        <button class="action-btn view" style="padding:9px 16px;font-size:12px" onclick="exportSalesExcel()">💰 Sales</button>
+        <button class="action-btn view" style="padding:9px 16px;font-size:12px" onclick="exportFullExcel()">📊 Full Report</button>
+      </div>
+    </div>
 
     <div class="card" style="margin-top:14px;border-color:rgba(255,68,68,.3)">
       <div class="sh-title" style="color:var(--red);margin-bottom:10px">🗑️ Clear Old Photos</div>
@@ -643,142 +660,24 @@ select option{background:#191919}
   </div>
 </div>
 
+<!-- TEAM LEADER MODAL -->
+<div class="modal-overlay" id="add-tl-modal">
+  <div class="modal">
+    <span class="modal-close" onclick="closeModal('add-tl-modal')">✕</span>
+    <h2 id="tl-modal-title">Add Team Leader</h2>
+    <input type="hidden" id="edit-tl-id">
+    <div class="inp-grp"><label>Full Name</label><input type="text" id="tl-form-name" placeholder="Team Leader name"></div>
+    <div class="inp-grp"><label>Username</label><input type="text" id="tl-form-username" placeholder="Login username"></div>
+    <div class="inp-grp" id="tl-pass-group"><label>Password</label><input type="password" id="tl-form-pass" placeholder="Password"></div>
+    <button class="btn btn-green" onclick="saveTL()">Save</button>
+  </div>
+</div>
+
 <script>
 const SUPABASE_URL = 'https://lmszelfnosejdemxhodm.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_HCOQxXf5sEyulaPkqlSEzg_IK7elCQb';
 const DAYS_EN = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const DAYS_AR = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-
-// ── LANGUAGE ──
-let currentLang = localStorage.getItem('oraimo_lang') || 'en';
-
-const T = {
-  en: {
-    appName:'ORAIMO HR', appSub:'Attendance & Sales System',
-    login:'Sign In', username:'Username', password:'Password', enterUser:'Enter username', enterPass:'Enter password',
-    checkIn:'Check In', checkOut:'Check Out', recorded:'Recorded',
-    noAttendance:'No attendance recorded today',
-    attendanceDays:'Attendance Days', absentDays:'Absent Days', totalSales:'Total Sales', lateMin:'Late Minutes',
-    monthlyTarget:'Monthly Target', salesThisMonth:'Sales This Month',
-    lateRequest:'Late Permission Request', reason:'Reason', duration:'Duration', sendRequest:'Send Request',
-    recentAttend:'Recent Attendance', warnings:'Warnings',
-    newSale:'New Sale', searchProduct:'Search product...', recordSale:'Record Sale', cancel:'Cancel',
-    profile:'Profile', dayOff:'Day Off', attendLog:'Attendance Log', monthlySummary:'Monthly Summary', signOut:'Sign Out',
-    presentToday:'Present Today', absentToday:'Absent Today', todaySales:'Today Sales', monthSales:'Month Sales',
-    performance:'Performance Ranking', todayTeam:"Today's Team", lateRequests:'Late Requests',
-    team:'Team Management', addEmployee:'+ Add Employee',
-    employee:'Employee', products:'Products', branch:'Branch',
-    workHours:'Work Hours', startTime:'Start Time', endTime:'End Time', save:'Save',
-    manageAdmins:'Manage Admins', branches:'Branches', targets:'Monthly Targets', setTarget:'+ Set Target', productPrices:'Product Prices',
-    home:'Home', sales:'Sales', dashboard:'Dashboard', reports:'Reports', settings:'Settings',
-    approve:'✅ Approve', reject:'❌ Reject', sendWarning:'📤 Send Warning',
-    selectEmployee:'-- Select Employee --', fullName:'Full Name', addEmp:'Add Employee', editEmp:'Edit Employee',
-    addBranch:'Add Branch', editBranch:'Edit Branch', branchName:'Branch Name',
-    setMonthlyTarget:'Set Monthly Target', month:'Month', targetAmount:'Target (EGP)',
-    camera:'📸 Take a selfie to verify', cancelCamera:'Cancel',
-    confirmAttend:'Confirm Check In', confirmCheckout:'Confirm Check Out', confirmBtn:'✅ Confirm', retake:'Retake',
-    locating:'📍 Getting location...', noAttendToday:'No attendance today',
-    inTime:'On Time', late:'Late', present:'Present', absent:'Absent', left:'Left'
-  },
-  ar: {
-    appName:'أورايمو HR', appSub:'نظام الحضور والمبيعات',
-    login:'دخول', username:'اسم المستخدم', password:'كلمة المرور', enterUser:'أدخل اسم المستخدم', enterPass:'أدخل كلمة المرور',
-    checkIn:'تسجيل حضور', checkOut:'تسجيل انصراف', recorded:'تم التسجيل',
-    noAttendance:'لم تسجل حضور اليوم',
-    attendanceDays:'أيام الحضور', absentDays:'أيام الغياب', totalSales:'إجمالي المبيعات', lateMin:'دقائق التأخير',
-    monthlyTarget:'التارجت الشهري', salesThisMonth:'مبيعات الشهر',
-    lateRequest:'طلب إذن تأخير', reason:'السبب', duration:'المدة', sendRequest:'إرسال الطلب',
-    recentAttend:'آخر سجلات الحضور', warnings:'إنذارات',
-    newSale:'بيعة جديدة', searchProduct:'ابحث عن المنتج...', recordSale:'تسجيل البيعة', cancel:'إلغاء',
-    profile:'الملف', dayOff:'يوم الراحة', attendLog:'سجل الحضور', monthlySummary:'ملخص الشهر', signOut:'تسجيل الخروج',
-    presentToday:'حاضرين اليوم', absentToday:'غائبين اليوم', todaySales:'مبيعات اليوم', monthSales:'مبيعات الشهر',
-    performance:'ترتيب الأداء', todayTeam:'الفريق اليوم', lateRequests:'طلبات التأخير',
-    team:'إدارة الموظفين', addEmployee:'+ إضافة موظف',
-    employee:'الموظف', products:'المنتجات', branch:'الفرع',
-    workHours:'مواعيد الدوام', startTime:'وقت البداية', endTime:'وقت النهاية', save:'حفظ',
-    manageAdmins:'إدارة المديرين', branches:'الفروع', targets:'التارجت الشهري', setTarget:'+ تحديد تارجت', productPrices:'أسعار المنتجات',
-    home:'الرئيسية', sales:'المبيعات', dashboard:'الرئيسية', reports:'التقارير', settings:'الإعدادات',
-    approve:'✅ موافقة', reject:'❌ رفض', sendWarning:'📤 إرسال إنذار',
-    selectEmployee:'-- اختر موظف --', fullName:'الاسم الكامل', addEmp:'إضافة موظف', editEmp:'تعديل موظف',
-    addBranch:'إضافة فرع', editBranch:'تعديل الفرع', branchName:'اسم الفرع',
-    setMonthlyTarget:'تحديد التارجت الشهري', month:'الشهر', targetAmount:'التارجت (جنيه)',
-    camera:'📸 التقط صورة سيلفي للتحقق', cancelCamera:'إلغاء',
-    confirmAttend:'تأكيد الحضور', confirmCheckout:'تأكيد الانصراف', confirmBtn:'✅ تأكيد', retake:'إعادة التصوير',
-    locating:'📍 جاري تحديد الموقع...', noAttendToday:'لم تسجل حضور اليوم',
-    inTime:'في الوقت', late:'تأخير', present:'حاضر', absent:'غائب', left:'انصرف'
-  }
-};
-function t(key){ return (T[currentLang]||T.en)[key] || key; }
-
-function toggleLang(){
-  currentLang = currentLang === 'en' ? 'ar' : 'en';
-  localStorage.setItem('oraimo_lang', currentLang);
-  applyLang();
-}
-
-function applyLang(){
-  const isAr = currentLang === 'ar';
-  document.documentElement.lang = currentLang;
-  document.documentElement.dir = isAr ? 'rtl' : 'ltr';
-  document.body.style.fontFamily = isAr ? "'Cairo',sans-serif" : "'Inter',sans-serif";
-  const btn = document.getElementById('lang-btn');
-  if(btn) btn.textContent = isAr ? 'EN' : 'ع';
-
-  // Static text elements
-  const map = {
-    'splash-sub': 'appSub',
-    'live-date': null,
-    'attend-status': 'noAttendance',
-  };
-
-  // Nav labels
-  const empNav = document.querySelectorAll('#emp-app .nav-label');
-  const empTabs = ['home','sales','profile'];
-  const empTabKeys = ['home','sales','profile'];
-  empNav.forEach((el,i) => { if(empTabKeys[i]) el.textContent = t(empTabKeys[i]); });
-
-  const admNav = document.querySelectorAll('#admin-app .nav-label');
-  const admTabKeys = ['dashboard','team','reports','settings'];
-  admNav.forEach((el,i) => { if(admTabKeys[i]) el.textContent = t(admTabKeys[i]); });
-
-  // Login page
-  const loginBtn = document.querySelector('#login-page .btn-green');
-  if(loginBtn) loginBtn.textContent = t('login');
-  const loginLabels = document.querySelectorAll('#login-page .inp-grp label');
-  if(loginLabels[0]) loginLabels[0].textContent = t('username');
-  if(loginLabels[1]) loginLabels[1].textContent = t('password');
-  const loginUser = document.getElementById('login-user');
-  if(loginUser) loginUser.placeholder = t('enterUser');
-  const loginPass = document.getElementById('login-pass');
-  if(loginPass) loginPass.placeholder = t('enterPass');
-  const loginSub = document.querySelector('#login-page .login-sub');
-  if(loginSub) loginSub.textContent = t('appSub');
-  const splashSub = document.querySelector('.splash-sub');
-  if(splashSub) splashSub.textContent = t('appSub');
-  const splashBrand = document.querySelector('.splash-brand');
-  if(splashBrand) splashBrand.textContent = t('appName');
-
-  // Stat labels
-  const statLabels = document.querySelectorAll('.stat-label');
-  const empStatKeys = ['attendanceDays','absentDays','totalSales','lateMin'];
-  statLabels.forEach((el,i) => { if(empStatKeys[i]) el.textContent = t(empStatKeys[i]); });
-
-  // Product search placeholder
-  const ps = document.getElementById('product-search');
-  if(ps) ps.placeholder = '🔍 ' + t('searchProduct');
-
-  // Leave request
-  const lrLabels = document.querySelectorAll('.card .inp-grp label');
-  // Leave reason/duration labels — update via targeted query
-  const leaveReasonLbl = document.querySelector('label[for="leave-reason"], #leave-reason')?.closest('.inp-grp')?.querySelector('label');
-  if(leaveReasonLbl) leaveReasonLbl.textContent = t('reason');
-
-  // Camera modal
-  const camLabel = document.getElementById('camera-label');
-  if(camLabel) camLabel.textContent = t('camera');
-}
-
 
 const PRODUCTS = [
   {"name":"Oraimo A to C Cable OCDC3200 3A 1M","price":85},
@@ -888,7 +787,6 @@ function fmtEGP(n){return n>=1000?(n/1000).toFixed(1)+'K':String(n)}
 
 // ── INIT ──
 window.addEventListener('load',async()=>{
-  applyLang();
   try{await dbGet('employees','?limit=1')}catch(e){}
   const saved=localStorage.getItem('oraimo_user');
   if(saved){currentUser=JSON.parse(saved);setTimeout(()=>{hideSplash();showApp()},2200)}
@@ -901,21 +799,29 @@ function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.
 function showApp(){
   if(!currentUser) return showPage('login-page');
   const isAdmin=['superadmin','admin','manager','viewer'].includes(currentUser.role);
-  if(isAdmin){
+  const isTL = currentUser.role === 'teamleader';
+  if(isAdmin || isTL){
     document.getElementById('admin-name-top').textContent=currentUser.name||'Admin';
     const chip=document.getElementById('admin-role-chip');
-    chip.textContent=currentUser.role==='superadmin'?'Super Admin':currentUser.role==='manager'?'Manager':currentUser.role==='viewer'?'Viewer':'Admin';
-    chip.className='role-chip badge role-'+currentUser.role;
-    // Hide settings nav for viewer/manager
-    if(currentUser.role==='viewer') document.getElementById('settings-nav-item').style.display='none';
-    if(currentUser.role==='superadmin') document.getElementById('admins-section').style.display='block';
-    // Hide add button for viewer
-    if(currentUser.role==='viewer'){const b=document.getElementById('add-emp-btn');if(b)b.style.display='none'}
+    if(isTL){
+      chip.textContent='Team Leader';
+      chip.className='role-chip badge role-manager';
+      // Hide settings for TL
+      document.getElementById('settings-nav-item').style.display='none';
+      const addBtn=document.getElementById('add-emp-btn');if(addBtn)addBtn.style.display='none';
+    } else {
+      chip.textContent=currentUser.role==='superadmin'?'Super Admin':currentUser.role==='manager'?'Manager':currentUser.role==='viewer'?'Viewer':'Admin';
+      chip.className='role-chip badge role-'+currentUser.role;
+      if(currentUser.role==='viewer') document.getElementById('settings-nav-item').style.display='none';
+      if(currentUser.role==='superadmin') document.getElementById('admins-section').style.display='block';
+      if(currentUser.role==='viewer'){const b=document.getElementById('add-emp-btn');if(b)b.style.display='none'}
+    }
     showPage('admin-app');
     loadAdminDashboard();
     loadAllEmployees();
     loadBranches();
     if(currentUser.role==='superadmin') loadAdminsList();
+    if(currentUser.role==='superadmin'||currentUser.role==='admin') loadTeamLeadersList();
   }else{
     showPage('emp-app');
     document.getElementById('emp-name-top').textContent=currentUser.name;
@@ -938,12 +844,21 @@ async function doLogin(){
     showApp(); return;
   }
   try{
+    // Check admins table
     const admRes=await dbGet('admins',`?username=eq.${username}&password=eq.${pass}&select=*`).catch(()=>[]);
     if(admRes&&admRes.length>0){
       currentUser={...admRes[0],role:admRes[0].role||'admin'};
       localStorage.setItem('oraimo_user',JSON.stringify(currentUser));
       showApp(); return;
     }
+    // Check team leaders
+    const tlRes=await dbGet('team_leaders',`?username=eq.${username}&password=eq.${pass}&select=*`).catch(()=>[]);
+    if(tlRes&&tlRes.length>0){
+      currentUser={...tlRes[0],role:'teamleader'};
+      localStorage.setItem('oraimo_user',JSON.stringify(currentUser));
+      showApp(); return;
+    }
+    // Check employees
     const empRes=await dbGet('employees',`?username=eq.${username}&password=eq.${pass}&select=*`);
     if(!empRes||empRes.length===0) return showErr('login-err','Invalid credentials');
     currentUser={...empRes[0],role:'employee'};
@@ -957,10 +872,9 @@ function doLogout(){localStorage.removeItem('oraimo_user');currentUser=null;show
 function startClock(){
   function tick(){
     const now=new Date();
-    const locale = currentLang==='ar' ? 'ar-EG' : 'en-US';
     const el=document.getElementById('live-clock'),del=document.getElementById('live-date');
     if(el) el.textContent=now.toLocaleTimeString('en-US',{hour12:false});
-    if(del) del.textContent=now.toLocaleDateString(locale,{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    if(del) del.textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   }
   tick();setInterval(tick,1000);
 }
@@ -1010,27 +924,27 @@ function updateAttendBtn(record){
   if(record&&record.check_in&&!record.check_out){
     btn.classList.add('checked-in');
     btn.querySelector('.attend-icon').textContent='🔴';
-    btn.querySelector('.attend-label').textContent=t('checkOut');
-    status.textContent=`${t('checkIn')}: ${record.check_in}${record.late_minutes>0?' ('+record.late_minutes+' min)':''}`;
+    btn.querySelector('.attend-label').textContent='Check Out';
+    status.textContent=`Checked in at ${record.check_in}${record.late_minutes>0?' ('+record.late_minutes+' min late)':''}`;
   }else if(record&&record.check_out){
     btn.classList.remove('checked-in');
     btn.querySelector('.attend-icon').textContent='✅';
-    btn.querySelector('.attend-label').textContent=t('recorded');
+    btn.querySelector('.attend-label').textContent='Done';
     btn.onclick=null;
-    status.textContent=`${t('checkIn')}: ${record.check_in} – ${t('checkOut')}: ${record.check_out}`;
+    status.textContent=`In: ${record.check_in} – Out: ${record.check_out}`;
   }else{
     btn.classList.remove('checked-in');
     btn.querySelector('.attend-icon').textContent='🟢';
-    btn.querySelector('.attend-label').textContent=t('checkIn');
-    status.textContent=t('noAttendance');
+    btn.querySelector('.attend-label').textContent='Check In';
+    status.textContent='No attendance recorded today';
   }
 }
 function handleAttendClick(){
   const btn=document.getElementById('attend-btn');
   if(btn.querySelector('.attend-icon').textContent==='✅') return;
   attendMode=btn.classList.contains('checked-in')?'out':'in';
-  document.getElementById('selfie-modal-title').textContent=attendMode==='in'?t('confirmAttend'):t('confirmCheckout');
-  document.getElementById('camera-label').textContent=t('camera');
+  document.getElementById('selfie-modal-title').textContent=attendMode==='in'?'Confirm Check In':'Confirm Check Out';
+  document.getElementById('camera-label').textContent=attendMode==='in'?'📸 Take a selfie to check in':'📸 Take a selfie to check out';
   openCamera();
 }
 
@@ -1503,7 +1417,16 @@ async function loadBranchReport(){
 
 // ── EMPLOYEES ──
 async function loadAllEmployees(){
-  try{allEmployees=await dbGet('employees','?select=*&order=name')||[];renderEmpList();populateReportSelect();populateTargetSelect()}catch(e){}
+  try{
+    allEmployees=await dbGet('employees','?select=*&order=name')||[];
+    // If team leader, filter to only their team
+    if(currentUser.role==='teamleader'){
+      const myTeam=await dbGet('employee_team',`?team_leader_id=eq.${currentUser.id}&select=employee_id`).catch(()=>[])||[];
+      const ids=myTeam.map(t=>t.employee_id);
+      allEmployees=allEmployees.filter(e=>ids.includes(e.id));
+    }
+    renderEmpList();populateReportSelect();populateTargetSelect();
+  }catch(e){}
 }
 function renderEmpList(){
   const el=document.getElementById('adm-emp-list');if(!el)return;
@@ -1707,8 +1630,170 @@ function adminTab(tab,el){
   el.classList.add('active');
   if(tab==='dashboard') loadAdminDashboard();
   if(tab==='employees') loadAllEmployees();
-  if(tab==='settings'){loadBranches();loadTargetsList();loadProductsSettings();if(currentUser.role==='superadmin')loadAdminsList()}
+  if(tab==='settings'){
+    loadBranches();loadTargetsList();loadProductsSettings();
+    if(currentUser.role==='superadmin') loadAdminsList();
+    if(['superadmin','admin'].includes(currentUser.role)) {loadTeamLeadersList();loadAssignTeam();}
+  }
   if(tab==='reports') loadAllEmployees();
+}
+
+// ── TEAM LEADERS ──
+let allTL = [];
+
+async function loadTeamLeadersList(){
+  try{
+    allTL = await dbGet('team_leaders','?select=*&order=name').catch(()=>[]) || [];
+    renderTLList();
+  }catch(e){}
+}
+
+function renderTLList(){
+  const el=document.getElementById('tl-list'); if(!el) return;
+  if(allTL.length===0){el.innerHTML='<div style="color:var(--muted);font-size:12px">No team leaders added</div>';return}
+  el.innerHTML=allTL.map(tl=>`
+    <div class="emp-card">
+      <div class="emp-avatar" style="background:var(--purple)">👑</div>
+      <div class="emp-info">
+        <div class="emp-name">${tl.name}</div>
+        <div class="emp-branch">@${tl.username}</div>
+      </div>
+      <div class="emp-actions">
+        <button class="action-btn del" onclick="deleteTL(${tl.id})">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+
+function openAddTL(){
+  document.getElementById('tl-modal-title').textContent='Add Team Leader';
+  document.getElementById('edit-tl-id').value='';
+  document.getElementById('tl-form-name').value='';
+  document.getElementById('tl-form-username').value='';
+  document.getElementById('tl-form-pass').value='';
+  document.getElementById('tl-pass-group').style.display='block';
+  openModal('add-tl-modal');
+}
+
+async function saveTL(){
+  const name=document.getElementById('tl-form-name').value.trim();
+  const username=document.getElementById('tl-form-username').value.trim();
+  const pass=document.getElementById('tl-form-pass').value.trim();
+  if(!name||!username||!pass) return notify('Fill all fields','error');
+  try{
+    await dbPost('team_leaders',{name,username,password:pass});
+    notify('Team Leader added ✅','success');
+    closeModal('add-tl-modal');
+    loadTeamLeadersList();
+    loadAssignTeam();
+  }catch(e){notify('Error: '+e.message,'error')}
+}
+
+async function deleteTL(id){
+  if(!confirm('Delete this team leader?')) return;
+  await dbDelete('team_leaders',`?id=eq.${id}`);
+  loadTeamLeadersList();
+}
+
+async function loadAssignTeam(){
+  const el=document.getElementById('assign-team-list'); if(!el) return;
+  if(allTL.length===0){el.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px 0">Add team leaders first</div>';return}
+  const assignments = await dbGet('employee_team','?select=*').catch(()=>[]) || [];
+  el.innerHTML=allEmployees.map(emp=>{
+    const asgn = assignments.find(a=>a.employee_id===emp.id);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;font-size:12px;font-weight:600">${emp.name}<div style="font-size:10px;color:var(--muted)">${emp.branch||'-'}</div></div>
+      <select onchange="assignEmpToTL(${emp.id},this.value)" style="padding:5px 8px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:11px">
+        <option value="">-- No Team --</option>
+        ${allTL.map(tl=>`<option value="${tl.id}" ${asgn&&asgn.team_leader_id===tl.id?'selected':''}>${tl.name}</option>`).join('')}
+      </select>
+    </div>`;
+  }).join('');
+}
+
+async function assignEmpToTL(empId, tlId){
+  try{
+    const existing = await dbGet('employee_team',`?employee_id=eq.${empId}&select=*`);
+    if(tlId===''){
+      if(existing&&existing.length>0) await dbDelete('employee_team',`?employee_id=eq.${empId}`);
+    } else {
+      if(existing&&existing.length>0) await dbPatch('employee_team',{team_leader_id:parseInt(tlId)},`?employee_id=eq.${empId}`);
+      else await dbPost('employee_team',{employee_id:empId,team_leader_id:parseInt(tlId)});
+    }
+    notify('Saved ✅','success');
+  }catch(e){notify('Error','error')}
+}
+
+// Filter employees for TL - only show their team
+async function getVisibleEmployees(){
+  if(currentUser.role==='teamleader'){
+    const myTeam = await dbGet('employee_team',`?team_leader_id=eq.${currentUser.id}&select=employee_id`).catch(()=>[]) || [];
+    const ids = myTeam.map(t=>t.employee_id);
+    return allEmployees.filter(e=>ids.includes(e.id));
+  }
+  return allEmployees;
+}
+
+// ── EXCEL EXPORT ──
+function csvEscape(v){
+  if(v==null) return '';
+  const s=String(v);
+  if(s.includes(',')|| s.includes('"')|| s.includes('\n')) return '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+function downloadCSV(rows, filename){
+  const csv = rows.map(r=>r.map(csvEscape).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  a.click();
+}
+
+async function exportAttendanceExcel(){
+  notify('Preparing...','success');
+  const pm=getPayrollMonth();
+  const att=await dbGet('attendance',`?date=gte.${pm.start}&date=lte.${pm.end}&select=*&order=date.desc`)||[];
+  const rows=[['Name','Branch','Date','Check In','Check Out','Late (min)','Location']];
+  att.forEach(a=>{
+    const emp=allEmployees.find(e=>e.id===a.employee_id);
+    const loc=a.location_lat?`${a.location_lat},${a.location_lng}`:'';
+    rows.push([emp?.name||a.employee_id, emp?.branch||'-', a.date, a.check_in||'-', a.check_out||'-', a.late_minutes||0, loc]);
+  });
+  downloadCSV(rows,`attendance_${pm.start}_${pm.end}.csv`);
+}
+
+async function exportSalesExcel(){
+  notify('Preparing...','success');
+  const pm=getPayrollMonth();
+  const sales=await dbGet('sales',`?date=gte.${pm.start}&date=lte.${pm.end}&select=*&order=date.desc`)||[];
+  const rows=[['Name','Branch','Date','Product','Qty','Unit Price','Total']];
+  sales.forEach(s=>{
+    const emp=allEmployees.find(e=>e.id===s.employee_id);
+    rows.push([emp?.name||s.employee_id, emp?.branch||'-', s.date, s.product_name, s.quantity, s.unit_price, s.total_amount]);
+  });
+  downloadCSV(rows,`sales_${pm.start}_${pm.end}.csv`);
+}
+
+async function exportFullExcel(){
+  notify('Preparing full report...','success');
+  const pm=getPayrollMonth();
+  const [att,sales,targets]=await Promise.all([
+    dbGet('attendance',`?date=gte.${pm.start}&date=lte.${pm.end}&select=*`)||[],
+    dbGet('sales',`?date=gte.${pm.start}&date=lte.${pm.end}&select=*`)||[],
+    dbGet('targets',`?month=eq.${pm.start.substring(0,7)}&select=*`)||[]
+  ]);
+  const rows=[['Name','Branch','Attendance Days','Late Minutes','Total Sales','Target','Achievement %']];
+  allEmployees.forEach(emp=>{
+    const empAtt=(att||[]).filter(a=>a.employee_id===emp.id);
+    const empSales=(sales||[]).filter(s=>s.employee_id===emp.id);
+    const empTarget=(targets||[]).find(t=>t.employee_id===emp.id);
+    const lateMin=empAtt.reduce((s,a)=>s+(a.late_minutes||0),0);
+    const totalSales=empSales.reduce((s,a)=>s+a.total_amount,0);
+    const target=empTarget?.amount||0;
+    const pct=target>0?Math.round(totalSales/target*100):0;
+    rows.push([emp.name, emp.branch||'-', empAtt.length, lateMin, totalSales, target, pct+'%']);
+  });
+  downloadCSV(rows,`full_report_${pm.start}_${pm.end}.csv`);
 }
 
 // ── HELPERS ──

@@ -3,7 +3,7 @@
   "short_name": "Oraimo HR",
   "description": "System for Oraimo Sales and HR Management",
   "start_url": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#060608",
   "theme_color": "#00C853",
   "icons": [

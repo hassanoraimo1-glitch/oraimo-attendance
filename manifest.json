@@ -1,17 +1,16 @@
 {
   "name": "Oraimo HR System",
   "short_name": "Oraimo HR",
-  "description": "نظام حضور ومبيعات أورايمو",
+  "description": "System for Oraimo Sales and HR Management",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0a0a",
+  "background_color": "#060608",
   "theme_color": "#00C853",
-  "orientation": "portrait",
   "icons": [
     {
-      "src": "oraimo-logo.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "https://cdn-icons-png.flaticon.com/512/5968/5968322.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

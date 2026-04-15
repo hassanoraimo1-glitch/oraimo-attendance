@@ -30,6 +30,27 @@
 html,body{height:100%;overflow-x:hidden}
 body{font-family:'Cairo',sans-serif;background:var(--black);color:var(--text);min-height:100vh;direction:rtl}
 
+
+/* ── VISIT PHOTOS ── */
+.visit-card{background:var(--card);border-radius:16px;padding:14px;margin-bottom:10px;border:1px solid var(--border)}
+.visit-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.visit-branch-name{font-size:14px;font-weight:800;color:var(--text)}
+.visit-meta{font-size:10px;color:var(--muted);margin-top:2px}
+.visit-note{background:var(--card2);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--text);margin-bottom:10px;border-right:3px solid var(--green);line-height:1.5}
+.visit-photos-row{display:flex;gap:7px;flex-wrap:wrap}
+.visit-photo{width:80px;height:80px;border-radius:10px;object-fit:cover;cursor:pointer;border:1px solid var(--border);transition:.2s}
+.visit-photo:active{transform:scale(.95)}
+.photo-upload-zone{border:2px dashed var(--border);border-radius:12px;padding:18px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:10px}
+.photo-upload-zone:active{border-color:var(--green);background:var(--green-glow)}
+.photo-previews{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.photo-preview-wrap{position:relative;width:80px;height:80px}
+.photo-preview-wrap img{width:80px;height:80px;border-radius:10px;object-fit:cover;border:1px solid var(--border)}
+.photo-preview-del{position:absolute;top:-5px;left:-5px;width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;border:none;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700}
+.visit-stats-row{display:flex;gap:8px;margin-bottom:12px}
+.visit-stat{flex:1;background:var(--card);border-radius:12px;padding:10px;text-align:center;border:1px solid var(--border)}
+.visit-stat-val{font-size:22px;font-weight:800;color:var(--green)}
+.visit-stat-label{font-size:10px;color:var(--muted);margin-top:2px}
+
 /* ── ORAIMO LOGO BG ── */
 .oraimo-bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
 .oraimo-bg::before{
@@ -643,12 +664,57 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
     <button class="btn btn-outline" onclick="doLogout()" style="margin-top:8px" data-ar="🚪 تسجيل الخروج" data-en="🚪 Sign Out">🚪 تسجيل الخروج</button>
   </div>
 
+  <!-- VISITS TAB -->
+  <div id="emp-visits" class="content" style="display:none">
+    <div class="sh">
+      <div class="sh-title">📸 زيارات الفروع</div>
+      <div id="emp-visits-count" style="color:var(--green);font-weight:800;font-size:12px">0 / 150</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="visit-stats-row">
+      <div class="visit-stat"><div class="visit-stat-val" id="vis-done">0</div><div class="visit-stat-label">زيارة هذا الشهر</div></div>
+      <div class="visit-stat"><div class="visit-stat-val" style="color:var(--yellow)" id="vis-remain">150</div><div class="visit-stat-label">متبقي</div></div>
+      <div class="visit-stat"><div class="visit-stat-val" style="color:var(--blue)" id="vis-photos">0</div><div class="visit-stat-label">صورة مرفوعة</div></div>
+    </div>
+
+    <!-- New Visit Form -->
+    <div class="card card-glow">
+      <div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ تسجيل زيارة جديدة</div>
+      <div class="inp-grp">
+        <label>الفرع</label>
+        <select id="visit-branch-select"><option value="">-- اختر الفرع --</option></select>
+      </div>
+      <div class="inp-grp">
+        <label>ملاحظة (اختياري)</label>
+        <textarea id="visit-note-input" placeholder="حالة الديسبلاي، ملاحظات الفرع..." rows="2"
+          style="width:100%;padding:11px 14px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl;transition:.2s"></textarea>
+      </div>
+      <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">صور الديسبلاي (max 3)</label>
+      <div class="photo-previews" id="visit-photo-previews"></div>
+      <div class="photo-upload-zone" id="visit-upload-zone" onclick="document.getElementById('visit-photo-input').click()">
+        <input type="file" id="visit-photo-input" accept="image/*" style="display:none" onchange="addVisitPhoto(event)">
+        <div style="font-size:28px">📷</div>
+        <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور للزيارة</div>
+      </div>
+      <button class="btn btn-green" onclick="submitVisit()">✅ حفظ الزيارة</button>
+    </div>
+
+    <!-- Visit History -->
+    <div class="sh" style="margin-top:4px"><div class="sh-title">📋 زياراتي هذا الشهر</div></div>
+    <div id="visit-history-list"></div>
+  </div>
+
   <div class="bottom-nav">
     <div class="nav-item active" onclick="empTab('home',this)">
       <div class="nav-icon">🏠</div><div class="nav-label" data-ar="الرئيسية" data-en="Home">الرئيسية</div>
     </div>
     <div class="nav-item" onclick="empTab('sales',this)">
       <div class="nav-icon">🛒</div><div class="nav-label" data-ar="المبيعات" data-en="Sales">المبيعات</div>
+    </div>
+    <div class="nav-item" onclick="empTab('visits',this)">
+      <div class="nav-icon">📸</div><div class="nav-label" data-ar="الزيارات" data-en="Visits">الزيارات</div>
     </div>
     <div class="nav-item" onclick="empTab('profile',this)">
       <div class="nav-icon">👤</div><div class="nav-label" data-ar="الملف" data-en="Profile">الملف</div>
@@ -803,6 +869,7 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
       <button class="tab active" onclick="reportTab('employee',this)" data-ar="موظف" data-en="Employee">موظف</button>
       <button class="tab" onclick="reportTab('products',this)" data-ar="منتجات" data-en="Products">منتجات</button>
       <button class="tab" onclick="reportTab('branch',this)" data-ar="الفروع" data-en="Branches">الفروع</button>
+      <button class="tab" onclick="reportTab('visits',this)">📸 زيارات</button>
     </div>
     <div id="report-employee">
       <div class="card">
@@ -817,6 +884,18 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
     </div>
     <div id="report-products" style="display:none"><div id="products-report-content"></div></div>
     <div id="report-branch" style="display:none"><div id="branch-report-content"></div></div>
+    <div id="report-visits" style="display:none">
+      <div class="card" style="margin-bottom:10px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="visit-report-emp" style="flex:1;padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px">
+            <option value="">كل تيم ليدر</option>
+          </select>
+          <input type="month" id="visit-report-month" style="padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px">
+          <button onclick="loadVisitsReport()" class="btn btn-green" style="width:auto;padding:9px 16px;font-size:13px">بحث</button>
+        </div>
+      </div>
+      <div id="visits-report-content"></div>
+    </div>
   </div>
 
   <!-- SETTINGS -->
@@ -1190,7 +1269,7 @@ function showApp(){
     if(currentUser.role==='superadmin')document.getElementById('admins-section').style.display='block';
     if(currentUser.role==='viewer'){const b=document.getElementById('add-emp-btn');if(b)b.style.display='none'}
     showPage('admin-app');
-    loadAdminDashboard();loadAllEmployees();loadBranches();
+    loadAdminDashboard();loadAllEmployees();loadBranches();clearOldVisitPhotos();
     if(currentUser.role==='superadmin')loadAdminsList();
   }else{
     showPage('emp-app');
@@ -1699,7 +1778,7 @@ function renderUploadHistory(){
 // ── REPORTS ──
 function reportTab(tab,el){
   currentReportTab=tab;
-  ['employee','products','branch','q1'].forEach(t=>{
+  ['employee','products','branch','q1','visits'].forEach(t=>{
     const el2=document.getElementById('report-'+t);
     if(el2)el2.style.display=t===tab?'block':'none';
   });
@@ -1708,6 +1787,7 @@ function reportTab(tab,el){
   if(tab==='products')loadProductsReport();
   if(tab==='branch')loadBranchReport();
   if(tab==='q1')loadQ1Analytics();
+  if(tab==='visits'){populateVisitReportEmps();initVisitReportMonth();}
 }
 
 async function loadEmpReport(){
@@ -2049,11 +2129,12 @@ function showModelAlertBanner(behindModels,soldQty,daysLeft){
 
 // ── NAVIGATION ──
 function empTab(tab,el){
-  ['home','sales','profile'].forEach(t=>document.getElementById('emp-'+t).style.display=t===tab?'block':'none');
+  ['home','sales','visits','profile'].forEach(t=>document.getElementById('emp-'+t).style.display=t===tab?'block':'none');
   document.querySelectorAll('#emp-app .nav-item').forEach(n=>n.classList.remove('active'));el.classList.add('active');
   if(tab==='sales'){renderProducts();loadTodaySales()}
   if(tab==='profile'){loadEmpMonthlyReport();loadEmpDailyLog()}
   if(tab==='home'){loadModelTargetAlert()}
+  if(tab==='visits'){loadVisitsTab()}
 }
 function adminTab(tab,el){
   ['dashboard','employees','branches','reports','settings'].forEach(t=>document.getElementById('admin-'+t).style.display=t===tab?'block':'none');
@@ -2080,6 +2161,171 @@ const Q1_STORES = [{"store": "B.ONLINE", "jan": 197623, "feb": 113359, "mar_actu
 const MARCH_DAYS_RECORDED = 11;
 const MARCH_FULL_DAYS = 31;
 
+
+
+// ── VISITS ──
+let visitPhotos=[];
+
+function populateVisitBranchSelect(){
+  const sel=document.getElementById('visit-branch-select');if(!sel)return;
+  sel.innerHTML='<option value="">-- اختر الفرع --</option>'+allBranches.map(b=>`<option value="${b.name}">${b.name}</option>`).join('');
+}
+
+function addVisitPhoto(e){
+  if(visitPhotos.length>=3)return notify('الحد الأقصى 3 صور','error');
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    // Compress to ~35% quality
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      const maxW=800;const scale=Math.min(1,maxW/img.width);
+      canvas.width=img.width*scale;canvas.height=img.height*scale;
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      const compressed=canvas.toDataURL('image/jpeg',0.35);
+      visitPhotos.push(compressed);
+      renderVisitPhotoPreviews();
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value='';
+}
+
+function renderVisitPhotoPreviews(){
+  const el=document.getElementById('visit-photo-previews');if(!el)return;
+  el.innerHTML=visitPhotos.map((src,i)=>`
+    <div class="photo-preview-wrap">
+      <img src="${src}" alt="">
+      <button class="photo-preview-del" onclick="removeVisitPhoto(${i})">✕</button>
+    </div>`).join('');
+  const zone=document.getElementById('visit-upload-zone');
+  if(zone)zone.style.display=visitPhotos.length>=3?'none':'block';
+}
+
+function removeVisitPhoto(i){visitPhotos.splice(i,1);renderVisitPhotoPreviews()}
+
+async function submitVisit(){
+  const branch=document.getElementById('visit-branch-select').value;
+  const note=document.getElementById('visit-note-input').value.trim();
+  const ar=currentLang==='ar';
+  if(!branch)return notify(ar?'اختر الفرع':'Select branch','error');
+  try{
+    await dbPost('branch_visits',{
+      employee_id:currentUser.id,
+      employee_name:currentUser.name,
+      branch_name:branch,
+      note:note||null,
+      photo1:visitPhotos[0]||null,
+      photo2:visitPhotos[1]||null,
+      photo3:visitPhotos[2]||null,
+      visit_date:todayStr()
+    });
+    notify(ar?'تم حفظ الزيارة ✅':'Visit saved ✅','success');
+    visitPhotos=[];renderVisitPhotoPreviews();
+    document.getElementById('visit-branch-select').value='';
+    document.getElementById('visit-note-input').value='';
+    loadVisitsTab();
+  }catch(e){notify((ar?'خطأ: ':'Error: ')+(e.message||''),'error')}
+}
+
+async function loadVisitsTab(){
+  populateVisitBranchSelect();
+  const pm=getPayrollMonth();
+  const visits=await dbGet('branch_visits',`?employee_id=eq.${currentUser.id}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`).catch(()=>[])||[];
+  const photoCount=visits.reduce((s,v)=>{let c=0;if(v.photo1)c++;if(v.photo2)c++;if(v.photo3)c++;return s+c;},0);
+  const done=visits.length,remain=Math.max(0,150-done);
+  document.getElementById('vis-done').textContent=done;
+  document.getElementById('vis-remain').textContent=remain;
+  document.getElementById('vis-photos').textContent=photoCount;
+  document.getElementById('emp-visits-count').textContent=done+' / 150';
+  const el=document.getElementById('visit-history-list');if(!el)return;
+  if(visits.length===0){el.innerHTML='<div class="empty"><div class="empty-icon">📸</div>لا توجد زيارات هذا الشهر</div>';return}
+  el.innerHTML=visits.map(v=>{
+    const photos=[v.photo1,v.photo2,v.photo3].filter(Boolean);
+    return`<div class="visit-card">
+      <div class="visit-header">
+        <div><div class="visit-branch-name">🏪 ${v.branch_name}</div><div class="visit-meta">${v.visit_date}</div></div>
+        <span class="badge badge-green">${photos.length} 📷</span>
+      </div>
+      ${v.note?`<div class="visit-note">📝 ${v.note}</div>`:''}
+      ${photos.length>0?`<div class="visit-photos-row">${photos.map(src=>`<img class="visit-photo" src="${src}" onclick="fullSelfie('${src}')">`).join('')}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ── VISITS ADMIN REPORT ──
+function populateVisitReportEmps(){
+  const sel=document.getElementById('visit-report-emp');if(!sel)return;
+  sel.innerHTML='<option value="">كل تيم ليدر</option>'+allEmployees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+}
+function initVisitReportMonth(){
+  const el=document.getElementById('visit-report-month');if(!el||el.value)return;
+  el.value=getPayrollMonth().start.substring(0,7);
+  loadVisitsReport();
+}
+async function loadVisitsReport(){
+  const el=document.getElementById('visits-report-content');if(!el)return;
+  const empId=document.getElementById('visit-report-emp').value;
+  const month=document.getElementById('visit-report-month').value;
+  const ar=currentLang==='ar';
+  el.innerHTML='<div class="full-loader"><div class="loader"></div></div>';
+  // get date range from month
+  const[y,m]=month.split('-').map(Number);
+  const start=`${month}-01`;
+  const end=new Date(y,m,0).toISOString().split('T')[0];
+  let query=`?visit_date=gte.${start}&visit_date=lte.${end}&order=visit_date.desc&select=*`;
+  if(empId)query+=`&employee_id=eq.${empId}`;
+  const visits=await dbGet('branch_visits',query).catch(()=>[])||[];
+  if(visits.length===0){el.innerHTML='<div class="empty"><div class="empty-icon">📸</div>لا توجد زيارات</div>';return}
+  // Group by employee
+  const byEmp={};
+  visits.forEach(v=>{
+    const k=v.employee_name||v.employee_id;
+    if(!byEmp[k])byEmp[k]=[];
+    byEmp[k].push(v);
+  });
+  const totalPhotos=visits.reduce((s,v)=>{let c=0;if(v.photo1)c++;if(v.photo2)c++;if(v.photo3)c++;return s+c;},0);
+  el.innerHTML=`
+  <div class="stats-grid" style="margin-bottom:12px">
+    <div class="stat-card"><div class="stat-label">إجمالي الزيارات</div><div class="stat-val" style="color:var(--green)">${visits.length}</div></div>
+    <div class="stat-card"><div class="stat-label">الصور المرفوعة</div><div class="stat-val" style="color:var(--blue)">${totalPhotos}</div></div>
+  </div>
+  ${Object.entries(byEmp).map(([name,empVisits])=>{
+    const pCount=empVisits.reduce((s,v)=>{let c=0;if(v.photo1)c++;if(v.photo2)c++;if(v.photo3)c++;return s+c;},0);
+    const pct=Math.min(100,Math.round(empVisits.length/150*100));
+    return`<div class="card" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:14px;font-weight:800">👤 ${name}</div>
+        <span class="badge ${pct>=100?'badge-green':pct>=50?'badge-yellow':'badge-red'}">${empVisits.length}/150</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span>التقدم</span><span style="color:var(--green);font-weight:700">${pct}%</span></div>
+      <div class="target-bar" style="margin-bottom:12px"><div class="target-fill" style="width:${pct}%"></div></div>
+      ${empVisits.map(v=>{
+        const photos=[v.photo1,v.photo2,v.photo3].filter(Boolean);
+        return`<div class="visit-card" style="margin-bottom:8px">
+          <div class="visit-header">
+            <div><div class="visit-branch-name">🏪 ${v.branch_name}</div><div class="visit-meta">${v.visit_date}</div></div>
+            <span class="badge badge-green">${photos.length} 📷</span>
+          </div>
+          ${v.note?`<div class="visit-note">📝 ${v.note}</div>`:''}
+          ${photos.length>0?`<div class="visit-photos-row">${photos.map(src=>`<img class="visit-photo" src="${src}" onclick="fullSelfie('${src}')">`).join('')}</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('')}`;
+}
+
+// ── AUTO CLEAR VISIT PHOTOS (60 days) ──
+async function clearOldVisitPhotos(){
+  const ar=currentLang==='ar';
+  const cutoff=fmtDate(new Date(Date.now()-60*24*60*60*1000));
+  const old=await dbGet('branch_visits',`?visit_date=lt.${cutoff}&select=id`).catch(()=>[])||[];
+  if(old.length===0)return;
+  for(const r of old){await dbPatch('branch_visits',{photo1:null,photo2:null,photo3:null},`?id=eq.${r.id}`)}
+  console.log(`Cleared photos from ${old.length} old visits`);
+}
 
 // ── ACCORDION ──
 function toggleAcc(id){

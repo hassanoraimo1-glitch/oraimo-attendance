@@ -1,5 +1,6 @@
-const CACHE_NAME = 'oraimo-hr-v1';
+const CACHE_NAME = 'oraimo-hr-v2';
 const ASSETS = [
+  './index.html',
   './index.html.html',
   './manifest.json',
   './icon.svg'
@@ -34,10 +35,13 @@ self.addEventListener('fetch', (event) => {
         try {
           const fresh = await fetch(req);
           const cache = await caches.open(CACHE_NAME);
+          // Cache whatever navigation served, plus keep a stable copy.
+          cache.put(req, fresh.clone());
+          cache.put('./index.html', fresh.clone());
           cache.put('./index.html.html', fresh.clone());
           return fresh;
         } catch {
-          const cached = await caches.match('./index.html.html');
+          const cached = (await caches.match(req)) || (await caches.match('./index.html')) || (await caches.match('./index.html.html'));
           return cached || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
         }
       })()

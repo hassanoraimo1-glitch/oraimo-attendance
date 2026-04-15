@@ -2,7 +2,7 @@
   "name": "Oraimo HR System",
   "short_name": "Oraimo HR",
   "description": "System for Oraimo Sales and HR Management",
-  "start_url": "./index.html.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "display_override": ["fullscreen", "standalone", "minimal-ui"],

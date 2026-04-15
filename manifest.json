@@ -2,16 +2,25 @@
   "name": "Oraimo HR System",
   "short_name": "Oraimo HR",
   "description": "System for Oraimo Sales and HR Management",
-  "start_url": "/",
-  "display": "fullscreen",
+  "start_url": "./index.html.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
   "background_color": "#060608",
   "theme_color": "#00C853",
+  "orientation": "portrait",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/5968/5968322.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }

@@ -1946,7 +1946,7 @@ async function saveTarget(){
     const existing=await dbGet('targets',`?employee_id=eq.${empId}&month=eq.${month}&select=*`);
     const data={amount,model_targets:modelTargets};
     if(existing&&existing.length>0)await dbPatch('targets',data,`?employee_id=eq.${empId}&month=eq.${month}`);
-    else await dbPost('targets',{employee_id:empId,month,...data});
+    else await dbPost('targets',{employee_id:parseInt(empId),month,...data});
     notify(ar?'تم حفظ التارجت ✅':'Target saved ✅','success');
     closeModal('target-modal');
     loadTargetsList();
@@ -1964,7 +1964,7 @@ async function loadProductsSettings(){
   el.innerHTML=PRODUCTS.map(p=>{const cp=custom.find(c=>c.name===p.name),price=cp?cp.price:p.price;const inputId='price-'+p.name.replace(/\s/g,'_').replace(/[^a-zA-Z0-9_]/g,'');return`<div class="history-item"><div class="hist-name" style="font-size:11px;margin-bottom:6px;direction:ltr">${p.name}</div><div style="display:flex;gap:7px;align-items:center"><input type="number" value="${price}" id="${inputId}" style="flex:1;padding:6px;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px"><button class="action-btn edit" onclick="saveProductPrice('${p.name.replace(/'/g,"\'")}','${inputId}')">${currentLang==='ar'?'حفظ':'Save'}</button></div></div>`;}).join('');
 }
 async function saveProductPrice(name,inputId){const val=parseInt(document.getElementById(inputId).value);const ar=currentLang==='ar';if(!val)return notify(ar?'أدخل سعراً صحيحاً':'Enter valid price','error');try{const existing=await dbGet('product_prices',`?name=eq.${encodeURIComponent(name)}&select=*`);if(existing&&existing.length>0)await dbPatch('product_prices',{price:val},`?name=eq.${encodeURIComponent(name)}`);else await dbPost('product_prices',{name,price:val});notify(ar?'تم حفظ السعر ✅':'Price saved ✅','success');}catch(e){notify('Error','error')}}
-async function clearOldPhotos(){const ar=currentLang==='ar';if(!confirm(ar?'حذف صور الأقدم من 30 يوماً؟':'Remove photos older than 30 days?'))return;try{const cutoff=fmtDate(new Date(Date.now()-30*24*60*60*1000));const old=await dbGet('attendance',`?date=lt.${cutoff}&selfie_in=not.is.null&select=id`)||[];if(old.length===0){notify(ar?'لا توجد صور قديمة':'No old photos','success');return}for(const r of old){await dbPatch('attendance',{selfie_in:null,selfie_out:null},`?id=eq.${r.id}`)}notify(`${ar?'تم حذف':'Cleared'} ${old.length} ${ar?'صورة':'photos'} ✅`,'success');}catch(e){notify('Error','error')}}
+async function clearOldPhotos(){const ar=currentLang==='ar';if(!confirm(ar?'حذف صور الأقدم من 30 يوماً؟':'Remove photos older than 30 days?'))return;try{const cutoff=fmtDate(new Date(Date.now()-30*24*60*60*1000));const old=await dbGet('attendance',`?date=lt.${cutoff}&select=id,selfie_in,selfie_out`).catch(()=>[])||[];const withPhotos=old.filter(r=>r.selfie_in||r.selfie_out);if(withPhotos.length===0){notify(ar?'لا توجد صور قديمة':'No old photos','success');return}for(const r of withPhotos){await dbPatch('attendance',{selfie_in:null,selfie_out:null},`?id=eq.${r.id}`)}notify(`${ar?'تم حذف':'Cleared'} ${withPhotos.length} ${ar?'صورة':'photos'} ✅`,'success');}catch(e){notify('Error','error')}}
 
 
 // ── MODEL TARGET ALERT ──

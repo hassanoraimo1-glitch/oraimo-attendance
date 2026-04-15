@@ -443,6 +443,12 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
 .q1-card:hover{border-color:rgba(0,200,83,.25);transform:translateY(-1px)}
 
 
+
+/* ── MANAGER TEAM ── */
+.team-emp-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)}
+.team-emp-row:last-child{border-bottom:none}
+.team-check{width:20px;height:20px;accent-color:var(--green);cursor:pointer}
+
 /* ── MODEL TARGET ALERT ── */
 .model-alert-card{background:rgba(255,59,59,.07);border:1px solid rgba(255,59,59,.25);border-radius:14px;padding:13px;margin-bottom:8px}
 .model-alert-card.on-track{background:rgba(0,200,83,.07);border-color:rgba(0,200,83,.25)}
@@ -1055,6 +1061,17 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
   </div>
 </div>
 
+
+<div class="modal-overlay" id="manager-team-modal">
+  <div class="modal">
+    <span class="modal-close" onclick="closeModal('manager-team-modal')">✕</span>
+    <h2 id="manager-team-title">👥 فريق المانيجر</h2>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px" id="manager-team-subtitle"></div>
+    <div id="manager-team-list" style="max-height:340px;overflow-y:auto"></div>
+    <button class="btn btn-green" onclick="saveManagerTeam()" style="margin-top:14px">💾 حفظ الفريق</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="add-branch-modal">
   <div class="modal">
     <span class="modal-close" onclick="closeModal('add-branch-modal')">✕</span>
@@ -1279,9 +1296,6 @@ function showApp(){
     const dayLabel=currentLang==='ar'?DAYS_AR[currentUser.day_off]:DAYS_EN[currentUser.day_off];
     document.getElementById('profile-dayoff').innerHTML=`<span class="badge badge-blue">${currentLang==='ar'?'الإجازة:':'Day Off:'} ${dayLabel||'-'}</span>`;
     loadEmpData();renderProducts();loadModelTargetAlert();
-    // Show visits tab only for managers
-    const visNav=document.querySelector('#emp-app .nav-item[onclick*="visits"]');
-    if(visNav){visNav.style.display=currentUser.role==='manager'?'flex':'none';}
   }
 }
 
@@ -1562,7 +1576,13 @@ async function sendLeaveRequest(){
 async function loadAdminDashboard(){
   try{
     const today=todayStr(),pm=getPayrollMonth(),ar=currentLang==='ar';
-    const allEmp=await dbGet('employees','?select=*');allEmployees=allEmp||[];
+    let allEmp=await dbGet('employees','?select=*');allEmployees=allEmp||[];
+    // Filter for manager: only show their team
+    if(currentUser&&currentUser.role==='manager'){
+      const teamIds=await getManagerTeamIds();
+      if(teamIds&&teamIds.length>0) allEmployees=allEmployees.filter(e=>teamIds.includes(e.id));
+      else allEmployees=[];
+    }
     const todayAtt=await dbGet('attendance',`?date=eq.${today}&select=*`);
     const present=todayAtt?todayAtt.length:0;
     document.getElementById('adm-present').textContent=present;
@@ -1881,7 +1901,13 @@ async function loadBranchReport(){
 }
 
 // ── ALL EMPLOYEES ──
-async function loadAllEmployees(){try{allEmployees=await dbGet('employees','?select=*&order=name')||[];renderEmployeesList();populateReportSelect();}catch(e){}}
+async function loadAllEmployees(){
+  try{
+    allEmployees=await dbGet('employees','?select=*&order=name')||[];
+    renderEmployeesList();populateReportSelect();
+    if(currentUser&&currentUser.role==='manager') await filterEmployeesForManager();
+  }catch(e){}
+}
 function renderEmployeesList(){
   const el=document.getElementById('adm-emp-list');if(!el)return;const ar=currentLang==='ar';
   if(allEmployees.length===0){el.innerHTML=`<div class="empty"><div class="empty-icon">👥</div>${ar?'لا يوجد موظفون بعد':'No employees yet'}</div>`;return}
@@ -1931,7 +1957,7 @@ async function loadAdminsList(){try{allAdmins=await dbGet('admins','?select=*&or
 function renderAdminsList(){
   const el=document.getElementById('admins-list');if(!el)return;
   if(allAdmins.length===0){el.innerHTML=`<div style="color:var(--muted);font-size:12px">${currentLang==='ar'?'لا يوجد مسؤولون':'No admins'}</div>`;return}
-  el.innerHTML=allAdmins.map(a=>`<div class="emp-card"><div class="emp-avatar" style="background:var(--blue)">👑</div><div class="emp-info"><div class="emp-name">${a.name}</div><div class="emp-branch">${a.username}</div></div><span class="badge ${a.role==='admin'?'badge-blue':a.role==='manager'?'badge-purple':'badge-yellow'}">${a.role}</span><div class="emp-actions"><button class="action-btn del" onclick="deleteAdmin(${a.id})">🗑️</button></div></div>`).join('');
+  el.innerHTML=allAdmins.map(a=>`<div class="emp-card"><div class="emp-avatar" style="background:var(--blue)">👑</div><div class="emp-info"><div class="emp-name">${a.name}</div><div class="emp-branch">${a.username}</div></div><span class="badge ${a.role==='admin'?'badge-blue':a.role==='manager'?'badge-purple':'badge-yellow'}">${a.role}</span><div class="emp-actions">${a.role==='manager'?`<button class="action-btn view" onclick="openManagerTeam(${a.id},'${a.name}')">👥 فريق</button>`:''}<button class="action-btn del" onclick="deleteAdmin(${a.id})">🗑️</button></div></div>`).join('');
 }
 function openAddAdmin(){document.getElementById('admin-modal-title').textContent=currentLang==='ar'?'إضافة مسؤول':'Add Admin';document.getElementById('edit-admin-id').value='';document.getElementById('admin-form-name').value='';document.getElementById('admin-form-username').value='';document.getElementById('admin-form-pass').value='';document.getElementById('admin-pass-group').style.display='block';openModal('add-admin-modal')}
 async function saveAdmin(){const name=document.getElementById('admin-form-name').value.trim(),username=document.getElementById('admin-form-username').value.trim(),pass=document.getElementById('admin-form-pass').value.trim(),role=document.getElementById('admin-form-role').value;const ar=currentLang==='ar';if(!name||!username||!pass)return notify(ar?'أكمل جميع الحقول':'Fill all fields','error');try{await dbPost('admins',{name,username,password:pass,role});notify(ar?'تمت الإضافة ✅':'Added ✅','success');closeModal('add-admin-modal');loadAdminsList()}catch(e){notify('Error','error')}}
@@ -2146,7 +2172,7 @@ function adminTab(tab,el){
   if(tab==='employees')loadAllEmployees();
   if(tab==='branches')initBranchDashboard();
   if(tab==='settings'){/* lazy loaded via accordion */}
-  if(tab==='reports'){loadAllEmployees();if(document.getElementById('visits-report-content'))initVisitReportMonth();}
+  if(tab==='reports')loadAllEmployees();
 }
 
 // ── HELPERS ──
@@ -2328,6 +2354,83 @@ async function clearOldVisitPhotos(){
   if(old.length===0)return;
   for(const r of old){await dbPatch('branch_visits',{photo1:null,photo2:null,photo3:null},`?id=eq.${r.id}`)}
   console.log(`Cleared photos from ${old.length} old visits`);
+}
+
+
+// ── MANAGER TEAM SYSTEM ──
+let editingManagerId = null;
+let managerTeamData = {}; // cache: managerId -> [empId,...]
+
+// Pre-defined managers
+const MANAGERS = [
+  {name: 'عبد الله فتحي'},
+  {name: 'عبد الرحمن سامي'},
+  {name: 'وليد رجب'}
+];
+
+async function openManagerTeam(managerId, managerName) {
+  editingManagerId = managerId;
+  document.getElementById('manager-team-title').textContent = '👥 فريق: ' + managerName;
+  document.getElementById('manager-team-subtitle').textContent = 'اختر الموظفين التابعين لهذا المانيجر';
+  // load existing team
+  const existing = await dbGet('manager_teams', `?manager_id=eq.${managerId}&select=employee_id`).catch(()=>[]) || [];
+  const assignedIds = existing.map(r => r.employee_id);
+  const el = document.getElementById('manager-team-list');
+  if (!allEmployees.length) { el.innerHTML = '<div class="empty">لا يوجد موظفون</div>'; }
+  else {
+    el.innerHTML = allEmployees.map(emp => `
+      <div class="team-emp-row">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="emp-avatar" style="width:32px;height:32px;font-size:12px">${emp.name[0].toUpperCase()}</div>
+          <div>
+            <div style="font-size:13px;font-weight:700">${emp.name}</div>
+            <div style="font-size:11px;color:var(--muted)">${emp.branch||'-'}</div>
+          </div>
+        </div>
+        <input type="checkbox" class="team-check" data-emp-id="${emp.id}" ${assignedIds.includes(emp.id)?'checked':''}>
+      </div>
+    `).join('');
+  }
+  openModal('manager-team-modal');
+}
+
+async function saveManagerTeam() {
+  if (!editingManagerId) return;
+  const ar = currentLang === 'ar';
+  const checks = document.querySelectorAll('#manager-team-list .team-check');
+  const selectedIds = Array.from(checks).filter(c=>c.checked).map(c=>parseInt(c.dataset.empId));
+  try {
+    // delete existing
+    await dbDelete('manager_teams', `?manager_id=eq.${editingManagerId}`);
+    // insert new
+    for (const empId of selectedIds) {
+      await dbPost('manager_teams', {manager_id: editingManagerId, employee_id: empId});
+    }
+    managerTeamData[editingManagerId] = selectedIds;
+    notify(ar ? 'تم حفظ الفريق ✅' : 'Team saved ✅', 'success');
+    closeModal('manager-team-modal');
+  } catch(e) { notify('Error: ' + e.message, 'error'); }
+}
+
+async function getManagerTeamIds() {
+  // returns employee IDs managed by current user (if manager)
+  if (!currentUser || currentUser.role !== 'manager') return null;
+  if (managerTeamData[currentUser.id]) return managerTeamData[currentUser.id];
+  const res = await dbGet('manager_teams', `?manager_id=eq.${currentUser.id}&select=employee_id`).catch(()=>[]) || [];
+  const ids = res.map(r => r.employee_id);
+  managerTeamData[currentUser.id] = ids;
+  return ids;
+}
+
+// Filter employees list for manager - only show their team
+async function filterEmployeesForManager() {
+  if (!currentUser || currentUser.role !== 'manager') return;
+  const teamIds = await getManagerTeamIds();
+  if (!teamIds) return;
+  // filter allEmployees to only team members
+  allEmployees = allEmployees.filter(e => teamIds.includes(e.id));
+  renderEmployeesList();
+  populateReportSelect();
 }
 
 // ── ACCORDION ──

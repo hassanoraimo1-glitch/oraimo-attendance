@@ -1930,27 +1930,34 @@ function openTargetModal(){
 }
 
 async function saveTarget(){
-  const empId=document.getElementById('target-emp-select').value;
+  const empId=parseInt(document.getElementById('target-emp-select').value);
   const month=document.getElementById('target-month').value;
   const amount=parseInt(document.getElementById('target-amount').value);
   const ar=currentLang==='ar';
   if(!empId||!month||!amount)return notify(ar?'أكمل جميع الحقول':'Fill all fields','error');
-  // collect model targets
   const modelTargets=[];
   document.querySelectorAll('#model-targets-list > div').forEach(row=>{
-    const name=row.querySelector('.model-target-select').value;
-    const qty=parseInt(row.querySelector('.model-target-qty').value)||0;
+    const sel=row.querySelector('.model-target-select');
+    const inp=row.querySelector('.model-target-qty');
+    if(!sel||!inp)return;
+    const name=sel.value;
+    const qty=parseInt(inp.value)||0;
     if(name&&qty>0)modelTargets.push({name,qty});
   });
   try{
-    const existing=await dbGet('targets',`?employee_id=eq.${empId}&month=eq.${month}&select=*`);
-    const data={amount,model_targets:modelTargets};
-    if(existing&&existing.length>0)await dbPatch('targets',data,`?employee_id=eq.${empId}&month=eq.${month}`);
-    else await dbPost('targets',{employee_id:parseInt(empId),month,...data});
+    const existing=await dbGet('targets',`?employee_id=eq.${empId}&month=eq.${month}&select=id`).catch(()=>[]);
+    if(existing&&existing.length>0){
+      await dbPatch('targets',{amount,model_targets:modelTargets},`?employee_id=eq.${empId}&month=eq.${month}`);
+    }else{
+      await dbPost('targets',{employee_id:empId,month,amount,model_targets:modelTargets});
+    }
     notify(ar?'تم حفظ التارجت ✅':'Target saved ✅','success');
     closeModal('target-modal');
     loadTargetsList();
-  }catch(e){notify('Error','error')}
+  }catch(e){
+    console.error('saveTarget error:',e);
+    notify((ar?'خطأ: ':'Error: ')+(e.message||'unknown'),'error');
+  }
 }
 
 // ── SETTINGS ──

@@ -589,21 +589,32 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
     </div>
 
     <div class="card">
-      <div class="sh"><div class="sh-title" data-ar="طلب إذن تأخير" data-en="Late Permission">طلب إذن تأخير</div></div>
+      <div class="sh"><div class="sh-title">📋 طلب إجازة / إذن</div></div>
+      <div class="inp-grp">
+        <label>نوع الطلب</label>
+        <select id="leave-type" onchange="toggleLeaveFields()">
+          <option value="permission">إذن تأخير</option>
+          <option value="vacation">إجازة يوم كامل</option>
+        </select>
+      </div>
+      <div class="inp-grp" id="leave-duration-group">
+        <label data-ar="المدة" data-en="Duration">المدة</label>
+        <select id="leave-duration">
+          <option value="30">30 دقيقة</option>
+          <option value="60">ساعة</option>
+          <option value="90">ساعة ونصف</option>
+          <option value="120">ساعتين</option>
+        </select>
+      </div>
+      <div class="inp-grp" id="leave-date-group" style="display:none">
+        <label>تاريخ الإجازة</label>
+        <input type="date" id="leave-date" style="width:100%;padding:13px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none">
+      </div>
       <div class="inp-grp">
         <label data-ar="السبب" data-en="Reason">السبب</label>
         <input type="text" id="leave-reason" placeholder="أدخل السبب..." data-ar-ph="أدخل السبب..." data-en-ph="Enter reason...">
       </div>
-      <div class="inp-grp">
-        <label data-ar="المدة" data-en="Duration">المدة</label>
-        <select id="leave-duration">
-          <option value="30" data-ar="30 دقيقة" data-en="30 minutes">30 دقيقة</option>
-          <option value="60" data-ar="ساعة" data-en="1 hour">ساعة</option>
-          <option value="90" data-ar="ساعة ونصف" data-en="1.5 hours">ساعة ونصف</option>
-          <option value="120" data-ar="ساعتين" data-en="2 hours">ساعتين</option>
-        </select>
-      </div>
-      <button class="btn btn-outline" onclick="sendLeaveRequest()" style="width:auto;padding:9px 18px" data-ar="إرسال الطلب" data-en="Send Request">إرسال الطلب</button>
+      <button class="btn btn-outline" onclick="sendLeaveRequest()" style="width:auto;padding:9px 18px">إرسال الطلب</button>
     </div>
 
     <div class="card">
@@ -902,7 +913,7 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
       <button class="tab" onclick="reportTab('visits',this)">📸 زيارات</button>
     </div>
     <!-- Excel Export Buttons -->
-    <div class="card" style="margin-bottom:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
+    <div class="card excel-export-card" style="margin-bottom:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
       <div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
@@ -1042,6 +1053,41 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
     </div>
   </div>
 
+
+  <!-- TEAM LEADER VISITS TAB -->
+  <div id="admin-visits" class="content" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:16px;font-weight:800">📸 صور الديسبلاي</div>
+      <div style="font-size:12px;color:var(--green);font-weight:700" id="tl-visit-count">0 / 150</div>
+    </div>
+    <div class="stats-grid" style="margin-bottom:12px">
+      <div class="stat-card"><div class="stat-label">زيارة هذا الشهر</div><div class="stat-val" style="color:var(--green)" id="tl-vis-done">0</div></div>
+      <div class="stat-card"><div class="stat-label">متبقي</div><div class="stat-val" style="color:var(--yellow)" id="tl-vis-remain">150</div></div>
+    </div>
+    <div class="card card-glow">
+      <div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ تسجيل زيارة جديدة</div>
+      <div class="inp-grp">
+        <label>الفرع</label>
+        <select id="tl-visit-branch" style="width:100%;padding:13px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none"></select>
+      </div>
+      <div class="inp-grp">
+        <label>ملاحظة (اختياري)</label>
+        <textarea id="tl-visit-note" rows="2" style="width:100%;padding:11px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl"></textarea>
+      </div>
+      <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">صور الديسبلاي (max 3)</label>
+      <div class="photo-previews" id="tl-visit-previews"></div>
+      <div class="photo-upload-zone" id="tl-visit-zone" onclick="document.getElementById('tl-visit-input').click()">
+        <input type="file" id="tl-visit-input" accept="image/*" style="display:none" onchange="addTLVisitPhoto(event)">
+        <div style="font-size:28px">📷</div>
+        <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور للزيارة</div>
+      </div>
+      <button class="btn btn-green" onclick="submitTLVisit()" style="margin-top:10px">✅ حفظ الزيارة</button>
+    </div>
+    <div class="sh" style="margin-top:8px"><div class="sh-title">📋 زياراتي هذا الشهر</div></div>
+    <div id="tl-visit-history"></div>
+  </div>
+
   <div class="bottom-nav">
     <div class="nav-item active" onclick="adminTab('dashboard',this)">
       <div class="nav-icon">📊</div><div class="nav-label" data-ar="الرئيسية" data-en="Home">الرئيسية</div>
@@ -1049,8 +1095,11 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
     <div class="nav-item" onclick="adminTab('employees',this)">
       <div class="nav-icon">👥</div><div class="nav-label" data-ar="الفريق" data-en="Team">الفريق</div>
     </div>
-    <div class="nav-item" onclick="adminTab('branches',this)">
+    <div class="nav-item" id="adm-branches-nav" onclick="adminTab('branches',this)">
       <div class="nav-icon">🏪</div><div class="nav-label" data-ar="الفروع" data-en="Branches">الفروع</div>
+    </div>
+    <div class="nav-item" id="adm-visits-nav" onclick="adminTab('visits',this)" style="display:none">
+      <div class="nav-icon">📸</div><div class="nav-label">الزيارات</div>
     </div>
     <div class="nav-item" onclick="adminTab('reports',this)">
       <div class="nav-icon">📈</div><div class="nav-label" data-ar="التقارير" data-en="Reports">التقارير</div>
@@ -1340,15 +1389,16 @@ function showApp(){
     showPage('admin-app');
     loadAdminDashboard();loadAllEmployees();loadBranches();clearOldVisitPhotos();
     if(currentUser.role==='superadmin')loadAdminsList();
-    // Show visits nav for manager/team_leader
-    if(currentUser.role==='manager'||currentUser.role==='team_leader'){
-      const admVisNav=document.getElementById('adm-visits-nav');
-      if(admVisNav) admVisNav.style.display='flex';
-    }
-    // Team leader: hide settings nav
     if(currentUser.role==='team_leader'){
-      const settNav=document.getElementById('settings-nav-item');
-      if(settNav) settNav.style.display='none';
+      // Team leader: show visits, hide branches + settings
+      setTimeout(()=>{
+        const admVisNav=document.getElementById('adm-visits-nav');
+        if(admVisNav) admVisNav.style.display='flex';
+        const brNav=document.getElementById('adm-branches-nav');
+        if(brNav) brNav.style.display='none';
+        const settNav=document.getElementById('settings-nav-item');
+        if(settNav) settNav.style.display='none';
+      },100);
     }
   }else{
     showPage('emp-app');
@@ -1631,9 +1681,28 @@ async function loadTodaySales(){
   if(tel)tel.textContent=(ar?'اليوم: ':'Today: ')+'EGP '+total.toLocaleString();
 }
 async function sendLeaveRequest(){
-  const reason=document.getElementById('leave-reason').value.trim(),duration=document.getElementById('leave-duration').value;const ar=currentLang==='ar';
+  const reason=document.getElementById('leave-reason').value.trim();
+  const leaveType=document.getElementById('leave-type')?.value||'permission';
+  const duration=leaveType==='vacation'?0:parseInt(document.getElementById('leave-duration').value);
+  const leaveDate=leaveType==='vacation'?(document.getElementById('leave-date')?.value||todayStr()):todayStr();
+  const ar=currentLang==='ar';
   if(!reason)return notify(ar?'أدخل السبب':'Enter reason','error');
-  try{await dbPost('leave_requests',{employee_id:currentUser.id,employee_name:currentUser.name,reason,duration_minutes:parseInt(duration),status:'pending',date:todayStr()});notify(ar?'تم إرسال الطلب ✅':'Request sent ✅','success');document.getElementById('leave-reason').value='';}
+  if(leaveType==='vacation'&&!leaveDate)return notify(ar?'اختر تاريخ الإجازة':'Select vacation date','error');
+  try{
+    await dbPost('leave_requests',{
+      employee_id:currentUser.id,
+      employee_name:currentUser.name,
+      reason,
+      duration_minutes:duration,
+      leave_type:leaveType,
+      leave_date:leaveDate,
+      status:'pending',
+      date:todayStr()
+    });
+    notify(ar?'تم إرسال الطلب ✅':'Request sent ✅','success');
+    document.getElementById('leave-reason').value='';
+    if(leaveType==='vacation'){const d=document.getElementById('leave-date');if(d)d.value='';}
+  }
   catch(e){notify('Error','error')}
 }
 
@@ -1689,9 +1758,11 @@ async function loadAdminDashboard(){
         const isViewer=currentUser.role==='viewer';
         lel.innerHTML=leaves.map(l=>`<div class="perm-card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <div style="font-size:13px;font-weight:700">${l.employee_name}</div><span class="badge badge-yellow">${ar?'معلق':'Pending'}</span>
+            <div style="font-size:13px;font-weight:700">${l.employee_name}</div>
+            <span class="badge ${l.leave_type==='vacation'?'badge-blue':'badge-yellow'}">${l.leave_type==='vacation'?(ar?'إجازة':'Vacation'):(ar?'إذن':'Permission')}</span>
           </div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${l.reason} · ${l.duration_minutes} ${ar?'د':'min'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${l.reason}</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${l.leave_type==='vacation'?(ar?'تاريخ: ':'Date: ')+(l.leave_date||''):(ar?'المدة: ':'Duration: ')+l.duration_minutes+(ar?' د':' min')}</div>
           ${!isViewer?`<div style="display:flex;gap:8px"><button class="perm-btn approve" onclick="respondLeave(${l.id},'approved')">✅ ${ar?'موافقة':'Approve'}</button><button class="perm-btn reject" onclick="respondLeave(${l.id},'rejected')">❌ ${ar?'رفض':'Reject'}</button></div>`:''}
           </div>`).join('');
       }
@@ -2266,11 +2337,12 @@ function empTab(tab,el){
   if(tab==='display'){loadDisplayTab()}
 }
 function adminTab(tab,el){
-  ['dashboard','employees','branches','reports','settings'].forEach(t=>document.getElementById('admin-'+t).style.display=t===tab?'block':'none');
+  ['dashboard','employees','branches','reports','settings','visits'].forEach(t=>{const d=document.getElementById('admin-'+t);if(d)d.style.display=t===tab?'block':'none';});
   document.querySelectorAll('#admin-app .nav-item').forEach(n=>n.classList.remove('active'));el.classList.add('active');
   if(tab==='dashboard')loadAdminDashboard();
   if(tab==='employees')loadAllEmployees();
   if(tab==='branches')initBranchDashboard();
+  if(tab==='visits')loadTLVisitsTab();
   if(tab==='settings'){/* lazy loaded via accordion */}
   if(tab==='reports'){
     loadAllEmployees();
@@ -2707,6 +2779,93 @@ async function loadDisplayReport(){
     </div>`).join('');
 }
 
+
+// ── TEAM LEADER VISITS ──
+let tlVisitPhotos = [];
+
+function addTLVisitPhoto(e) {
+  if (tlVisitPhotos.length >= 3) return notify('الحد الأقصى 3 صور', 'error');
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const scale = Math.min(1, 800/img.width);
+      canvas.width = img.width*scale; canvas.height = img.height*scale;
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      tlVisitPhotos.push(canvas.toDataURL('image/jpeg',0.35));
+      renderTLPreviews();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file); e.target.value='';
+}
+
+function renderTLPreviews() {
+  const el=document.getElementById('tl-visit-previews');if(!el)return;
+  el.innerHTML=tlVisitPhotos.map((src,i)=>`<div class="photo-preview-wrap"><img src="${src}"><button class="photo-preview-del" onclick="removeTLPhoto(${i})">✕</button></div>`).join('');
+  const zone=document.getElementById('tl-visit-zone');
+  if(zone) zone.style.display=tlVisitPhotos.length>=3?'none':'block';
+}
+
+function removeTLPhoto(i){tlVisitPhotos.splice(i,1);renderTLPreviews();}
+
+async function submitTLVisit(){
+  const branch=document.getElementById('tl-visit-branch').value;
+  const note=document.getElementById('tl-visit-note').value.trim();
+  const ar=currentLang==='ar';
+  if(!branch) return notify(ar?'اختر الفرع':'Select branch','error');
+  if(tlVisitPhotos.length===0) return notify(ar?'أضف صورة واحدة على الأقل':'Add at least one photo','error');
+  try{
+    await dbPost('branch_visits',{
+      manager_id:currentUser.id,
+      manager_name:currentUser.name,
+      branch_name:branch,
+      note:note||null,
+      photo1:tlVisitPhotos[0]||null,
+      photo2:tlVisitPhotos[1]||null,
+      photo3:tlVisitPhotos[2]||null,
+      visit_date:todayStr()
+    });
+    notify(ar?'تم حفظ الزيارة ✅':'Visit saved ✅','success');
+    tlVisitPhotos=[];renderTLPreviews();
+    document.getElementById('tl-visit-branch').value='';
+    document.getElementById('tl-visit-note').value='';
+    loadTLVisitsTab();
+  }catch(e){notify('Error: '+e.message,'error');}
+}
+
+async function loadTLVisitsTab(){
+  // populate branch select
+  const sel=document.getElementById('tl-visit-branch');
+  if(sel) sel.innerHTML='<option value="">-- اختر الفرع --</option>'+(allBranches||[]).map(b=>`<option value="${b.name}">${b.name}</option>`).join('');
+  const pm=getPayrollMonth();
+  const visits=await dbGet('branch_visits',`?manager_id=eq.${currentUser.id}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`).catch(()=>[])||[];
+  const done=visits.length;
+  const remain=Math.max(0,150-done);
+  const doneEl=document.getElementById('tl-vis-done');
+  const remEl=document.getElementById('tl-vis-remain');
+  const cntEl=document.getElementById('tl-visit-count');
+  if(doneEl) doneEl.textContent=done;
+  if(remEl) remEl.textContent=remain;
+  if(cntEl) cntEl.textContent=done+' / 150';
+  const el=document.getElementById('tl-visit-history');if(!el)return;
+  if(!visits.length){el.innerHTML='<div class="empty"><div class="empty-icon">📸</div>لا توجد زيارات هذا الشهر</div>';return;}
+  el.innerHTML=visits.map(v=>{
+    const photos=[v.photo1,v.photo2,v.photo3].filter(Boolean);
+    return`<div class="visit-card"><div class="visit-header"><div><div class="visit-branch-name">🏪 ${v.branch_name}</div><div class="visit-meta">${v.visit_date}</div></div><span class="badge badge-green">${photos.length} 📷</span></div>${v.note?`<div class="visit-note">📝 ${v.note}</div>`:''}<div class="visit-photos-row">${photos.map(src=>`<img class="visit-photo" src="${src}" onclick="fullSelfie('${src}')">`).join('')}</div></div>`;
+  }).join('');
+}
+
+
+function toggleLeaveFields(){
+  const type=document.getElementById('leave-type')?.value;
+  const durGrp=document.getElementById('leave-duration-group');
+  const dateGrp=document.getElementById('leave-date-group');
+  if(durGrp) durGrp.style.display=type==='vacation'?'none':'block';
+  if(dateGrp) dateGrp.style.display=type==='vacation'?'block':'none';
+}
 // ── ACCORDION ──
 function toggleAcc(id){
   const body=document.getElementById(id);

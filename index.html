@@ -1296,6 +1296,9 @@ function showApp(){
     const dayLabel=currentLang==='ar'?DAYS_AR[currentUser.day_off]:DAYS_EN[currentUser.day_off];
     document.getElementById('profile-dayoff').innerHTML=`<span class="badge badge-blue">${currentLang==='ar'?'الإجازة:':'Day Off:'} ${dayLabel||'-'}</span>`;
     loadEmpData();renderProducts();loadModelTargetAlert();
+    // Hide visits tab for regular employees (only managers have it via admin app)
+    const visNav=document.querySelector('#emp-app .nav-item[onclick*=\"visits\"]');
+    if(visNav) visNav.style.display='none';
   }
 }
 
@@ -2172,7 +2175,22 @@ function adminTab(tab,el){
   if(tab==='employees')loadAllEmployees();
   if(tab==='branches')initBranchDashboard();
   if(tab==='settings'){/* lazy loaded via accordion */}
-  if(tab==='reports')loadAllEmployees();
+  if(tab==='reports'){
+    loadAllEmployees();
+    if(currentUser&&currentUser.role==='manager'){
+      // Manager: show only visits tab in reports
+      setTimeout(()=>{
+        document.querySelectorAll('#report-tabs .tab').forEach(t=>{
+          const oc=t.getAttribute('onclick')||'';
+          t.style.display=(oc.includes('visits'))?'':'none';
+        });
+        const visTab=document.querySelector('#report-tabs .tab[onclick*="visits"]');
+        if(visTab) visTab.click();
+      },100);
+    } else {
+      document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
+    }
+  }
 }
 
 // ── HELPERS ──
@@ -2262,7 +2280,7 @@ async function submitVisit(){
 async function loadVisitsTab(){
   populateVisitBranchSelect();
   const pm=getPayrollMonth();
-  const visits=await dbGet('branch_visits',`?employee_id=eq.${currentUser.id}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`).catch(()=>[])||[];
+  const visits=await dbGet('branch_visits',`?manager_id=eq.${currentUser.id}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`).catch(()=>[])||[];
   const photoCount=visits.reduce((s,v)=>{let c=0;if(v.photo1)c++;if(v.photo2)c++;if(v.photo3)c++;return s+c;},0);
   const done=visits.length,remain=Math.max(0,150-done);
   document.getElementById('vis-done').textContent=done;

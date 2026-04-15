@@ -1279,6 +1279,9 @@ function showApp(){
     const dayLabel=currentLang==='ar'?DAYS_AR[currentUser.day_off]:DAYS_EN[currentUser.day_off];
     document.getElementById('profile-dayoff').innerHTML=`<span class="badge badge-blue">${currentLang==='ar'?'الإجازة:':'Day Off:'} ${dayLabel||'-'}</span>`;
     loadEmpData();renderProducts();loadModelTargetAlert();
+    // Show visits tab only for managers
+    const visNav=document.querySelector('#emp-app .nav-item[onclick*="visits"]');
+    if(visNav){visNav.style.display=currentUser.role==='manager'?'flex':'none';}
   }
 }
 
@@ -2143,7 +2146,7 @@ function adminTab(tab,el){
   if(tab==='employees')loadAllEmployees();
   if(tab==='branches')initBranchDashboard();
   if(tab==='settings'){/* lazy loaded via accordion */}
-  if(tab==='reports')loadAllEmployees();
+  if(tab==='reports'){loadAllEmployees();if(document.getElementById('visits-report-content'))initVisitReportMonth();}
 }
 
 // ── HELPERS ──

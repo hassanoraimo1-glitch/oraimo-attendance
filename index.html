@@ -1025,7 +1025,14 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
     <div class="inp-grp"><label data-ar="الاسم الكامل" data-en="Full Name">الاسم الكامل</label><input type="text" id="emp-form-name" placeholder="اسم الموظف" data-ar-ph="اسم الموظف" data-en-ph="Employee name"></div>
     <div class="inp-grp"><label data-ar="اسم المستخدم" data-en="Username">اسم المستخدم</label><input type="text" id="emp-form-username" placeholder="للدخول" data-ar-ph="للدخول" data-en-ph="Login username"></div>
     <div class="inp-grp" id="emp-pass-group"><label data-ar="كلمة المرور" data-en="Password">كلمة المرور</label><input type="password" id="emp-form-pass" placeholder="كلمة المرور" data-ar-ph="كلمة المرور" data-en-ph="Password"></div>
-    <div class="inp-grp"><label data-ar="الفرع" data-en="Branch">الفرع</label><select id="emp-form-branch"></select></div>
+    <div class="inp-grp">
+      <label data-ar="الدور الوظيفي" data-en="Role">الدور الوظيفي</label>
+      <select id="emp-form-role" onchange="toggleEmpBranchField()">
+        <option value="employee">👤 موظف — مبيعات وحضور</option>
+        <option value="team_leader">🎯 تيم ليدر — ديسبلاي ومراقبة الفريق</option>
+      </select>
+    </div>
+    <div class="inp-grp" id="emp-branch-group"><label data-ar="الفرع" data-en="Branch">الفرع</label><select id="emp-form-branch"></select></div>
     <div class="inp-grp">
       <label data-ar="يوم الإجازة" data-en="Day Off">يوم الإجازة</label>
       <div class="day-off-select" id="dayoff-picker">
@@ -1053,7 +1060,7 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
     <div class="inp-grp"><label>الدور</label>
       <select id="admin-form-role">
         <option value="admin">Admin</option>
-        <option value="manager">Manager</option>
+        <option value="manager">Team Leader</option>
         <option value="viewer">Viewer</option>
       </select>
     </div>
@@ -1065,7 +1072,7 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
 <div class="modal-overlay" id="manager-team-modal">
   <div class="modal">
     <span class="modal-close" onclick="closeModal('manager-team-modal')">✕</span>
-    <h2 id="manager-team-title">👥 فريق المانيجر</h2>
+    <h2 id="manager-team-title">👥 فريق التيم ليدر</h2>
     <div style="font-size:12px;color:var(--muted);margin-bottom:12px" id="manager-team-subtitle"></div>
     <div id="manager-team-list" style="max-height:340px;overflow-y:auto"></div>
     <button class="btn btn-green" onclick="saveManagerTeam()" style="margin-top:14px">💾 حفظ الفريق</button>
@@ -1276,11 +1283,11 @@ function showPage(id){
 function showApp(){
   if(!currentUser)return showPage('login-page');
   applyLang();
-  const isAdmin=['superadmin','admin','manager','viewer'].includes(currentUser.role);
+  const isAdmin=['superadmin','admin','manager','viewer','team_leader'].includes(currentUser.role);
   if(isAdmin){
     document.getElementById('admin-name-top').textContent=currentUser.name||'Admin';
     const chip=document.getElementById('admin-role-chip');
-    chip.textContent=currentUser.role==='superadmin'?'Super Admin':currentUser.role.charAt(0).toUpperCase()+currentUser.role.slice(1);
+    chip.textContent=currentUser.role==='superadmin'?'Super Admin':currentUser.role==='manager'?'Team Leader':currentUser.role==='team_leader'?'Team Leader':currentUser.role.charAt(0).toUpperCase()+currentUser.role.slice(1);
     chip.className='role-chip badge role-'+currentUser.role;
     if(currentUser.role==='viewer')document.getElementById('settings-nav-item').style.display='none';
     if(currentUser.role==='superadmin')document.getElementById('admins-section').style.display='block';
@@ -1288,6 +1295,16 @@ function showApp(){
     showPage('admin-app');
     loadAdminDashboard();loadAllEmployees();loadBranches();clearOldVisitPhotos();
     if(currentUser.role==='superadmin')loadAdminsList();
+    // Show visits nav for manager/team_leader
+    if(currentUser.role==='manager'||currentUser.role==='team_leader'){
+      const admVisNav=document.getElementById('adm-visits-nav');
+      if(admVisNav) admVisNav.style.display='flex';
+    }
+    // Team leader: hide settings nav
+    if(currentUser.role==='team_leader'){
+      const settNav=document.getElementById('settings-nav-item');
+      if(settNav) settNav.style.display='none';
+    }
   }else{
     showPage('emp-app');
     document.getElementById('emp-name-top').textContent=currentUser.name;
@@ -1318,7 +1335,7 @@ async function doLogin(){
     if(admRes&&admRes.length>0){currentUser={...admRes[0],role:admRes[0].role||'admin'};localStorage.setItem('oraimo_user',JSON.stringify(currentUser));showApp();return}
     const empRes=await dbGet('employees',`?username=eq.${username}&password=eq.${pass}&select=*`);
     if(!empRes||empRes.length===0){errEl.textContent=currentLang==='ar'?'بيانات دخول غير صحيحة':'Invalid credentials';return}
-    currentUser={...empRes[0],role:'employee'};
+    currentUser={...empRes[0],role:empRes[0].role||'employee'};
     localStorage.setItem('oraimo_user',JSON.stringify(currentUser));
     showApp();
   }catch(e){errEl.textContent=currentLang==='ar'?'خطأ، حاول مرة أخرى':'Error, try again'}
@@ -1580,8 +1597,8 @@ async function loadAdminDashboard(){
   try{
     const today=todayStr(),pm=getPayrollMonth(),ar=currentLang==='ar';
     let allEmp=await dbGet('employees','?select=*');allEmployees=allEmp||[];
-    // Filter for manager: only show their team
-    if(currentUser&&currentUser.role==='manager'){
+    // Filter for team leader: only show their team
+    if(currentUser&&(currentUser.role==='manager'||currentUser.role==='team_leader')){
       const teamIds=await getManagerTeamIds();
       if(teamIds&&teamIds.length>0) allEmployees=allEmployees.filter(e=>teamIds.includes(e.id));
       else allEmployees=[];
@@ -1908,7 +1925,7 @@ async function loadAllEmployees(){
   try{
     allEmployees=await dbGet('employees','?select=*&order=name')||[];
     renderEmployeesList();populateReportSelect();
-    if(currentUser&&currentUser.role==='manager') await filterEmployeesForManager();
+    if(currentUser&&(currentUser.role==='manager'||currentUser.role==='team_leader')) await filterEmployeesForManager();
   }catch(e){}
 }
 function renderEmployeesList(){
@@ -1916,9 +1933,9 @@ function renderEmployeesList(){
   if(allEmployees.length===0){el.innerHTML=`<div class="empty"><div class="empty-icon">👥</div>${ar?'لا يوجد موظفون بعد':'No employees yet'}</div>`;return}
   const isViewer=currentUser?.role==='viewer';
   el.innerHTML=allEmployees.map(emp=>`<div class="emp-card">
-    <div class="emp-avatar">${emp.name[0].toUpperCase()}</div>
-    <div class="emp-info"><div class="emp-name">${emp.name}</div><div class="emp-branch">${emp.branch||'-'} · ${ar?'إجازة:':'Off:'} ${ar?DAYS_AR[emp.day_off]:DAYS_EN[emp.day_off]||'-'}</div></div>
-    ${!isViewer?`<div class="emp-actions"><button class="action-btn edit" onclick="openEditEmp(${emp.id})">✏️</button><button class="action-btn del" onclick="deleteEmp(${emp.id})">🗑️</button><button class="action-btn warn" onclick="openWarnModal(${emp.id},'${emp.name}')">⚠️</button></div>`:''}
+    <div class="emp-avatar" style="${emp.role==='team_leader'?'background:linear-gradient(135deg,#9c27b0,#6a0080)':''}">${emp.name[0].toUpperCase()}</div>
+    <div class="emp-info"><div class="emp-name">${emp.name} ${emp.role==='team_leader'?'<span class="badge badge-purple" style="font-size:9px">Team Leader</span>':''}</div><div class="emp-branch">${emp.branch||'-'} · ${ar?'إجازة:':'Off:'} ${ar?DAYS_AR[emp.day_off]:DAYS_EN[emp.day_off]||'-'}</div></div>
+    ${!isViewer?`<div class="emp-actions">${emp.role==='team_leader'?`<button class="action-btn view" onclick="openManagerTeam(${emp.id},'${emp.name}')">👥 فريق</button>`:''}<button class="action-btn edit" onclick="openEditEmp(${emp.id})">✏️</button><button class="action-btn del" onclick="deleteEmp(${emp.id})">🗑️</button><button class="action-btn warn" onclick="openWarnModal(${emp.id},'${emp.name}')">⚠️</button></div>`:''}
   </div>`).join('');
 }
 function populateReportSelect(){const sel=document.getElementById('report-emp-select');if(!sel)return;sel.innerHTML=`<option value="">${currentLang==='ar'?'-- اختر موظف --':'-- Select Employee --'}</option>`+allEmployees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}
@@ -1928,6 +1945,8 @@ function openAddEmp(){
   document.getElementById('edit-emp-id').value='';document.getElementById('emp-form-name').value='';
   document.getElementById('emp-form-username').value='';document.getElementById('emp-form-pass').value='';
   document.getElementById('emp-pass-group').style.display='block';
+  const roleEl=document.getElementById('emp-form-role');if(roleEl)roleEl.value='employee';
+  toggleEmpBranchField();
   selectedDayOff=-1;document.querySelectorAll('.day-chip').forEach(c=>c.classList.remove('selected'));
   populateBranchSelects();openModal('add-emp-modal');
 }
@@ -1936,20 +1955,37 @@ function openEditEmp(id){
   document.getElementById('emp-modal-title').textContent=currentLang==='ar'?'تعديل الموظف':'Edit Employee';
   document.getElementById('edit-emp-id').value=id;document.getElementById('emp-form-name').value=emp.name;
   document.getElementById('emp-form-username').value=emp.username;document.getElementById('emp-pass-group').style.display='none';
-  selectedDayOff=emp.day_off;populateBranchSelects();document.getElementById('emp-form-branch').value=emp.branch;
+  const roleEl=document.getElementById('emp-form-role');if(roleEl)roleEl.value=emp.role||'employee';
+  toggleEmpBranchField();
+  selectedDayOff=emp.day_off;populateBranchSelects();
+  if(emp.branch)document.getElementById('emp-form-branch').value=emp.branch;
   document.querySelectorAll('.day-chip').forEach(c=>c.classList.toggle('selected',parseInt(c.dataset.day)===emp.day_off));
   openModal('add-emp-modal');
 }
 function selectDay(day){selectedDayOff=day;document.querySelectorAll('.day-chip').forEach(c=>c.classList.toggle('selected',parseInt(c.dataset.day)===day))}
+function toggleEmpBranchField(){
+  const role=document.getElementById('emp-form-role')?.value;
+  const branchGrp=document.getElementById('emp-branch-group');
+  // team leader doesn't need a branch
+  if(branchGrp) branchGrp.style.display=role==='team_leader'?'none':'block';
+}
+
 async function saveEmployee(){
-  const id=document.getElementById('edit-emp-id').value,name=document.getElementById('emp-form-name').value.trim(),username=document.getElementById('emp-form-username').value.trim(),pass=document.getElementById('emp-form-pass').value.trim(),branch=document.getElementById('emp-form-branch').value;
+  const id=document.getElementById('edit-emp-id').value;
+  const name=document.getElementById('emp-form-name').value.trim();
+  const username=document.getElementById('emp-form-username').value.trim();
+  const pass=document.getElementById('emp-form-pass').value.trim();
+  const branch=document.getElementById('emp-form-branch')?.value||'';
+  const role=document.getElementById('emp-form-role')?.value||'employee';
   const ar=currentLang==='ar';
   if(!name||!username)return notify(ar?'أدخل الاسم واسم المستخدم':'Enter name and username','error');
   if(!id&&!pass)return notify(ar?'أدخل كلمة المرور':'Enter password','error');
   if(selectedDayOff<0)return notify(ar?'اختر يوم الإجازة':'Select day off','error');
   try{
-    if(id)await dbPatch('employees',{name,username,branch,day_off:selectedDayOff},`?id=eq.${id}`);
-    else await dbPost('employees',{name,username,password:pass,branch,day_off:selectedDayOff});
+    const data={name,username,day_off:selectedDayOff,role};
+    if(role==='employee') data.branch=branch;
+    if(id) await dbPatch('employees',data,`?id=eq.${id}`);
+    else await dbPost('employees',{...data,...(!id&&{password:pass})});
     notify(ar?'تم الحفظ ✅':'Saved ✅','success');closeModal('add-emp-modal');loadAllEmployees();
   }catch(e){notify((ar?'خطأ: ':'Error: ')+e.message,'error')}
 }
@@ -1960,7 +1996,7 @@ async function loadAdminsList(){try{allAdmins=await dbGet('admins','?select=*&or
 function renderAdminsList(){
   const el=document.getElementById('admins-list');if(!el)return;
   if(allAdmins.length===0){el.innerHTML=`<div style="color:var(--muted);font-size:12px">${currentLang==='ar'?'لا يوجد مسؤولون':'No admins'}</div>`;return}
-  el.innerHTML=allAdmins.map(a=>`<div class="emp-card"><div class="emp-avatar" style="background:var(--blue)">👑</div><div class="emp-info"><div class="emp-name">${a.name}</div><div class="emp-branch">${a.username}</div></div><span class="badge ${a.role==='admin'?'badge-blue':a.role==='manager'?'badge-purple':'badge-yellow'}">${a.role}</span><div class="emp-actions">${a.role==='manager'?`<button class="action-btn view" onclick="openManagerTeam(${a.id},'${a.name}')">👥 فريق</button>`:''}<button class="action-btn del" onclick="deleteAdmin(${a.id})">🗑️</button></div></div>`).join('');
+  el.innerHTML=allAdmins.map(a=>`<div class="emp-card"><div class="emp-avatar" style="background:var(--blue)">👑</div><div class="emp-info"><div class="emp-name">${a.name}</div><div class="emp-branch">${a.username}</div></div><span class="badge ${a.role==='admin'?'badge-blue':a.role==='manager'?'badge-purple':'badge-yellow'}">${a.role==='manager'?'Team Leader':a.role}</span><div class="emp-actions">${a.role==='manager'?`<button class="action-btn view" onclick="openManagerTeam(${a.id},'${a.name}')">👥 فريق</button>`:''}<button class="action-btn del" onclick="deleteAdmin(${a.id})">🗑️</button></div></div>`).join('');
 }
 function openAddAdmin(){document.getElementById('admin-modal-title').textContent=currentLang==='ar'?'إضافة مسؤول':'Add Admin';document.getElementById('edit-admin-id').value='';document.getElementById('admin-form-name').value='';document.getElementById('admin-form-username').value='';document.getElementById('admin-form-pass').value='';document.getElementById('admin-pass-group').style.display='block';openModal('add-admin-modal')}
 async function saveAdmin(){const name=document.getElementById('admin-form-name').value.trim(),username=document.getElementById('admin-form-username').value.trim(),pass=document.getElementById('admin-form-pass').value.trim(),role=document.getElementById('admin-form-role').value;const ar=currentLang==='ar';if(!name||!username||!pass)return notify(ar?'أكمل جميع الحقول':'Fill all fields','error');try{await dbPost('admins',{name,username,password:pass,role});notify(ar?'تمت الإضافة ✅':'Added ✅','success');closeModal('add-admin-modal');loadAdminsList()}catch(e){notify('Error','error')}}
@@ -2177,8 +2213,8 @@ function adminTab(tab,el){
   if(tab==='settings'){/* lazy loaded via accordion */}
   if(tab==='reports'){
     loadAllEmployees();
-    if(currentUser&&currentUser.role==='manager'){
-      // Manager: show only visits tab in reports
+    if(currentUser&&(currentUser.role==='manager'||currentUser.role==='team_leader')){
+      // Team Leader: show only visits tab in reports
       setTimeout(()=>{
         document.querySelectorAll('#report-tabs .tab').forEach(t=>{
           const oc=t.getAttribute('onclick')||'';
@@ -2389,7 +2425,7 @@ const MANAGERS = [
 async function openManagerTeam(managerId, managerName) {
   editingManagerId = managerId;
   document.getElementById('manager-team-title').textContent = '👥 فريق: ' + managerName;
-  document.getElementById('manager-team-subtitle').textContent = 'اختر الموظفين التابعين لهذا المانيجر';
+  document.getElementById('manager-team-subtitle').textContent = 'اختر الموظفين التابعين لهذا التيم ليدر';
   // load existing team
   const existing = await dbGet('manager_teams', `?manager_id=eq.${managerId}&select=employee_id`).catch(()=>[]) || [];
   const assignedIds = existing.map(r => r.employee_id);
@@ -2431,8 +2467,8 @@ async function saveManagerTeam() {
 }
 
 async function getManagerTeamIds() {
-  // returns employee IDs managed by current user (if manager)
-  if (!currentUser || currentUser.role !== 'manager') return null;
+  // returns employee IDs managed by current user (if team leader)
+  if (!currentUser || (currentUser.role !== 'manager' && currentUser.role !== 'team_leader')) return null;
   if (managerTeamData[currentUser.id]) return managerTeamData[currentUser.id];
   const res = await dbGet('manager_teams', `?manager_id=eq.${currentUser.id}&select=employee_id`).catch(()=>[]) || [];
   const ids = res.map(r => r.employee_id);
@@ -2440,9 +2476,9 @@ async function getManagerTeamIds() {
   return ids;
 }
 
-// Filter employees list for manager - only show their team
+// Filter employees list for team leader - only show their team
 async function filterEmployeesForManager() {
-  if (!currentUser || currentUser.role !== 'manager') return;
+  if (!currentUser || (currentUser.role !== 'manager' && currentUser.role !== 'team_leader')) return;
   const teamIds = await getManagerTeamIds();
   if (!teamIds) return;
   // filter allEmployees to only team members

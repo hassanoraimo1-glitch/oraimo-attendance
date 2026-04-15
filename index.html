@@ -1,34 +1,17 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="refresh" content="0; url=./index.html.html" />
-    <title>Oraimo HR</title>
-  </head>
-  <body>
-    <noscript>افتح الملف: index.html.html</noscript>
-  </body>
-</html>
-
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0a0a0a">
-<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Oraimo HR">
 <title>Oraimo HR System</title>
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="manifest" href="/manifest.json">
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js')
+      navigator.serviceWorker.register('/sw.js')
         .then(reg => console.log('التطبيق جاهز للعمل'))
         .catch(err => console.log('فشل تسجيل الخدمة', err));
     });
@@ -556,13 +539,6 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
       </div>
     </div>
 
-    <div class="card" id="emp-kmodel-targets-card" style="display:none">
-      <div class="sh">
-        <div class="sh-title" style="color:var(--purple)" data-ar="🎯 K Model Targets" data-en="🎯 K Model Targets">🎯 K Model Targets</div>
-      </div>
-      <div id="emp-kmodel-targets"></div>
-    </div>
-
     <div class="card">
       <div class="sh"><div class="sh-title" data-ar="مبيعات الشهر" data-en="Monthly Sales">مبيعات الشهر</div></div>
       <div class="daily-grid" id="daily-sales-grid"></div>
@@ -892,14 +868,9 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
       <div class="acc-body" id="acc-targets" style="display:none">
         <div class="sh" style="margin-bottom:10px">
           <div></div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-            <div class="sh-action" onclick="openTargetModal()" data-ar="+ تارجت مبيعات" data-en="+ Sales Target">+ تارجت مبيعات</div>
-            <div class="sh-action" onclick="openKModelTargetModal()" data-ar="+ K Model Targets" data-en="+ K Model Targets">+ K Model Targets</div>
-          </div>
+          <div class="sh-action" onclick="openTargetModal()" data-ar="+ تعيين تارجت" data-en="+ Set Target">+ تعيين تارجت</div>
         </div>
         <div id="targets-list"></div>
-        <div style="height:10px"></div>
-        <div id="kmodel-targets-list"></div>
       </div>
     </div>
     <!-- Admins (superadmin only) -->
@@ -1016,26 +987,6 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
       <div style="font-size:10px;color:var(--muted);margin-top:4px" data-ar="تارجت K Model الخاص بالموظف" data-en="Employee specific K Model target">تارجت K Model الخاص بالموظف</div>
     </div>
     <button class="btn btn-green" onclick="saveTarget()" data-ar="حفظ التارجت" data-en="Save Target">حفظ التارجت</button>
-  </div>
-</div>
-
-<div class="modal-overlay" id="kmodel-target-modal">
-  <div class="modal">
-    <span class="modal-close" onclick="closeModal('kmodel-target-modal')">✕</span>
-    <h2 data-ar="🎯 K Model Targets" data-en="🎯 K Model Targets">🎯 K Model Targets</h2>
-    <div class="inp-grp"><label data-ar="الموظف" data-en="Employee">الموظف</label><select id="kmodel-emp-select"></select></div>
-    <div class="inp-grp"><label data-ar="الشهر" data-en="Month">الشهر</label><input type="month" id="kmodel-month"></div>
-
-    <div class="card" style="background:var(--card2);border-radius:14px;border:1px solid var(--border);padding:12px;margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:12px;font-weight:800" data-ar="الموديلات والكميات" data-en="Models & Quantities">الموديلات والكميات</div>
-        <button class="action-btn edit" style="padding:6px 10px" onclick="addKModelRow()" data-ar="+ إضافة موديل" data-en="+ Add Model">+ إضافة موديل</button>
-      </div>
-      <div id="kmodel-rows"></div>
-      <div style="font-size:10px;color:var(--muted);margin-top:10px" data-ar="الموديل بيتحسب من مبيعات الموظف (اسم المنتج)." data-en="Counts from employee sales (product name).">الموديل بيتحسب من مبيعات الموظف (اسم المنتج).</div>
-    </div>
-
-    <button class="btn btn-green" onclick="saveKModelTargets()" data-ar="حفظ K Model Targets" data-en="Save K Model Targets">حفظ K Model Targets</button>
   </div>
 </div>
 
@@ -1236,7 +1187,7 @@ function showApp(){
     document.getElementById('profile-branch').textContent=currentUser.branch||'';
     const dayLabel=currentLang==='ar'?DAYS_AR[currentUser.day_off]:DAYS_EN[currentUser.day_off];
     document.getElementById('profile-dayoff').innerHTML=`<span class="badge badge-blue">${currentLang==='ar'?'الإجازة:':'Day Off:'} ${dayLabel||'-'}</span>`;
-    loadEmpData();renderProducts();loadEmpKModelTargets();
+    loadEmpData();renderProducts();
   }
 }
 
@@ -1924,210 +1875,6 @@ async function saveTarget(){
   catch(e){notify('Error','error')}
 }
 
-// ── K MODEL TARGETS (PER MODEL QTY) ──
-function kmodelMonthDefault(){return getPayrollMonth().start.substring(0,7)}
-function populateKModelSelects(){
-  const sel=document.getElementById('kmodel-emp-select');
-  if(sel) sel.innerHTML=allEmployees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
-}
-
-function modelOptionsHTML(selected=''){
-  const opts=PRODUCTS.map(p=>`<option value="${p.name.replace(/"/g,'&quot;')}" ${p.name===selected?'selected':''}>${p.name}</option>`).join('');
-  return `<option value="">${currentLang==='ar'?'-- اختر موديل --':'-- Select model --'}</option>`+opts;
-}
-
-function addKModelRow(modelName='',qty=''){
-  const wrap=document.getElementById('kmodel-rows'); if(!wrap) return;
-  const row=document.createElement('div');
-  row.className='history-item';
-  row.style.display='flex';
-  row.style.gap='8px';
-  row.style.alignItems='center';
-  row.style.background='var(--card)';
-  row.style.border='1px solid var(--border)';
-  row.style.borderRadius='12px';
-  row.style.padding='10px';
-  row.style.marginBottom='8px';
-  row.innerHTML=`
-    <select class="kmodel-model" style="flex:1;padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:12px;direction:ltr">
-      ${modelOptionsHTML(modelName)}
-    </select>
-    <input class="kmodel-qty" type="number" min="1" value="${qty||''}"
-      placeholder="${currentLang==='ar'?'الكمية':'Qty'}"
-      style="width:92px;padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:12px;direction:ltr">
-    <button class="action-btn del" style="padding:7px 10px" onclick="this.parentElement.remove()">🗑️</button>
-  `;
-  wrap.appendChild(row);
-}
-
-async function openKModelTargetModal(empId=null){
-  populateKModelSelects();
-  const m=document.getElementById('kmodel-month');
-  if(m) m.value=kmodelMonthDefault();
-  if(empId){
-    const sel=document.getElementById('kmodel-emp-select');
-    if(sel) sel.value=String(empId);
-  }
-  await loadKModelTargetsIntoModal();
-  openModal('kmodel-target-modal');
-}
-
-async function loadKModelTargetsIntoModal(){
-  const wrap=document.getElementById('kmodel-rows'); if(!wrap) return;
-  wrap.innerHTML='';
-  const empId=document.getElementById('kmodel-emp-select')?.value;
-  const month=document.getElementById('kmodel-month')?.value;
-  if(!empId||!month){ addKModelRow(); return; }
-  try{
-    const rows=await dbGet('kmodel_targets',`?employee_id=eq.${empId}&month=eq.${month}&select=model_name,qty_target&order=model_name`).catch(()=>[]);
-    if(!rows||rows.length===0){ addKModelRow(); return; }
-    rows.forEach(r=>addKModelRow(r.model_name, r.qty_target));
-  }catch(e){
-    addKModelRow();
-  }
-}
-
-document.addEventListener('change', (e)=>{
-  if(e.target?.id==='kmodel-emp-select' || e.target?.id==='kmodel-month') loadKModelTargetsIntoModal();
-});
-
-async function saveKModelTargets(){
-  const ar=currentLang==='ar';
-  const empId=document.getElementById('kmodel-emp-select')?.value;
-  const month=document.getElementById('kmodel-month')?.value;
-  if(!empId||!month) return notify(ar?'أكمل الموظف والشهر':'Select employee and month','error');
-  const wrap=document.getElementById('kmodel-rows');
-  const models=[...wrap.querySelectorAll('.kmodel-model')].map(s=>s.value.trim());
-  const qtys=[...wrap.querySelectorAll('.kmodel-qty')].map(i=>parseInt(i.value));
-
-  const entries=[];
-  for(let i=0;i<models.length;i++){
-    const model=models[i],qty=qtys[i];
-    if(!model && !qty) continue;
-    if(!model || !qty || qty<=0) return notify(ar?'أكمل الموديل والكمية':'Fill model and qty','error');
-    entries.push({employee_id:parseInt(empId),month,model_name:model,qty_target:qty});
-  }
-  if(entries.length===0) return notify(ar?'أضف موديل واحد على الأقل':'Add at least one model','error');
-
-  try{
-    await dbDelete('kmodel_targets',`?employee_id=eq.${empId}&month=eq.${month}`).catch(()=>null);
-    await dbPost('kmodel_targets',entries);
-    notify(ar?'تم حفظ K Model Targets ✅':'Saved ✅','success');
-    closeModal('kmodel-target-modal');
-    loadKModelTargetsAdminList();
-  }catch(e){
-    notify((ar?'خطأ: ':'Error: ')+ (e?.message||'Error'),'error');
-  }
-}
-
-async function loadKModelTargetsAdminList(){
-  const el=document.getElementById('kmodel-targets-list'); if(!el) return;
-  const ar=currentLang==='ar';
-  const month=kmodelMonthDefault();
-  el.innerHTML='<div class="full-loader"><div class="loader"></div></div>';
-  try{
-    const rows=await dbGet('kmodel_targets',`?month=eq.${month}&select=employee_id,model_name,qty_target`).catch(()=>[]);
-    if(!rows||rows.length===0){
-      el.innerHTML=`<div style="color:var(--muted);font-size:12px">${ar?'لا توجد K Model Targets لهذا الشهر':'No K Model targets for this month'}</div>`;
-      return;
-    }
-    const byEmp={};
-    rows.forEach(r=>{ byEmp[r.employee_id]=(byEmp[r.employee_id]||0)+1; });
-    el.innerHTML=Object.entries(byEmp).map(([eid,count])=>{
-      const emp=allEmployees.find(e=>String(e.id)===String(eid));
-      return `<div class="history-item" style="display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div class="hist-name">${emp?emp.name:(ar?'موظف':'Employee')}</div>
-          <div class="hist-meta" style="color:var(--purple)">${ar?'عدد الموديلات:':'Models:'} ${count}</div>
-          <div class="hist-meta">${month}</div>
-        </div>
-        <button class="action-btn edit" onclick="openKModelTargetModal(${eid})">${ar?'تعديل':'Edit'}</button>
-      </div>`;
-    }).join('');
-  }catch(e){
-    el.innerHTML=`<div style="color:var(--red);font-size:12px">${ar?'تعذر تحميل K Model Targets (تأكد من جدول kmodel_targets)':'Failed to load (check kmodel_targets table)'}</div>`;
-  }
-}
-
-async function loadEmpKModelTargets(){
-  const card=document.getElementById('emp-kmodel-targets-card');
-  const el=document.getElementById('emp-kmodel-targets');
-  if(!card||!el||!currentUser?.id) return;
-  const ar=currentLang==='ar';
-  const pm=getPayrollMonth();
-  const month=pm.start.substring(0,7);
-  try{
-    const targets=await dbGet('kmodel_targets',`?employee_id=eq.${currentUser.id}&month=eq.${month}&select=model_name,qty_target&order=model_name`).catch(()=>[]);
-    if(!targets||targets.length===0){ card.style.display='none'; return; }
-    const sales=await dbGet('sales',`?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=product_name,quantity`).catch(()=>[]);
-    const doneBy={};
-    (sales||[]).forEach(s=>{ doneBy[s.product_name]=(doneBy[s.product_name]||0)+(s.quantity||0); });
-
-    const endDate=new Date(pm.end+'T00:00:00');
-    const today=new Date();
-    const daysLeft=Math.max(0, Math.ceil((endDate - today)/(1000*60*60*24))+1);
-
-    card.style.display='block';
-    el.innerHTML=targets.map(t=>{
-      const done=doneBy[t.model_name]||0;
-      const target=t.qty_target||0;
-      const pct=target>0?Math.min(100,Math.round(done/target*100)):0;
-      const remaining=Math.max(0,target-done);
-      const perDay=daysLeft>0?Math.ceil(remaining/daysLeft):remaining;
-      return `<div class="history-item" style="border-color:rgba(156,39,176,.25)">
-        <div class="hist-top">
-          <div class="hist-name" style="direction:ltr;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.model_name}</div>
-          <div class="hist-amount" style="color:var(--purple)">${done}/${target}</div>
-        </div>
-        <div class="perf-bar-bg" style="margin-top:8px"><div class="perf-bar-fill" style="width:${Math.max(2,pct)}%;background:var(--purple)"></div></div>
-        <div class="hist-meta" style="margin-top:6px">
-          ${ar?`المتبقي: ${remaining} — المطلوب يوميًا: ${perDay}`:`Remaining: ${remaining} — Needed/day: ${perDay}`}
-        </div>
-      </div>`;
-    }).join('');
-
-    checkKModelReminder(targets, doneBy, pm);
-  }catch(e){
-    card.style.display='none';
-  }
-}
-
-function checkKModelReminder(targets, doneBy, pm){
-  const ar=currentLang==='ar';
-  const month=pm.start.substring(0,7);
-  const key=`kmodel_reminder_last_${currentUser.id}_${month}`;
-  const last=parseInt(localStorage.getItem(key)||'0');
-  const now=Date.now();
-  const threeDays=3*24*60*60*1000;
-  if(last && (now-last)<threeDays) return;
-
-  const endDate=new Date(pm.end+'T00:00:00');
-  const today=new Date();
-  const daysLeft=Math.max(0, Math.ceil((endDate - today)/(1000*60*60*24))+1);
-
-  const late=targets.map(t=>{
-    const done=doneBy[t.model_name]||0;
-    const target=t.qty_target||0;
-    const remaining=Math.max(0,target-done);
-    const perDay=daysLeft>0?Math.ceil(remaining/daysLeft):remaining;
-    return {name:t.model_name, done, target, remaining, perDay};
-  }).filter(x=>x.remaining>0);
-
-  if(late.length===0){ localStorage.setItem(key,String(now)); return; }
-
-  // Show at most 3 notifications to avoid spam
-  notify(ar?'📣 تذكير K Model Targets':'📣 K Model Targets reminder','warning');
-  late.slice(0,3).forEach(x=>{
-    notify(
-      ar?`${x.name}: ${x.done}/${x.target} — لازم ${x.perDay}/يوم`:`${x.name}: ${x.done}/${x.target} — need ${x.perDay}/day`,
-      'warning'
-    );
-  });
-  if(late.length>3) notify(ar?`+${late.length-3} موديلات أخرى متأخرة`:`+${late.length-3} more models behind`,'warning');
-
-  localStorage.setItem(key,String(now));
-}
-
 // ── SETTINGS ──
 async function saveWorkTime(){
   const start=document.getElementById('work-start').value,end=document.getElementById('work-end').value;const ar=currentLang==='ar';
@@ -2185,7 +1932,7 @@ function toggleAcc(id){
   if(!isOpen){
     if(id==='acc-branches')loadBranches();
     if(id==='acc-products')loadProductsSettings();
-    if(id==='acc-targets'){loadTargetsList();loadKModelTargetsAdminList();}
+    if(id==='acc-targets')loadTargetsList();
     if(id==='acc-admins')loadAdminsList();
     if(id==='acc-team')loadSettingsEmpList();
   }

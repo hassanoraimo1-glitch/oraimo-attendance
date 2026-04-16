@@ -476,6 +476,7 @@ body{background:var(--black)}
   background:rgba(6,6,8,.98) !important;
   border-top:1px solid rgba(255,255,255,.06) !important;
   box-shadow:0 -4px 30px rgba(0,0,0,.6) !important;
+  direction:ltr !important;
 }
 .nav-item{
   border-radius:14px;margin:4px 2px;transition:.2s;
@@ -3464,15 +3465,16 @@ async function sendPushNotification(title, message, targetUserId) {
 
 async function registerOneSignalUser() {
   try {
-    if(window.OneSignal && currentUser) {
-      // Tag user with their ID for targeted notifications
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      window.OneSignalDeferred.push(async function(OneSignal) {
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push(async function(OneSignal) {
+      // Request permission
+      const permission = await OneSignal.Notifications.requestPermission();
+      if(permission && currentUser) {
         await OneSignal.User.addTag("user_id", String(currentUser.id || currentUser.name));
         await OneSignal.User.addTag("role", currentUser.role || 'employee');
-        await OneSignal.Notifications.requestPermission();
-      });
-    }
+        await OneSignal.User.addTag("name", currentUser.name || '');
+      }
+    });
   } catch(e) { console.log('OneSignal register error:', e); }
 }
 

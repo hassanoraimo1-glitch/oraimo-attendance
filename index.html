@@ -805,15 +805,8 @@ body{background:var(--black)}
     </div>
 
     <div class="card">
-      <div class="sh"><div class="sh-title">📋 طلب إجازة / إذن</div></div>
+      <div class="sh"><div class="sh-title">📋 طلب إذن تأخير</div></div>
       <div class="inp-grp">
-        <label>نوع الطلب</label>
-        <select id="leave-type" onchange="toggleLeaveFields()">
-          <option value="permission">إذن تأخير</option>
-          <option value="vacation">إجازة يوم كامل</option>
-        </select>
-      </div>
-      <div class="inp-grp" id="leave-duration-group">
         <label data-ar="المدة" data-en="Duration">المدة</label>
         <select id="leave-duration">
           <option value="30">30 دقيقة</option>
@@ -822,15 +815,24 @@ body{background:var(--black)}
           <option value="120">ساعتين</option>
         </select>
       </div>
-      <div class="inp-grp" id="leave-date-group" style="display:none">
-        <label>تاريخ الإجازة</label>
-        <input type="date" id="leave-date" style="width:100%;padding:13px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none">
-      </div>
       <div class="inp-grp">
         <label data-ar="السبب" data-en="Reason">السبب</label>
         <input type="text" id="leave-reason" placeholder="أدخل السبب..." data-ar-ph="أدخل السبب..." data-en-ph="Enter reason...">
       </div>
-      <button class="btn btn-outline" onclick="sendLeaveRequest()" style="width:auto;padding:9px 18px">إرسال الطلب</button>
+      <button class="btn btn-outline" onclick="sendLeaveRequest('permission')" style="width:auto;padding:9px 18px">📤 إرسال طلب الإذن</button>
+    </div>
+
+    <div class="card">
+      <div class="sh"><div class="sh-title">🏖️ طلب إجازة يوم</div></div>
+      <div class="inp-grp">
+        <label>تاريخ الإجازة</label>
+        <input type="date" id="vacation-date" style="width:100%;padding:13px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none">
+      </div>
+      <div class="inp-grp">
+        <label data-ar="السبب" data-en="Reason">السبب</label>
+        <input type="text" id="vacation-reason" placeholder="أدخل السبب..." data-ar-ph="أدخل السبب..." data-en-ph="Enter reason...">
+      </div>
+      <button class="btn btn-green" onclick="sendLeaveRequest('vacation')" style="width:auto;padding:9px 18px">📤 إرسال طلب الإجازة</button>
     </div>
 
     <div class="card">
@@ -881,7 +883,14 @@ body{background:var(--black)}
   <!-- PROFILE TAB -->
   <div id="emp-profile" class="content" style="display:none">
     <div class="card" style="text-align:center;padding:24px">
-      <div class="emp-avatar" style="width:64px;height:64px;font-size:24px;margin:0 auto 12px">👤</div>
+      <div style="position:relative;width:80px;margin:0 auto 12px;cursor:pointer" onclick="document.getElementById('profile-photo-input').click()">
+        <div id="profile-avatar-wrap" style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:28px;border:3px solid rgba(0,200,83,.3);overflow:hidden">
+          <img id="profile-avatar-img" src="" style="display:none;width:100%;height:100%;object-fit:cover">
+          <span id="profile-avatar-icon">👤</span>
+        </div>
+        <div style="position:absolute;bottom:0;right:0;width:26px;height:26px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid var(--black)">📷</div>
+        <input type="file" id="profile-photo-input" accept="image/*" style="display:none" onchange="uploadProfilePhoto(event)">
+      </div>
       <div style="font-size:18px;font-weight:800" id="profile-name">-</div>
       <div style="font-size:12px;color:var(--muted);margin-top:3px" id="profile-branch">-</div>
       <div style="margin-top:8px" id="profile-dayoff"></div>
@@ -976,10 +985,10 @@ body{background:var(--black)}
         <div id="unread-admin" style="display:none;background:var(--green);color:#000;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center"></div>
       </div>
       <!-- Group Chat -->
-      <div class="card" onclick="openChat('group','الشات الجماعي')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+      <div class="card" onclick="openChat('group','B.tech team')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
         <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👥</div>
         <div style="flex:1">
-          <div style="font-size:14px;font-weight:700">الشات الجماعي</div>
+          <div style="font-size:14px;font-weight:700">B.tech team</div>
           <div style="font-size:11px;color:var(--muted)" id="last-msg-group">اضغط للمحادثة</div>
         </div>
       </div>
@@ -1351,9 +1360,9 @@ body{background:var(--black)}
   <div id="admin-chat" class="content" style="display:none">
     <div style="font-size:14px;font-weight:800;margin-bottom:12px">💬 المحادثات</div>
     <!-- Group Chat -->
-    <div class="card" onclick="openChat('group','الشات الجماعي')" style="cursor:pointer;display:flex;align-items:center;gap:12px;margin-bottom:8px">
+    <div class="card" onclick="openChat('group','B.tech team')" style="cursor:pointer;display:flex;align-items:center;gap:12px;margin-bottom:8px">
       <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👥</div>
-      <div><div style="font-size:14px;font-weight:700">الشات الجماعي</div><div style="font-size:11px;color:var(--muted)">جميع الموظفين</div></div>
+      <div><div style="font-size:14px;font-weight:700">B.tech team</div><div style="font-size:11px;color:var(--muted)">جميع الموظفين</div></div>
     </div>
     <!-- Individual chats -->
     <div style="font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 8px">محادثات فردية</div>
@@ -2031,14 +2040,14 @@ async function loadTodaySales(){
   const tel=document.getElementById('emp-today-total');
   if(tel)tel.textContent=(ar?'اليوم: ':'Today: ')+'EGP '+total.toLocaleString();
 }
-async function sendLeaveRequest(){
-  const reason=document.getElementById('leave-reason').value.trim();
-  const leaveType=document.getElementById('leave-type')?.value||'permission';
-  const duration=leaveType==='vacation'?0:parseInt(document.getElementById('leave-duration').value);
-  const leaveDate=leaveType==='vacation'?(document.getElementById('leave-date')?.value||todayStr()):todayStr();
+async function sendLeaveRequest(leaveType){
+  if(!leaveType) leaveType='permission';
   const ar=currentLang==='ar';
+  const reason=(leaveType==='vacation'?document.getElementById('vacation-reason'):document.getElementById('leave-reason'))?.value?.trim()||'';
+  const duration=leaveType==='vacation'?0:parseInt(document.getElementById('leave-duration').value);
+  const leaveDate=leaveType==='vacation'?(document.getElementById('vacation-date')?.value||todayStr()):todayStr();
   if(!reason)return notify(ar?'أدخل السبب':'Enter reason','error');
-  if(leaveType==='vacation'&&!leaveDate)return notify(ar?'اختر تاريخ الإجازة':'Select vacation date','error');
+  if(leaveType==='vacation'&&!document.getElementById('vacation-date')?.value)return notify(ar?'اختر تاريخ الإجازة':'Select vacation date','error');
   try{
     await dbPost('leave_requests',{
       employee_id:currentUser.id,
@@ -2051,10 +2060,14 @@ async function sendLeaveRequest(){
       date:todayStr()
     });
     notify(ar?'تم إرسال الطلب ✅':'Request sent ✅','success');
-    document.getElementById('leave-reason').value='';
-    if(leaveType==='vacation'){const d=document.getElementById('leave-date');if(d)d.value='';}
+    if(leaveType==='vacation'){
+      const d=document.getElementById('vacation-date');if(d)d.value='';
+      const r=document.getElementById('vacation-reason');if(r)r.value='';
+    } else {
+      const r=document.getElementById('leave-reason');if(r)r.value='';
+    }
   }
-  catch(e){notify('Error','error')}
+  catch(e){notify('Error: '+e.message,'error')}
 }
 
 // ── ADMIN DASHBOARD ──
@@ -2695,7 +2708,7 @@ function empTab(tab,el){
   ['home','sales','visits','display','profile','chat'].forEach(t=>{const d=document.getElementById('emp-'+t);if(d)d.style.display=t===tab?'block':'none';});
   document.querySelectorAll('#emp-app .nav-item').forEach(n=>n.classList.remove('active'));el.classList.add('active');
   if(tab==='sales'){renderProducts();loadTodaySales()}
-  if(tab==='profile'){loadEmpMonthlyReport();loadEmpDailyLog()}
+  if(tab==='profile'){loadEmpMonthlyReport();loadEmpDailyLog();loadProfilePhoto();}
   if(tab==='home'){loadModelTargetAlert()}
   if(tab==='visits'){loadVisitsTab()}
   if(tab==='display'){loadDisplayTab()}
@@ -3372,6 +3385,40 @@ function showAbsentEmployees() {
     <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px">${ar?'إغلاق':'Close'}</button>
   </div>`;
   document.body.appendChild(overlay);
+}
+
+
+// ── PROFILE PHOTO ──
+async function uploadProfilePhoto(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const ar = currentLang==='ar';
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    const base64 = e.target.result;
+    try{
+      // Save to localStorage for quick display
+      localStorage.setItem('profile_photo_'+currentUser.id, base64);
+      // Update UI
+      document.getElementById('profile-avatar-img').src = base64;
+      document.getElementById('profile-avatar-img').style.display = 'block';
+      document.getElementById('profile-avatar-icon').style.display = 'none';
+      // Update in employees table
+      await dbPatch('employees',{profile_photo:base64},`?id=eq.${currentUser.id}`).catch(()=>{});
+      notify(ar?'تم تحديث الصورة ✅':'Photo updated ✅','success');
+    } catch(e){ notify('Error: '+e.message,'error'); }
+  };
+  reader.readAsDataURL(file);
+}
+
+function loadProfilePhoto(){
+  const saved = localStorage.getItem('profile_photo_'+(currentUser?.id||''));
+  if(saved){
+    const img = document.getElementById('profile-avatar-img');
+    const icon = document.getElementById('profile-avatar-icon');
+    if(img){ img.src=saved; img.style.display='block'; }
+    if(icon) icon.style.display='none';
+  }
 }
 
 // ── ACCORDION ──

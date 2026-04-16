@@ -880,7 +880,7 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
       <div class="nav-icon">🛒</div><div class="nav-label" data-ar="المبيعات" data-en="Sales">المبيعات</div>
     </div>
     <div class="nav-item" id="emp-display-nav" onclick="empTab('display',this)">
-      <div class="nav-icon">🖼️</div><div class="nav-label">ديسبلاي</div>
+      <div class="nav-icon">🖼️</div><div class="nav-label" data-ar="ديسبلاي" data-en="Display">ديسبلاي</div>
     </div>
     <div class="nav-item" onclick="empTab('profile',this)">
       <div class="nav-icon">👤</div><div class="nav-label" data-ar="الملف" data-en="Profile">الملف</div>
@@ -1225,7 +1225,7 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
       <div class="nav-icon">🏪</div><div class="nav-label" data-ar="الفروع" data-en="Branches">الفروع</div>
     </div>
     <div class="nav-item" id="adm-visits-nav" onclick="adminTab('visits',this)" style="display:none">
-      <div class="nav-icon">📸</div><div class="nav-label">الزيارات</div>
+      <div class="nav-icon">📸</div><div class="nav-label" data-ar="الزيارات" data-en="Visits">الزيارات</div>
     </div>
     <div class="nav-item" onclick="adminTab('reports',this)">
       <div class="nav-icon">📈</div><div class="nav-label" data-ar="التقارير" data-en="Reports">التقارير</div>
@@ -1450,6 +1450,9 @@ function applyLang(){
     const el=document.getElementById(id);
     if(el)el.textContent=isAr?'EN':'ع';
   });
+  // Update admin-name-top
+  const ant=document.getElementById('admin-name-top');
+  if(ant&&!ant.dataset.custom) ant.textContent=isAr?'لوحة الإدارة':'Dashboard';
   // Update splash subtitle
   const ss=document.getElementById('splash-sub');
   if(ss)ss.textContent=isAr?'نظام الحضور والمبيعات':'Attendance & Sales System';
@@ -2108,7 +2111,7 @@ function reportTab(tab,el){
   if(tab==='products')loadProductsReport();
   if(tab==='branch')loadBranchReport();
   if(tab==='q1')loadQ1Analytics();
-  if(tab==='visits'){populateVisitReportEmps();initVisitReportMonth();}
+  if(tab==='visits'){populateVisitReportEmps().then(()=>initVisitReportMonth());}
   if(tab==='display'){populateDisplayReportEmps();loadDisplayReport();}
 }
 
@@ -2634,9 +2637,11 @@ async function loadVisitsTab(){
 }
 
 // ── VISITS ADMIN REPORT ──
-function populateVisitReportEmps(){
+async function populateVisitReportEmps(){
   const sel=document.getElementById('visit-report-emp');if(!sel)return;
-  sel.innerHTML='<option value="">كل تيم ليدر</option>'+allEmployees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  const admins=await dbGet('admins','?select=id,name,role').catch(()=>[])||[];
+  const managers=admins.filter(a=>a.role==='manager');
+  sel.innerHTML='<option value="">كل التيم ليدر</option>'+managers.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
 }
 function initVisitReportMonth(){
   const el=document.getElementById('visit-report-month');if(!el||el.value)return;
@@ -2654,13 +2659,13 @@ async function loadVisitsReport(){
   const start=`${month}-01`;
   const end=new Date(y,m,0).toISOString().split('T')[0];
   let query=`?visit_date=gte.${start}&visit_date=lte.${end}&order=visit_date.desc&select=*`;
-  if(empId)query+=`&employee_id=eq.${empId}`;
+  if(empId)query+=`&manager_id=eq.${empId}`;
   const visits=await dbGet('branch_visits',query).catch(()=>[])||[];
   if(visits.length===0){el.innerHTML='<div class="empty"><div class="empty-icon">📸</div>لا توجد زيارات</div>';return}
-  // Group by employee
+  // Group by manager
   const byEmp={};
   visits.forEach(v=>{
-    const k=v.employee_name||v.employee_id;
+    const k=v.manager_name||v.manager_id;
     if(!byEmp[k])byEmp[k]=[];
     byEmp[k].push(v);
   });

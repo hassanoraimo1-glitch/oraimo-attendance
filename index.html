@@ -2688,10 +2688,10 @@ async function populateVisitReportEmps(){
 function initVisitReportMonth(){
   const el=document.getElementById('visit-report-month');
   if(!el)return;
-  // Restore saved month or use current payroll month
-  const saved=localStorage.getItem('oraimo_visit_month');
-  el.value=saved||getPayrollMonth().start.substring(0,7);
-  // Save month on change
+  // Always use current payroll month as default
+  const currentMonth=getPayrollMonth().start.substring(0,7);
+  el.value=currentMonth;
+  localStorage.setItem('oraimo_visit_month',currentMonth);
   el.onchange=function(){localStorage.setItem('oraimo_visit_month',this.value);loadVisitsReport();};
   loadVisitsReport();
 }
@@ -2706,7 +2706,8 @@ async function loadVisitsReport(){
   const start=`${month}-01`;
   const end=new Date(y,m,0).toISOString().split('T')[0];
   let query=`?visit_date=gte.${start}&visit_date=lte.${end}&order=visit_date.desc&select=*`;
-  if(empId)query+=`&manager_id=eq.${empId}`;
+  if(empId) query+=`&manager_id=eq.${empId}`;
+  else query+=`&order=visit_date.desc`;
   const visits=await dbGet('branch_visits',query).catch(()=>[])||[];
   if(visits.length===0){el.innerHTML=`<div class="empty"><div class="empty-icon">📸</div>${ar?'لا توجد زيارات':'No visits'}</div>`;return}
   // Group by manager_name
@@ -2871,6 +2872,7 @@ async function submitDisplayPhotos() {
   const ar = currentLang === 'ar';
   if (displayPhotos.length === 0) return notify(ar ? 'أضف صورة واحدة على الأقل' : 'Add at least one photo', 'error');
   try {
+    // Check RLS disabled on display_photos table
     await dbPost('display_photos', {
       employee_id: currentUser.id,
       employee_name: currentUser.name,
@@ -2885,7 +2887,14 @@ async function submitDisplayPhotos() {
     displayPhotos = []; renderDisplayPreviews();
     document.getElementById('display-note').value = '';
     loadDisplayTab();
-  } catch(e) { notify('Error: '+e.message, 'error'); }
+  } catch(e) {
+    const ar=currentLang==='ar';
+    if(e.message&&e.message.includes('security')){
+      notify(ar?'خطأ: تأكد من إيقاف RLS على جدول display_photos':'Error: Disable RLS on display_photos table','error');
+    } else {
+      notify('Error: '+e.message,'error');
+    }
+  }
 }
 
 async function loadDisplayTab() {

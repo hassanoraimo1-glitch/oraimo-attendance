@@ -1023,7 +1023,7 @@ body{background:var(--black)}
     </div>
   </div>
 
-  <div class="bottom-nav">
+  <div class="bottom-nav" style="direction:ltr!important;flex-direction:row!important">
     <div class="nav-item active" onclick="empTab('home',this)">
       <div class="nav-icon">🏠</div><div class="nav-label" data-ar="الرئيسية" data-en="Home">الرئيسية</div>
     </div>
@@ -1061,7 +1061,7 @@ body{background:var(--black)}
 
   <!-- DASHBOARD -->
   <div id="admin-dashboard" class="content">
-    <div id="dash-loader" style="display:none;align-items:center;justify-content:center;padding:40px;gap:10px;color:var(--muted);font-size:13px">
+    <div id="dash-loader" style="display:none;visibility:hidden;align-items:center;justify-content:center;padding:40px;gap:10px;color:var(--muted);font-size:13px">
       <div class="loader"></div> <span data-ar="جاري التحميل..." data-en="Loading...">جاري التحميل...</span>
     </div>
     <div id="dash-content" style="display:block">
@@ -1397,7 +1397,7 @@ body{background:var(--black)}
     <div id="admin-chat-list"></div>
   </div>
 
-  <div class="bottom-nav">
+  <div class="bottom-nav" style="direction:ltr!important;flex-direction:row!important">
     <div class="nav-item active" onclick="adminTab('dashboard',this)">
       <div class="nav-icon">📊</div><div class="nav-label" data-ar="الرئيسية" data-en="Home">الرئيسية</div>
     </div>
@@ -2118,8 +2118,8 @@ async function loadAdminDashboard(){
   // Show loader, hide content
   const loader=document.getElementById('dash-loader');
   const dashC=document.getElementById('dash-content');
-  if(loader) loader.style.display='flex';
-  if(dashC) dashC.style.display='none';
+  if(loader) loader.style.display='none';
+  if(dashC) dashC.style.display='block';
   try{
     const today=todayStr(),pm=getPayrollMonth(),ar=currentLang==='ar';
     let allEmp=await dbGet('employees','?select=*');allEmployees=allEmp||[];
@@ -2141,8 +2141,6 @@ async function loadAdminDashboard(){
     document.getElementById('adm-sales-month').textContent='EGP '+fmtEGP(monthTotal);
     renderPerformanceRanking(monthSales||[]);
     // Hide loader, show content
-    if(loader) loader.style.display='none';
-    if(dashC) dashC.style.display='block';
     applyLang();
     const el=document.getElementById('adm-emp-today');
     if(el){

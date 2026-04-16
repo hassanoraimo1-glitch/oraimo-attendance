@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0a0a0a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -50,6 +50,19 @@ body{font-family:'Cairo',sans-serif;background:var(--black);color:var(--text);mi
 .visit-stat{flex:1;background:var(--card);border-radius:12px;padding:10px;text-align:center;border:1px solid var(--border)}
 .visit-stat-val{font-size:22px;font-weight:800;color:var(--green)}
 .visit-stat-label{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* ── SAFE AREA / PWA FULLSCREEN ── */
+html, body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.bottom-nav {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 4px);
+}
+.topbar {
+  padding-top: env(safe-area-inset-top);
+  margin-top: calc(-1 * env(safe-area-inset-top));
+}
 
 /* ── ORAIMO LOGO BG ── */
 .oraimo-bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
@@ -892,21 +905,25 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
 <div id="admin-app" class="page">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="topbar-logo">O</div>
+      <div class="topbar-logo" style="background:linear-gradient(135deg,#00C853,#007a2a);box-shadow:0 0 16px rgba(0,200,83,.3)">O</div>
       <div>
         <div class="topbar-brand">ORAIMO HR</div>
-        <div class="topbar-title" id="admin-name-top">لوحة الإدارة</div>
+        <div class="topbar-title" id="admin-name-top" data-ar="لوحة الإدارة" data-en="Dashboard">لوحة الإدارة</div>
       </div>
     </div>
     <div class="topbar-right">
-      <button class="lang-btn" onclick="toggleLang()" id="lang-btn-adm"><span class="lang-flag">🌐</span><span id="lang-label-adm">EN</span></button>
+      <button class="lang-btn" onclick="toggleLang()" id="lang-btn-adm"><span class="lang-flag">🌐</span><span id="lang-label-adm">ع</span></button>
       <span class="role-chip badge" id="admin-role-chip">Admin</span>
-      <button class="icon-btn" onclick="doLogout()">🚪</button>
+      <button class="icon-btn" onclick="doLogout()" title="خروج">🚪</button>
     </div>
   </div>
 
   <!-- DASHBOARD -->
   <div id="admin-dashboard" class="content">
+    <div id="dash-loader" style="display:flex;align-items:center;justify-content:center;padding:40px;gap:10px;color:var(--muted);font-size:13px">
+      <div class="loader"></div> <span data-ar="جاري التحميل..." data-en="Loading...">جاري التحميل...</span>
+    </div>
+    <div id="dash-content" style="display:none">
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-label" data-ar="حاضر اليوم" data-en="Present">حاضر اليوم</div><div class="stat-val" style="color:var(--green)" id="adm-present">0</div></div>
       <div class="stat-card"><div class="stat-label" data-ar="غائب اليوم" data-en="Absent">غائب اليوم</div><div class="stat-val" style="color:var(--red)" id="adm-absent">0</div></div>
@@ -919,6 +936,7 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
     <div id="adm-emp-today"></div>
     <div class="sh" style="margin-top:12px"><div class="sh-title" data-ar="⏳ طلبات التأخير" data-en="⏳ Late Requests">⏳ طلبات التأخير</div></div>
     <div id="adm-leave-requests"></div>
+  </div><!-- end dash-content -->
   </div>
 
   <!-- EMPLOYEES -->
@@ -1910,6 +1928,11 @@ async function sendLeaveRequest(){
 
 // ── ADMIN DASHBOARD ──
 async function loadAdminDashboard(){
+  // Show loader, hide content
+  const loader=document.getElementById('dash-loader');
+  const dashC=document.getElementById('dash-content');
+  if(loader) loader.style.display='flex';
+  if(dashC) dashC.style.display='none';
   try{
     const today=todayStr(),pm=getPayrollMonth(),ar=currentLang==='ar';
     let allEmp=await dbGet('employees','?select=*');allEmployees=allEmp||[];
@@ -1929,6 +1952,10 @@ async function loadAdminDashboard(){
     document.getElementById('adm-sales-today').textContent='EGP '+fmtEGP(todayTotal);
     document.getElementById('adm-sales-month').textContent='EGP '+fmtEGP(monthTotal);
     renderPerformanceRanking(monthSales||[]);
+    // Hide loader, show content
+    if(loader) loader.style.display='none';
+    if(dashC) dashC.style.display='block';
+    applyLang();
     const el=document.getElementById('adm-emp-today');
     if(el){
       if(allEmployees.length===0){el.innerHTML=`<div class="empty"><div class="empty-icon">👥</div>${ar?'لا يوجد موظفون':'No employees'}</div>`;}

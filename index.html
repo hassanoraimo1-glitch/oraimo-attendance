@@ -18,6 +18,20 @@
       serviceWorkerParam: { scope: "/" },
       serviceWorkerPath: "OneSignalSDK.sw.js",
       notifyButton: { enable: false },
+      promptOptions: {
+        slidedown: {
+          prompts: [{
+            type: "push",
+            autoPrompt: true,
+            text: {
+              actionMessage: "اسمح بالإشعارات لتلقي الرسائل",
+              acceptButton: "اسمح",
+              cancelButton: "لا"
+            },
+            delay: { pageViews: 1, timeDelay: 3 }
+          }]
+        }
+      }
     });
   });
 </script>
@@ -2033,8 +2047,17 @@ function selectProduct(name,price){
   document.getElementById('selected-product-price').textContent=price.toLocaleString();
   document.getElementById('qty-val').textContent=1;
   document.getElementById('sale-total').textContent=price.toLocaleString()+' EGP';
-  document.getElementById('sale-form-wrap').style.display='block';
-  document.getElementById('product-search').value='';displayProducts();
+  const w=document.getElementById('sale-form-wrap');
+  w.style.display='flex';
+  w.style.position='fixed';
+  w.style.bottom='0';
+  w.style.left='0';
+  w.style.right='0';
+  w.style.top='0';
+  w.style.zIndex='5000';
+  w.style.background='rgba(0,0,0,.75)';
+  w.style.alignItems='flex-end';
+  w.style.backdropFilter='blur(4px)';
 }
 function changeQty(d){selectedQty=Math.max(1,selectedQty+d);document.getElementById('qty-val').textContent=selectedQty;document.getElementById('sale-total').textContent=(selectedProduct.price*selectedQty).toLocaleString()+' EGP'}
 function cancelSale(){
@@ -3425,20 +3448,32 @@ async function uploadProfilePhoto(event){
   const file = event.target.files[0];
   if(!file) return;
   const ar = currentLang==='ar';
+  // Compress image before saving
+  const canvas = document.createElement('canvas');
+  const img = new Image();
   const reader = new FileReader();
   reader.onload = async function(e){
-    const base64 = e.target.result;
-    try{
-      // Save to localStorage for quick display
-      localStorage.setItem('profile_photo_'+currentUser.id, base64);
-      // Update UI
-      document.getElementById('profile-avatar-img').src = base64;
-      document.getElementById('profile-avatar-img').style.display = 'block';
-      document.getElementById('profile-avatar-icon').style.display = 'none';
-      // Update in employees table
-      await dbPatch('employees',{profile_photo:base64},`?id=eq.${currentUser.id}`).catch(()=>{});
-      notify(ar?'تم تحديث الصورة ✅':'Photo updated ✅','success');
-    } catch(e){ notify('Error: '+e.message,'error'); }
+    img.onload = async function(){
+      const maxSize = 200;
+      let w = img.width, h = img.height;
+      if(w > h){ h = h*maxSize/w; w = maxSize; } else { w = w*maxSize/h; h = maxSize; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const base64 = canvas.toDataURL('image/jpeg', 0.7);
+      try{
+        localStorage.setItem('profile_photo_'+currentUser.id, base64);
+        document.getElementById('profile-avatar-img').src = base64;
+        document.getElementById('profile-avatar-img').style.display = 'block';
+        document.getElementById('profile-avatar-icon').style.display = 'none';
+        // Save to Supabase so team can see it
+        await dbPatch('employees',{profile_photo:base64},`?id=eq.${currentUser.id}`).catch(()=>{});
+        // Update currentUser
+        currentUser.profile_photo = base64;
+        localStorage.setItem('oraimo_user', JSON.stringify(currentUser));
+        notify(ar?'تم تحديث الصورة ✅':'Photo updated ✅','success');
+      } catch(e){ notify('Error: '+e.message,'error'); }
+    };
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }

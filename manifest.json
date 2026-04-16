@@ -1,24 +1,13 @@
 {
-  "name": "Oraimo HR System",
-  "short_name": "Oraimo HR",
-  "description": "System for Oraimo Sales and HR Management",
-  "start_url": "/",
+  "background_color": "#ffffff",
+  "dir": "rtl",
   "display": "fullscreen",
-  "background_color": "#060608",
-  "theme_color": "#060608",
+  "name": "Oraimo HR",
   "orientation": "portrait",
-  "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ]
+  "scope": "/",
+  "short_name": "Oraimo HR",
+  "start_url": "/",
+  "theme_color": "#0a0a0a",
+  "lang": "ar",
+  "description": "HR Management System"
 }

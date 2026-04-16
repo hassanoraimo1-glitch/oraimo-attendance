@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.oraimo_attendance.twa",
+        "sha256_cert_fingerprints": ["F7:D2:5A:E5:14:EA:EE:61:CD:F8:2B:2E:A0:82:3D:7D:5A:CE:0B:9A:8A:64:4D:C1:CF:27:05:80:60:7D:83:35"]
+      }
+    }]

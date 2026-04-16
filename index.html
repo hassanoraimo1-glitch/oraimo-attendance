@@ -9,6 +9,18 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>Oraimo HR System</title>
 <link rel="manifest" href="/manifest.json">
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "f3330b43-2859-4fe3-9236-0d9dd40fddb7",
+      serviceWorkerParam: { scope: "/" },
+      serviceWorkerPath: "OneSignalSDK.sw.js",
+      notifyButton: { enable: false },
+    });
+  });
+</script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -1710,7 +1722,8 @@ function showApp(){
         if(admVisNav) admVisNav.style.display='flex';
       },100);
     }
-    if(currentUser.role==='team_leader'){
+    registerOneSignalUser();
+  if(currentUser.role==='team_leader'){
       // Team leader: show ONLY visits + employees nav, hide everything else
       setTimeout(()=>{
         // show visits nav
@@ -3340,6 +3353,9 @@ async function sendMessage() {
     receiver_id: currentChat === 'group' ? null : (currentChat === 'admin' ? null : parseInt(currentChat))
   };
   await dbPost('messages', data).catch(e => notify('Error: '+e.message, 'error'));
+  // Send push notification
+  const notifTitle = currentChat === 'group' ? 'B.tech team 💬' : `رسالة من ${currentUser.name}`;
+  sendPushNotification(notifTitle, msg, currentChat === 'group' ? null : (currentChat === 'admin' ? null : currentChat));
   await loadMessages();
 }
 
@@ -3419,6 +3435,45 @@ function loadProfilePhoto(){
     if(img){ img.src=saved; img.style.display='block'; }
     if(icon) icon.style.display='none';
   }
+}
+
+
+// ── ONESIGNAL PUSH NOTIFICATIONS ──
+async function sendPushNotification(title, message, targetUserId) {
+  // Use OneSignal REST API via Supabase Edge or direct
+  try {
+    const body = {
+      app_id: "f3330b43-2859-4fe3-9236-0d9dd40fddb7",
+      headings: { en: title, ar: title },
+      contents: { en: message, ar: message },
+      included_segments: targetUserId ? undefined : ["All"],
+      filters: targetUserId ? [
+        { field: "tag", key: "user_id", relation: "=", value: String(targetUserId) }
+      ] : undefined,
+    };
+    await fetch("https://onesignal.com/api/v1/notifications", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Basic os_v2_app_6mzqwqzilfh6herwbwo5id65w4irfdvnnk5enyuqxywrjpwsj3pkpkyqnfhxcl7j63yhrt4lrzijknncggbwpk77nnp5ldrzm5vkyqq"
+      },
+      body: JSON.stringify(body)
+    });
+  } catch(e) { console.log('Push error:', e); }
+}
+
+async function registerOneSignalUser() {
+  try {
+    if(window.OneSignal && currentUser) {
+      // Tag user with their ID for targeted notifications
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.User.addTag("user_id", String(currentUser.id || currentUser.name));
+        await OneSignal.User.addTag("role", currentUser.role || 'employee');
+        await OneSignal.Notifications.requestPermission();
+      });
+    }
+  } catch(e) { console.log('OneSignal register error:', e); }
 }
 
 // ── ACCORDION ──

@@ -1515,6 +1515,18 @@ function showApp(){
     showPage('admin-app');
     loadAdminDashboard();loadAllEmployees();loadBranches();clearOldVisitPhotos();
     if(currentUser.role==='superadmin')loadAdminsList();
+    // Reset all nav items to visible for admin/superadmin
+    if(currentUser.role==='superadmin'||currentUser.role==='admin'||currentUser.role==='viewer'){
+      document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>n.style.display='');
+      document.getElementById('adm-visits-nav').style.display='none';
+    }
+    if(currentUser.role==='manager'){
+      // Manager from admins table: show visits nav too
+      setTimeout(()=>{
+        const admVisNav=document.getElementById('adm-visits-nav');
+        if(admVisNav) admVisNav.style.display='flex';
+      },100);
+    }
     if(currentUser.role==='team_leader'){
       // Team leader: show ONLY visits + employees nav, hide everything else
       setTimeout(()=>{
@@ -2496,7 +2508,7 @@ function adminTab(tab,el){
   if(tab==='settings'){/* lazy loaded via accordion */}
   if(tab==='reports'){
     loadAllEmployees();
-    if(currentUser&&(currentUser.role==='manager'||currentUser.role==='team_leader')){
+    if(currentUser&&currentUser.role==='team_leader'){
       // Team Leader: show only visits tab in reports
       setTimeout(()=>{
         document.querySelectorAll('#report-tabs .tab').forEach(t=>{

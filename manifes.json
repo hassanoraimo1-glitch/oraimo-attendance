@@ -1,0 +1,27 @@
+{
+  "name": "Oraimo HR",
+  "short_name": "Oraimo HR",
+  "description": "HR Management System",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "background_color": "#060608",
+  "theme_color": "#060608",
+  "dir": "rtl",
+  "lang": "ar",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

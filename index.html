@@ -1481,7 +1481,17 @@ window.addEventListener('load',async()=>{
   applyLang();
   try{await dbGet('employees','?limit=1')}catch(e){}
   const saved=localStorage.getItem('oraimo_user');
-  if(saved){currentUser=JSON.parse(saved);setTimeout(()=>{hideSplash();showApp()},2200)}
+  if(saved){
+    currentUser=JSON.parse(saved);
+    setTimeout(()=>{
+      hideSplash();
+      // Reset UI before showApp
+      document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});
+      const vn=document.getElementById('adm-visits-nav');if(vn)vn.style.display='none';
+      document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
+      showApp();
+    },2200);
+  }
   else setTimeout(hideSplash,2200);
   startClock();
 });
@@ -1506,6 +1516,17 @@ function showPage(id){
 function showApp(){
   if(!currentUser)return showPage('login-page');
   applyLang();
+  // ALWAYS reset nav state first to prevent bleed from previous session
+  document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});
+  const visNavReset=document.getElementById('adm-visits-nav');
+  if(visNavReset) visNavReset.style.display='none';
+  document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
+  ['add-emp-btn','add-emp-btn2'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='';});
+  document.getElementById('admins-section').style.display='none';
+  // Make first nav item active
+  const firstNav=document.querySelector('#admin-app .bottom-nav .nav-item');
+  if(firstNav) firstNav.classList.add('active');
+
   const isAdmin=['superadmin','admin','manager','viewer','team_leader'].includes(currentUser.role);
   if(isAdmin){
     document.getElementById('admin-name-top').textContent=currentUser.name||'Admin';
@@ -1600,7 +1621,22 @@ async function doLogin(){
     showApp();
   }catch(e){errEl.textContent=currentLang==='ar'?'خطأ، حاول مرة أخرى':'Error, try again'}
 }
-function doLogout(){localStorage.removeItem('oraimo_user');currentUser=null;showPage('login-page')}
+function doLogout(){
+  localStorage.removeItem('oraimo_user');
+  currentUser=null;
+  // Reset ALL nav items to default state
+  document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>n.style.display='');
+  document.getElementById('adm-visits-nav').style.display='none';
+  // Reset all admin tabs
+  ['dashboard','employees','branches','reports','settings','visits'].forEach(t=>{
+    const d=document.getElementById('admin-'+t);if(d)d.style.display='none';
+  });
+  // Reset all report tabs
+  document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
+  // Reset add emp buttons
+  ['add-emp-btn','add-emp-btn2'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='';});
+  showPage('login-page');
+}
 
 // ── CLOCK ──
 function startClock(){

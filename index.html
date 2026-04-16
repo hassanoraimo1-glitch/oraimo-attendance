@@ -213,7 +213,6 @@ html, body {
   background:rgba(14,14,18,.97);backdrop-filter:blur(14px);
   border-top:1px solid var(--border);display:flex;z-index:100;
   padding-bottom:env(safe-area-inset-bottom);
-  direction:ltr !important;
 }
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px;cursor:pointer;transition:.18s;position:relative}
 .nav-icon{font-size:20px;transition:.2s}
@@ -491,7 +490,6 @@ body{background:var(--black)}
   background:rgba(6,6,8,.98) !important;
   border-top:1px solid rgba(255,255,255,.06) !important;
   box-shadow:0 -4px 30px rgba(0,0,0,.6) !important;
-  direction:ltr !important;
 }
 .nav-item{
   border-radius:14px;margin:4px 2px;transition:.2s;
@@ -1022,7 +1020,7 @@ body{background:var(--black)}
     </div>
   </div>
 
-  <div class="bottom-nav" style="direction:ltr!important;flex-direction:row!important">
+  <div class="bottom-nav">
     <div class="nav-item active" onclick="empTab('home',this)">
       <div class="nav-icon">🏠</div><div class="nav-label" data-ar="الرئيسية" data-en="Home">الرئيسية</div>
     </div>
@@ -1396,7 +1394,7 @@ body{background:var(--black)}
     <div id="admin-chat-list"></div>
   </div>
 
-  <div class="bottom-nav" style="direction:ltr!important;flex-direction:row!important">
+  <div class="bottom-nav">
     <div class="nav-item active" onclick="adminTab('dashboard',this)">
       <div class="nav-icon">📊</div><div class="nav-label" data-ar="الرئيسية" data-en="Home">الرئيسية</div>
     </div>
@@ -1642,6 +1640,8 @@ function applyLang(){
   // Update splash subtitle
   const ss=document.getElementById('splash-sub');
   if(ss)ss.textContent=isAr?'نظام الحضور والمبيعات':'Attendance & Sales System';
+  // Fix bottom nav direction to follow language
+  if(typeof fixNavDirection==='function') fixNavDirection();
 }
 function toggleLang(){
   currentLang=currentLang==='ar'?'en':'ar';
@@ -1737,7 +1737,6 @@ function showApp(){
         if(admVisNav) admVisNav.style.display='flex';
       },100);
     }
-    registerOneSignalUser();
   setTimeout(fixNavDirection, 100);
   if(currentUser.role==='team_leader'){
       // Team leader: show ONLY visits + employees nav, hide everything else
@@ -1786,6 +1785,9 @@ function showApp(){
     const visNav=document.querySelector('#emp-app .nav-item[onclick*=\"visits\"]');
     if(visNav) visNav.style.display='none';
   }
+  // Register OneSignal for ALL users (admin + employees) & fix nav direction
+  registerOneSignalUser();
+  setTimeout(fixNavDirection, 100);
 }
 
 // ── AUTH ──
@@ -3490,47 +3492,64 @@ function loadProfilePhoto(){
 
 
 // ── ONESIGNAL PUSH NOTIFICATIONS ──
+// ⚠️ IMPORTANT: Sending OneSignal notifications requires a REST API Key which
+// MUST NOT live in the frontend (CORS + security). We call a Supabase Edge
+// Function instead that holds the key server-side.
+// (SUPABASE_URL and SUPABASE_KEY are already declared globally above.)
+const EDGE_FN_NAME = 'send-notification'; // create this in Supabase
+
 async function sendPushNotification(title, message, targetUserId) {
-  // Use OneSignal REST API via Supabase Edge or direct
   try {
-    const body = {
-      app_id: "f3330b43-2859-4fe3-9236-0d9dd40fddb7",
-      headings: { en: title, ar: title },
-      contents: { en: message, ar: message },
-      included_segments: targetUserId ? undefined : ["All"],
-      filters: targetUserId ? [
-        { field: "tag", key: "user_id", relation: "=", value: String(targetUserId) }
-      ] : undefined,
+    const payload = {
+      title: String(title || '').slice(0, 120),
+      message: String(message || '').slice(0, 300),
+      target_user_id: targetUserId ? String(targetUserId) : null
     };
-    await fetch("https://onesignal.com/api/v1/notifications", {
-      method: "POST",
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/${EDGE_FN_NAME}`, {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Basic os_v2_app_6mzqwqzilfh6herwbwo5id65w4irfdvnnk5enyuqxywrjpwsj3pkpkyqnfhxcl7j63yhrt4lrzijknncggbwpk77nnp5ldrzm5vkyqq"
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'apikey': SUPABASE_KEY
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(payload)
     });
-  } catch(e) { console.log('Push error:', e); }
+    if (!res.ok) {
+      const t = await res.text().catch(()=>'');
+      console.warn('Push fn error:', res.status, t);
+    }
+  } catch(e) {
+    console.log('Push error:', e);
+  }
 }
 
 async function registerOneSignalUser() {
   try {
-    if(!window.OneSignal) { 
-      // Wait for OneSignal to load
-      setTimeout(registerOneSignalUser, 2000);
+    // Wait until OneSignal SDK is fully loaded & initialised
+    if (!window.OneSignal || !window.OneSignal.Notifications) {
+      setTimeout(registerOneSignalUser, 1500);
       return;
     }
-    // Request permission directly
-    await OneSignal.Notifications.requestPermission();
-    if(currentUser) {
-      await OneSignal.User.addTag("user_id", String(currentUser.id || ''));
-      await OneSignal.User.addTag("name", String(currentUser.name || ''));
-      await OneSignal.User.addTag("role", String(currentUser.role || 'employee'));
+    // Ask permission (safe to call repeatedly – browser ignores if already answered)
+    try {
+      const perm = await OneSignal.Notifications.permission;
+      if (!perm) {
+        await OneSignal.Notifications.requestPermission();
+      }
+    } catch(_) {
+      await OneSignal.Notifications.requestPermission().catch(()=>{});
+    }
+    // Tag user so we can target them by user_id
+    if (currentUser && currentUser.id) {
+      await OneSignal.User.addTag('user_id', String(currentUser.id));
+      await OneSignal.User.addTag('name', String(currentUser.name || ''));
+      await OneSignal.User.addTag('role', String(currentUser.role || 'employee'));
+      // Use external id so we can target via aliases too
+      try { await OneSignal.login(String(currentUser.id)); } catch(_) {}
     }
     console.log('OneSignal registered for:', currentUser?.name);
-  } catch(e) { 
+  } catch(e) {
     console.log('OneSignal error:', e);
-    // Retry after 3 seconds
     setTimeout(registerOneSignalUser, 3000);
   }
 }
@@ -3538,9 +3557,10 @@ async function registerOneSignalUser() {
 
 // ── FIX NAV DIRECTION ──
 function fixNavDirection(){
+  const dir = (currentLang === 'ar') ? 'rtl' : 'ltr';
   document.querySelectorAll('.bottom-nav').forEach(nav=>{
-    nav.style.direction='ltr';
-    nav.style.flexDirection='row';
+    nav.style.direction = dir;
+    nav.style.flexDirection = 'row';
   });
 }
 // ── ACCORDION ──

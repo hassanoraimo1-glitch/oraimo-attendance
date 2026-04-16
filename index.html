@@ -867,8 +867,8 @@ body{background:var(--black)}
     </div>
     <input class="product-search" id="product-search" placeholder="🔍 ابحث عن منتج..." oninput="filterProducts()" data-ar-ph="🔍 ابحث عن منتج..." data-en-ph="🔍 Search product...">
     <div class="product-list" id="product-list"></div>
-    <div id="sale-form-wrap" style="display:none">
-      <div class="sale-form">
+    <div id="sale-form-wrap" style="display:none" onclick="if(event.target===this)cancelSale()">
+      <div class="sale-form" style="border-radius:22px 22px 0 0;width:100%;border-top:2px solid rgba(0,200,83,.3)">
         <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:8px" id="selected-product-name"></div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
           <span data-ar="السعر:" data-en="Price:">السعر:</span>
@@ -2037,7 +2037,12 @@ function selectProduct(name,price){
   document.getElementById('product-search').value='';displayProducts();
 }
 function changeQty(d){selectedQty=Math.max(1,selectedQty+d);document.getElementById('qty-val').textContent=selectedQty;document.getElementById('sale-total').textContent=(selectedProduct.price*selectedQty).toLocaleString()+' EGP'}
-function cancelSale(){selectedProduct=null;document.getElementById('sale-form-wrap').style.display='none';renderProducts()}
+function cancelSale(){
+  selectedProduct=null;
+  const w=document.getElementById('sale-form-wrap');
+  if(w){w.style.display='none';w.style.position='';w.style.bottom='';w.style.left='';w.style.right='';w.style.zIndex='';w.style.background='';w.style.alignItems='';}
+  renderProducts();
+}
 async function submitSale(){
   if(!selectedProduct)return;const total=selectedProduct.price*selectedQty;const ar=currentLang==='ar';
   try{await dbPost('sales',{employee_id:currentUser.id,date:todayStr(),product_name:selectedProduct.name,unit_price:selectedProduct.price,quantity:selectedQty,total_amount:total});notify(ar?'تم تسجيل البيع ✅':'Sale recorded ✅','success');cancelSale();loadTodaySales();loadEmpData();}
@@ -2720,9 +2725,19 @@ function showModelAlertBanner(behindModels,soldQty,daysLeft){
 // ── NAVIGATION ──
 function empTab(tab,el){
   ['home','sales','visits','display','profile','chat'].forEach(t=>{const d=document.getElementById('emp-'+t);if(d)d.style.display=t===tab?'block':'none';});
-  document.querySelectorAll('#emp-app .nav-item').forEach(n=>n.classList.remove('active'));el.classList.add('active');
+  document.querySelectorAll('#emp-app .nav-item').forEach(n=>n.classList.remove('active'));
+  if(el) el.classList.add('active');
   if(tab==='sales'){renderProducts();loadTodaySales()}
-  if(tab==='profile'){loadEmpMonthlyReport();loadEmpDailyLog();loadProfilePhoto();}
+  if(tab==='profile'){
+    // Load profile data
+    const nameEl=document.getElementById('profile-name');
+    const branchEl=document.getElementById('profile-branch');
+    if(nameEl) nameEl.textContent=currentUser?.name||'-';
+    if(branchEl) branchEl.textContent=currentUser?.branch||'-';
+    loadEmpMonthlyReport();
+    loadEmpDailyLog();
+    loadProfilePhoto();
+  }
   if(tab==='home'){loadModelTargetAlert()}
   if(tab==='visits'){loadVisitsTab()}
   if(tab==='display'){loadDisplayTab()}

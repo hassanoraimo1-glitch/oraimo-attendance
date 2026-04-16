@@ -962,6 +962,30 @@ body{background:var(--black)}
     <div id="visit-history-list"></div>
   </div>
 
+  <!-- CHAT TAB (Employee) -->
+  <div id="emp-chat" class="content" style="display:none">
+    <div style="display:flex;flex-direction:column;height:calc(100vh - 130px)">
+      <div style="font-size:14px;font-weight:800;margin-bottom:10px">💬 المحادثات</div>
+      <!-- Chat with Admin -->
+      <div class="card" onclick="openChat('admin','الإدارة')" style="cursor:pointer;display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--red),#cc0000);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👑</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700">الإدارة</div>
+          <div style="font-size:11px;color:var(--muted)" id="last-msg-admin">اضغط للمحادثة</div>
+        </div>
+        <div id="unread-admin" style="display:none;background:var(--green);color:#000;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center"></div>
+      </div>
+      <!-- Group Chat -->
+      <div class="card" onclick="openChat('group','الشات الجماعي')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👥</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700">الشات الجماعي</div>
+          <div style="font-size:11px;color:var(--muted)" id="last-msg-group">اضغط للمحادثة</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="bottom-nav">
     <div class="nav-item active" onclick="empTab('home',this)">
       <div class="nav-icon">🏠</div><div class="nav-label" data-ar="الرئيسية" data-en="Home">الرئيسية</div>
@@ -971,6 +995,9 @@ body{background:var(--black)}
     </div>
     <div class="nav-item" id="emp-display-nav" onclick="empTab('display',this)">
       <div class="nav-icon">🖼️</div><div class="nav-label" data-ar="ديسبلاي" data-en="Display">ديسبلاي</div>
+    </div>
+    <div class="nav-item" onclick="empTab('chat',this)">
+      <div class="nav-icon">💬</div><div class="nav-label" data-ar="الشات" data-en="Chat">الشات</div>
     </div>
     <div class="nav-item" onclick="empTab('profile',this)">
       <div class="nav-icon">👤</div><div class="nav-label" data-ar="الملف" data-en="Profile">الملف</div>
@@ -1003,7 +1030,7 @@ body{background:var(--black)}
     <div id="dash-content" style="display:none">
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-label" data-ar="حاضر اليوم" data-en="Present">حاضر اليوم</div><div class="stat-val" style="color:var(--green)" id="adm-present">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="غائب اليوم" data-en="Absent">غائب اليوم</div><div class="stat-val" style="color:var(--red)" id="adm-absent">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="غائب اليوم" data-en="Absent">غائب اليوم</div><div class="stat-val" style="color:var(--red);cursor:pointer" id="adm-absent" onclick="showAbsentEmployees()">0</div></div>
       <div class="stat-card"><div class="stat-label" data-ar="مبيعات اليوم" data-en="Today Sales">مبيعات اليوم</div><div class="stat-val" style="color:var(--green);font-size:14px" id="adm-sales-today">0</div></div>
       <div class="stat-card"><div class="stat-label" data-ar="مبيعات الشهر" data-en="Month Sales">مبيعات الشهر</div><div class="stat-val" style="color:var(--green);font-size:14px" id="adm-sales-month">0</div></div>
     </div>
@@ -1133,14 +1160,6 @@ body{background:var(--black)}
       <button class="tab" onclick="reportTab('display',this)" data-ar="🖼️ ديسبلاي" data-en="🖼️ Display">🖼️ ديسبلاي</button>
       <button class="tab" onclick="reportTab('visits',this)" data-ar="📸 زيارات" data-en="📸 Visits">📸 زيارات</button>
     </div>
-    <!-- Excel Export Buttons -->
-    <div class="card excel-export-card" style="margin-bottom:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
-      <div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
-        <button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
-      </div>
-    </div>
     <div id="report-employee">
       <div class="card">
         <div class="inp-grp">
@@ -1151,9 +1170,28 @@ body{background:var(--black)}
         </div>
       </div>
       <div id="report-content"></div>
+      <div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
+      <div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
+        <button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
+      </div>
     </div>
-    <div id="report-products" style="display:none"><div id="products-report-content"></div></div>
-    <div id="report-branch" style="display:none"><div id="branch-report-content"></div></div>
+    </div>
+    <div id="report-products" style="display:none"><div id="products-report-content"></div><div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
+      <div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
+        <button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
+      </div>
+    </div></div>
+    <div id="report-branch" style="display:none"><div id="branch-report-content"></div><div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
+      <div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
+        <button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
+      </div>
+    </div></div>
     <div id="report-display" style="display:none">
       <div class="card" style="margin-bottom:10px">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -1309,6 +1347,19 @@ body{background:var(--black)}
     <div id="tl-visit-history"></div>
   </div>
 
+  <!-- ADMIN CHAT TAB -->
+  <div id="admin-chat" class="content" style="display:none">
+    <div style="font-size:14px;font-weight:800;margin-bottom:12px">💬 المحادثات</div>
+    <!-- Group Chat -->
+    <div class="card" onclick="openChat('group','الشات الجماعي')" style="cursor:pointer;display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👥</div>
+      <div><div style="font-size:14px;font-weight:700">الشات الجماعي</div><div style="font-size:11px;color:var(--muted)">جميع الموظفين</div></div>
+    </div>
+    <!-- Individual chats -->
+    <div style="font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 8px">محادثات فردية</div>
+    <div id="admin-chat-list"></div>
+  </div>
+
   <div class="bottom-nav">
     <div class="nav-item active" onclick="adminTab('dashboard',this)">
       <div class="nav-icon">📊</div><div class="nav-label" data-ar="الرئيسية" data-en="Home">الرئيسية</div>
@@ -1321,6 +1372,9 @@ body{background:var(--black)}
     </div>
     <div class="nav-item" id="adm-visits-nav" onclick="adminTab('visits',this)" style="display:none">
       <div class="nav-icon">📸</div><div class="nav-label" data-ar="الزيارات" data-en="Visits">الزيارات</div>
+    </div>
+    <div class="nav-item" onclick="adminTab('chat',this)">
+      <div class="nav-icon">💬</div><div class="nav-label" data-ar="الشات" data-en="Chat">الشات</div>
     </div>
     <div class="nav-item" onclick="adminTab('reports',this)">
       <div class="nav-icon">📈</div><div class="nav-label" data-ar="التقارير" data-en="Reports">التقارير</div>
@@ -2022,6 +2076,7 @@ async function loadAdminDashboard(){
     const todayAtt=await dbGet('attendance',`?date=eq.${today}&select=*`);
     const present=todayAtt?todayAtt.length:0;
     document.getElementById('adm-present').textContent=present;
+    window._todayPresentIds=(todayAtt||[]).map(a=>a.employee_id);
     document.getElementById('adm-absent').textContent=Math.max(0,allEmployees.length-present);
     const[todaySales,monthSales]=await Promise.all([dbGet('sales',`?date=eq.${today}&select=total_amount,employee_id`),dbGet('sales',`?date=gte.${pm.start}&date=lte.${pm.end}&select=total_amount,employee_id,product_name`)]);
     let todayTotal=0,monthTotal=0;
@@ -2637,7 +2692,7 @@ function showModelAlertBanner(behindModels,soldQty,daysLeft){
 
 // ── NAVIGATION ──
 function empTab(tab,el){
-  ['home','sales','visits','display','profile'].forEach(t=>{const d=document.getElementById('emp-'+t);if(d)d.style.display=t===tab?'block':'none';});
+  ['home','sales','visits','display','profile','chat'].forEach(t=>{const d=document.getElementById('emp-'+t);if(d)d.style.display=t===tab?'block':'none';});
   document.querySelectorAll('#emp-app .nav-item').forEach(n=>n.classList.remove('active'));el.classList.add('active');
   if(tab==='sales'){renderProducts();loadTodaySales()}
   if(tab==='profile'){loadEmpMonthlyReport();loadEmpDailyLog()}
@@ -2646,12 +2701,13 @@ function empTab(tab,el){
   if(tab==='display'){loadDisplayTab()}
 }
 function adminTab(tab,el){
-  ['dashboard','employees','branches','reports','settings','visits'].forEach(t=>{const d=document.getElementById('admin-'+t);if(d)d.style.display=t===tab?'block':'none';});
+  ['dashboard','employees','branches','reports','settings','visits','chat'].forEach(t=>{const d=document.getElementById('admin-'+t);if(d)d.style.display=t===tab?'block':'none';});
   document.querySelectorAll('#admin-app .nav-item').forEach(n=>n.classList.remove('active'));el.classList.add('active');
   if(tab==='dashboard')loadAdminDashboard();
   if(tab==='employees')loadAllEmployees();
   if(tab==='branches')initBranchDashboard();
   if(tab==='visits')loadTLVisitsTab();
+  if(tab==='chat'){loadAdminChatList();}
   if(tab==='settings'){/* lazy loaded via accordion */}
   applyLang();
   if(tab==='reports'){
@@ -3199,6 +3255,125 @@ function toggleLeaveFields(){
   if(durGrp) durGrp.style.display=type==='vacation'?'none':'block';
   if(dateGrp) dateGrp.style.display=type==='vacation'?'block':'none';
 }
+
+// ── CHAT SYSTEM ──
+let currentChat = null;
+let chatSubscription = null;
+
+async function openChat(chatType, title) {
+  currentChat = chatType;
+  document.getElementById('chat-title').textContent = title;
+  document.getElementById('chat-modal').style.display = 'flex';
+  document.getElementById('chat-modal').style.flexDirection = 'column';
+  await loadMessages();
+  subscribeToMessages();
+}
+
+function closeChat() {
+  document.getElementById('chat-modal').style.display = 'none';
+  currentChat = null;
+  if (chatSubscription) { chatSubscription = null; }
+}
+
+async function loadMessages() {
+  const el = document.getElementById('chat-messages');
+  el.innerHTML = '<div class="full-loader"><div class="loader"></div></div>';
+  let query = '?order=created_at.asc&limit=100';
+  if (currentChat === 'group') {
+    query += '&chat_type=eq.group';
+  } else if (currentChat === 'admin') {
+    // employee talking to admin
+    const myId = currentUser.id;
+    query += `&chat_type=eq.private&or=(sender_id.eq.${myId},receiver_id.eq.${myId})`;
+  } else {
+    // admin talking to specific employee
+    const empId = currentChat;
+    query += `&chat_type=eq.private&or=(sender_id.eq.${empId},receiver_id.eq.${empId})`;
+  }
+  const msgs = await dbGet('messages', query).catch(() => []) || [];
+  renderMessages(msgs);
+}
+
+function renderMessages(msgs) {
+  const el = document.getElementById('chat-messages');
+  if (!msgs.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">لا توجد رسائل بعد</div>';
+    return;
+  }
+  el.innerHTML = msgs.map(m => {
+    const isMe = m.sender_id === currentUser.id || (currentChat==='admin' && m.sender_name === currentUser.name);
+    const time = new Date(m.created_at).toLocaleTimeString('ar', {hour:'2-digit',minute:'2-digit'});
+    return `<div style="display:flex;flex-direction:column;align-items:${isMe?'flex-start':'flex-end'}">
+      <div style="max-width:75%;background:${isMe?'rgba(0,200,83,.15)':'var(--card2)'};border-radius:${isMe?'4px 18px 18px 18px':'18px 4px 18px 18px'};padding:10px 14px;border:1px solid ${isMe?'rgba(0,200,83,.2)':'var(--border)'}">
+        ${!isMe?`<div style="font-size:10px;color:var(--green);font-weight:700;margin-bottom:4px">${m.sender_name}</div>`:''}
+        <div style="font-size:14px">${m.message}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;text-align:${isMe?'left':'right'}">${time}</div>
+      </div>
+    </div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  const data = {
+    sender_id: currentUser.id,
+    sender_name: currentUser.name,
+    message: msg,
+    chat_type: currentChat === 'group' ? 'group' : 'private',
+    receiver_id: currentChat === 'group' ? null : (currentChat === 'admin' ? null : parseInt(currentChat))
+  };
+  await dbPost('messages', data).catch(e => notify('Error: '+e.message, 'error'));
+  await loadMessages();
+}
+
+function subscribeToMessages() {
+  // Poll every 5 seconds for new messages
+  if (chatSubscription) clearInterval(chatSubscription);
+  chatSubscription = setInterval(() => {
+    if (currentChat) loadMessages();
+  }, 5000);
+}
+
+async function loadAdminChatList() {
+  const el = document.getElementById('admin-chat-list'); if (!el) return;
+  el.innerHTML = (allEmployees || []).map(emp => `
+    <div class="card" onclick="openChat('${emp.id}','${emp.name}')" style="cursor:pointer;display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <div class="emp-avatar" style="width:44px;height:44px;font-size:15px;flex-shrink:0">${emp.name[0].toUpperCase()}</div>
+      <div><div style="font-size:13px;font-weight:700">${emp.name}</div><div style="font-size:11px;color:var(--muted)">${emp.branch||''}</div></div>
+    </div>`).join('');
+}
+
+// ── ABSENT EMPLOYEES CLICK ──
+function showAbsentEmployees() {
+  const ar = currentLang === 'ar';
+  const absentEmps = allEmployees.filter(emp => {
+    const att = document.querySelector(`[data-emp-id="${emp.id}"]`);
+    return !att;
+  });
+  // Simple modal with absent list
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
+  
+  // Get today attendance data from dashboard
+  const presentIds = window._todayPresentIds || [];
+  const absentList = allEmployees.filter(e => !presentIds.includes(e.id));
+  
+  overlay.innerHTML = `<div style="background:var(--card);border-radius:22px 22px 0 0;padding:22px 18px;width:100%;max-height:70vh;overflow-y:auto;border-top:2px solid var(--red)">
+    <div style="font-size:16px;font-weight:800;color:var(--red);margin-bottom:14px">😴 ${ar?'الغائبون اليوم':'Absent Today'} (${absentList.length})</div>
+    ${absentList.length === 0 ? `<div style="text-align:center;color:var(--muted);padding:20px">${ar?'لا يوجد غياب':'No absences'}</div>` :
+    absentList.map(emp => `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div class="emp-avatar" style="width:36px;height:36px;font-size:13px">${emp.name[0].toUpperCase()}</div>
+      <div><div style="font-size:13px;font-weight:700">${emp.name}</div><div style="font-size:11px;color:var(--muted)">${emp.branch||'-'}</div></div>
+    </div>`).join('')}
+    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px">${ar?'إغلاق':'Close'}</button>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
 // ── ACCORDION ──
 function toggleAcc(id){
   const body=document.getElementById(id);
@@ -3280,5 +3455,19 @@ function loadQ1Analytics(){
 }
 
 </script>
+
+<!-- ═══════════════ CHAT MODAL ═══════════════ -->
+<div id="chat-modal" style="display:none;position:fixed;inset:0;background:var(--black);z-index:500;flex-direction:column">
+  <div style="position:fixed;top:0;left:0;right:0;background:rgba(6,6,8,.98);padding:12px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);z-index:501">
+    <button onclick="closeChat()" style="background:none;border:none;color:var(--text);font-size:20px;cursor:pointer">←</button>
+    <div id="chat-title" style="font-size:15px;font-weight:800;flex:1"></div>
+    <div id="chat-online" style="font-size:10px;color:var(--green)">متصل</div>
+  </div>
+  <div id="chat-messages" style="flex:1;overflow-y:auto;padding:70px 14px 80px;display:flex;flex-direction:column;gap:8px"></div>
+  <div style="position:fixed;bottom:0;left:0;right:0;padding:10px 14px;background:rgba(6,6,8,.98);border-top:1px solid var(--border);display:flex;gap:8px">
+    <input id="chat-input" type="text" placeholder="اكتب رسالة..." style="flex:1;padding:11px 14px;background:var(--card2);border:1.5px solid var(--border);border-radius:24px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none" onkeydown="if(event.key==='Enter')sendMessage()">
+    <button onclick="sendMessage()" style="width:44px;height:44px;border-radius:50%;background:var(--green);border:none;font-size:18px;cursor:pointer;flex-shrink:0">➤</button>
+  </div>
+</div>
 </body>
 </html>

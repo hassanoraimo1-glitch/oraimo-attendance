@@ -1035,8 +1035,8 @@ textarea{font-family:'Cairo',sans-serif;direction:rtl}
       <button class="tab active" onclick="reportTab('employee',this)" data-ar="موظف" data-en="Employee">موظف</button>
       <button class="tab" onclick="reportTab('products',this)" data-ar="منتجات" data-en="Products">منتجات</button>
       <button class="tab" onclick="reportTab('branch',this)" data-ar="الفروع" data-en="Branches">الفروع</button>
-      <button class="tab" onclick="reportTab('display',this)">🖼️ ديسبلاي</button>
-      <button class="tab" onclick="reportTab('visits',this)">📸 زيارات</button>
+      <button class="tab" onclick="reportTab('display',this)" data-ar="🖼️ ديسبلاي" data-en="🖼️ Display">🖼️ ديسبلاي</button>
+      <button class="tab" onclick="reportTab('visits',this)" data-ar="📸 زيارات" data-en="📸 Visits">📸 زيارات</button>
     </div>
     <!-- Excel Export Buttons -->
     <div class="card excel-export-card" style="margin-bottom:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
@@ -1441,7 +1441,7 @@ function applyLang(){
   document.querySelectorAll('[data-ar]').forEach(el=>{
     if(el.tagName==='INPUT'||el.tagName==='TEXTAREA'){
       el.placeholder=isAr?(el.dataset.arPh||el.placeholder):(el.dataset.enPh||el.placeholder);
-    }else{
+    }else if(el.dataset.ar&&el.dataset.en){
       el.textContent=isAr?el.dataset.ar:el.dataset.en;
     }
   });
@@ -2680,28 +2680,29 @@ async function populateVisitReportEmps(){
   sel.innerHTML='<option value="">كل التيم ليدر</option>'+managers.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
 }
 function initVisitReportMonth(){
-  const el=document.getElementById('visit-report-month');if(!el||el.value)return;
+  const el=document.getElementById('visit-report-month');
+  if(!el)return;
   el.value=getPayrollMonth().start.substring(0,7);
   loadVisitsReport();
 }
 async function loadVisitsReport(){
   const el=document.getElementById('visits-report-content');if(!el)return;
-  const empId=document.getElementById('visit-report-emp').value;
-  const month=document.getElementById('visit-report-month').value;
+  const empId=document.getElementById('visit-report-emp')?.value||'';
+  const monthEl=document.getElementById('visit-report-month');
+  const month=monthEl?.value||getPayrollMonth().start.substring(0,7);
   const ar=currentLang==='ar';
   el.innerHTML='<div class="full-loader"><div class="loader"></div></div>';
-  // get date range from month
   const[y,m]=month.split('-').map(Number);
   const start=`${month}-01`;
   const end=new Date(y,m,0).toISOString().split('T')[0];
   let query=`?visit_date=gte.${start}&visit_date=lte.${end}&order=visit_date.desc&select=*`;
   if(empId)query+=`&manager_id=eq.${empId}`;
   const visits=await dbGet('branch_visits',query).catch(()=>[])||[];
-  if(visits.length===0){el.innerHTML='<div class="empty"><div class="empty-icon">📸</div>لا توجد زيارات</div>';return}
-  // Group by manager
+  if(visits.length===0){el.innerHTML=`<div class="empty"><div class="empty-icon">📸</div>${ar?'لا توجد زيارات':'No visits'}</div>`;return}
+  // Group by manager_name
   const byEmp={};
   visits.forEach(v=>{
-    const k=v.manager_name||v.manager_id;
+    const k=v.manager_name||('ID:'+v.manager_id);
     if(!byEmp[k])byEmp[k]=[];
     byEmp[k].push(v);
   });

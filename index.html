@@ -1438,11 +1438,12 @@ function applyLang(){
   document.documentElement.dir=isAr?'rtl':'ltr';
   document.body.style.direction=isAr?'rtl':'ltr';
   // Update all data-ar / data-en elements
-  document.querySelectorAll('[data-ar]').forEach(el=>{
+  document.querySelectorAll('[data-ar],[data-en]').forEach(el=>{
     if(el.tagName==='INPUT'||el.tagName==='TEXTAREA'){
       el.placeholder=isAr?(el.dataset.arPh||el.placeholder):(el.dataset.enPh||el.placeholder);
-    }else if(el.dataset.ar&&el.dataset.en){
-      el.textContent=isAr?el.dataset.ar:el.dataset.en;
+    }else{
+      const ar=el.dataset.ar;const en=el.dataset.en;
+      if(ar&&en) el.textContent=isAr?ar:en;
     }
   });
   // Update lang toggle labels
@@ -2144,6 +2145,7 @@ function reportTab(tab,el){
   });
   document.querySelectorAll('#report-tabs .tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
+  applyLang();
   if(tab==='products')loadProductsReport();
   if(tab==='branch')loadBranchReport();
   if(tab==='q1')loadQ1Analytics();
@@ -2545,6 +2547,7 @@ function adminTab(tab,el){
   if(tab==='branches')initBranchDashboard();
   if(tab==='visits')loadTLVisitsTab();
   if(tab==='settings'){/* lazy loaded via accordion */}
+  applyLang();
   if(tab==='reports'){
     loadAllEmployees();
     if(currentUser&&currentUser.role==='team_leader'){
@@ -2675,14 +2678,21 @@ async function loadVisitsTab(){
 // ── VISITS ADMIN REPORT ──
 async function populateVisitReportEmps(){
   const sel=document.getElementById('visit-report-emp');if(!sel)return;
-  const admins=await dbGet('admins','?select=id,name,role').catch(()=>[])||[];
+  sel.innerHTML='<option value="">...</option>';
+  const admins=await dbGet('admins','?select=id,name,role&order=name').catch(()=>[])||[];
   const managers=admins.filter(a=>a.role==='manager');
-  sel.innerHTML='<option value="">كل التيم ليدر</option>'+managers.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+  const ar=currentLang==='ar';
+  sel.innerHTML='<option value="">'+(ar?'كل التيم ليدر':'All Team Leaders')+'</option>'+
+    managers.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
 }
 function initVisitReportMonth(){
   const el=document.getElementById('visit-report-month');
   if(!el)return;
-  el.value=getPayrollMonth().start.substring(0,7);
+  // Restore saved month or use current payroll month
+  const saved=localStorage.getItem('oraimo_visit_month');
+  el.value=saved||getPayrollMonth().start.substring(0,7);
+  // Save month on change
+  el.onchange=function(){localStorage.setItem('oraimo_visit_month',this.value);loadVisitsReport();};
   loadVisitsReport();
 }
 async function loadVisitsReport(){
@@ -2956,7 +2966,11 @@ async function populateDisplayReportEmps(){
   const sel=document.getElementById('display-report-emp');if(!sel)return;
   sel.innerHTML='<option value="">كل الموظفين</option>'+(allEmployees||[]).filter(e=>e.role!=='team_leader').map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
   const mSel=document.getElementById('display-report-month');
-  if(mSel&&!mSel.value) mSel.value=getPayrollMonth().start.substring(0,7);
+  if(mSel){
+    const saved=localStorage.getItem('oraimo_display_month');
+    mSel.value=saved||getPayrollMonth().start.substring(0,7);
+    mSel.onchange=function(){localStorage.setItem('oraimo_display_month',this.value);};
+  }
 }
 
 async function loadDisplayReport(){

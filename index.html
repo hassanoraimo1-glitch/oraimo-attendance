@@ -889,26 +889,19 @@
      Module scripts block DOMContentLoaded, so by the time this fires,
      all window.* globals from app.js are in place. -->
 <script>
-  // Load legacy.js AFTER app.js module is guaranteed ready
-  // app.js dispatches 'app:ready' when all globals are set
-  function loadLegacy() {
+  window.addEventListener('app:ready', function() {
     var s = document.createElement('script');
     s.src = './src/legacy.js';
-    document.head.appendChild(s);
-  }
-  if (window.__APP_READY__) {
-    // Already ready (shouldn't happen but safe)
-    loadLegacy();
-  } else {
-    window.addEventListener('app:ready', loadLegacy, { once: true });
-    // Fallback: if app:ready never fires within 5s, load anyway
-    setTimeout(function() {
-      if (!document.querySelector('script[src*="legacy.js"]')) {
-        console.warn('[legacy] app:ready timeout - loading anyway');
-        loadLegacy();
-      }
-    }, 5000);
-  }
+    document.body.appendChild(s);
+  }, { once: true });
+  // Hard fallback
+  setTimeout(function() {
+    if (!window.__LEGACY_LOADED__) {
+      var s = document.createElement('script');
+      s.src = './src/legacy.js';
+      document.body.appendChild(s);
+    }
+  }, 3000);
 </script>
 
 <!-- ═══════════════ CHAT MODAL ═══════════════ -->

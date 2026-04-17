@@ -1,3 +1,4 @@
+window.__LEGACY_LOADED__ = true;
 // ────────────────────────────────────────────────────────────
 // LEGACY UI SCRIPT (classic, non-module)
 // ────────────────────────────────────────────────────────────
@@ -66,42 +67,48 @@ const PRODUCTS=[
 
 
 // ── INIT ──
-window.addEventListener('load',async()=>{
-  // Load work settings from DB early
+// Init immediately since legacy.js loads AFTER app:ready (load event already fired)
+(async function initApp(){
   try{
-    const s=await dbGet('settings','?select=*').catch(()=>[]);
-    if(s&&s.length>0){
-      workSettings={start:s[0].work_start||'09:00',end:s[0].work_end||'18:00'};
-      const wsEl=document.getElementById('work-start');const weEl=document.getElementById('work-end');
-      if(wsEl)wsEl.value=workSettings.start;if(weEl)weEl.value=workSettings.end;
+    applyLang();
+    // Load work settings from DB (non-blocking)
+    dbGet('settings','?select=*').then(s=>{
+      if(s&&s.length>0){
+        workSettings={start:s[0].work_start||'09:00',end:s[0].work_end||'18:00'};
+        const wsEl=document.getElementById('work-start');const weEl=document.getElementById('work-end');
+        if(wsEl)wsEl.value=workSettings.start;if(weEl)weEl.value=workSettings.end;
+      }
+    }).catch(()=>{});
+    // Splash clock
+    const splashClock=document.getElementById('splash-clock');
+    if(splashClock){
+      const d=new Date();
+      splashClock.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
     }
-  }catch(_){}
-
-  applyLang();
-  try{await dbGet('employees','?limit=1')}catch(e){}
-  const saved=localStorage.getItem('oraimo_user');
-  if(saved){
-    currentUser=JSON.parse(saved);
+    const saved=localStorage.getItem('oraimo_user');
+    if(saved){
+      try{currentUser=JSON.parse(saved);}catch(_){currentUser=null;localStorage.removeItem('oraimo_user');}
+    }
+    // Hide splash fast (600ms instead of 2200ms)
     setTimeout(()=>{
       hideSplash();
-      // Reset UI before showApp
-      document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});
-      const vn=document.getElementById('adm-visits-nav');if(vn)vn.style.display='none';
-      document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
-      showApp();
-    },2200);
+      if(currentUser){
+        document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});
+        const vn=document.getElementById('adm-visits-nav');if(vn)vn.style.display='none';
+        document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
+        showApp();
+      }else{
+        showPage('login-page');
+      }
+    },600);
+    startClock();
+  }catch(e){
+    console.error('[init] error:',e);
+    // Emergency fallback: always show login
+    const sp=document.getElementById('splash');if(sp)sp.classList.add('hide');
+    showPage('login-page');
   }
-  else setTimeout(hideSplash,2200);
-  startClock();
-  // Splash clock
-  const splashClock=document.getElementById('splash-clock');
-  if(splashClock){
-    const d=new Date();
-    const h=String(d.getHours()).padStart(2,'0');
-    const m=String(d.getMinutes()).padStart(2,'0');
-    splashClock.textContent=`${h}:${m}`;
-  }
-});
+})();
 function hideSplash(){document.getElementById('splash').classList.add('hide')}
 
 // ── PAGE TRANSITIONS ──

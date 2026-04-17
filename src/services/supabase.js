@@ -164,7 +164,13 @@ export const db = {
     return r;
   },
   patch: async (table, query, body) => {
-    const r = await request('PATCH', table, query, body);
+    // Normalize: if query is an object and body is a string, swap them
+    // (legacy.js calls dbPatch(table, dataObj, '?id=eq.X'))
+    let q = query, b = body;
+    if (typeof query === 'object' && query !== null && typeof body === 'string') {
+      q = body; b = query;
+    }
+    const r = await request('PATCH', table, q, b);
     invalidateCache(table);
     return r;
   },

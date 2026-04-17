@@ -108,6 +108,12 @@ window.addEventListener('unhandledrejection', e => {
 window.__APP_READY__ = true;
 window.dispatchEvent(new Event('app:ready'));
 
+// Ensure chat modal never blocks startup
+document.addEventListener('DOMContentLoaded', () => {
+  const chat = document.getElementById('chat-modal');
+  if (chat) chat.style.display = 'none';
+});
+
 // Hide splash screen
 window.addEventListener('load', () => {
   setTimeout(() => {

@@ -69,6 +69,9 @@ const PRODUCTS=[
 // ── INIT ──
 // Init immediately since legacy.js loads AFTER app:ready (load event already fired)
 (async function initApp(){
+  // Ensure chat modal is hidden on startup
+  const chatM=document.getElementById('chat-modal');
+  if(chatM) chatM.style.display='none';
   try{
     applyLang();
     // Load work settings from DB (non-blocking)
@@ -115,6 +118,9 @@ function hideSplash(){document.getElementById('splash').classList.add('hide')}
 let _prevPage='login-page';
 const PAGE_ORDER=['login-page','emp-app','admin-app'];
 function showPage(id){
+  // Always hide chat modal first
+  const chat=document.getElementById('chat-modal');
+  if(chat) chat.style.display='none';
   const prevIdx=PAGE_ORDER.indexOf(_prevPage),nextIdx=PAGE_ORDER.indexOf(id);
   document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active','slide-in-right','slide-in-left');p.style.display='none'});
   const el=document.getElementById(id);

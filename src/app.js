@@ -108,4 +108,17 @@ window.addEventListener('unhandledrejection', e => {
 window.__APP_READY__ = true;
 window.dispatchEvent(new Event('app:ready'));
 
+// Hide splash screen
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const splash = document.getElementById('splash');
+    if (splash) splash.classList.add('hide');
+  }, 2000);
+});
+
+window.addEventListener('app:ready', () => {
+  const splash = document.getElementById('splash');
+  if (splash) splash.classList.add('hide');
+});
+
 export { state };

@@ -296,7 +296,7 @@
       <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="display-date-label"></div>
       <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">صور الديسبلاي (max 3)</label>
       <div class="photo-previews" id="display-photo-previews"></div>
-      <div class="photo-upload-zone" id="display-upload-zone" onclick="document.getElementById('display-photo-input').click()">
+      <div class="photo-upload-zone" id="display-upload-zone" onclick="showPhotoSourceModal('display-photo-input')">
         <input type="file" id="display-photo-input" accept="image/*" style="display:none" onchange="addDisplayPhoto(event)">
         <div style="font-size:28px">📷</div>
         <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
@@ -339,7 +339,7 @@
       </div>
       <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">صور الديسبلاي (max 3)</label>
       <div class="photo-previews" id="visit-photo-previews"></div>
-      <div class="photo-upload-zone" id="visit-upload-zone" onclick="document.getElementById('visit-photo-input').click()">
+      <div class="photo-upload-zone" id="visit-upload-zone" onclick="showPhotoSourceModal('visit-photo-input')">
         <input type="file" id="visit-photo-input" accept="image/*" style="display:none" onchange="addVisitPhoto(event)">
         <div style="font-size:28px">📷</div>
         <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
@@ -711,7 +711,7 @@
       </div>
       <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">صور الديسبلاي (max 3)</label>
       <div class="photo-previews" id="tl-visit-previews"></div>
-      <div class="photo-upload-zone" id="tl-visit-zone" onclick="document.getElementById('tl-visit-input').click()">
+      <div class="photo-upload-zone" id="tl-visit-zone" onclick="showPhotoSourceModal('tl-visit-input')">
         <input type="file" id="tl-visit-input" accept="image/*" style="display:none" onchange="addTLVisitPhoto(event)">
         <div style="font-size:28px">📷</div>
         <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>

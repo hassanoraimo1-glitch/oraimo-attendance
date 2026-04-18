@@ -220,19 +220,35 @@ function showApp(){
 
 // ── BACK BUTTON HANDLING ──
 (function(){
+  // Push initial state
+  history.pushState({app:true}, '', location.href);
+
   window.addEventListener('popstate', function(e) {
+    // Always push state back to trap the back button
+    history.pushState({app:true}, '', location.href);
+
     // If chat is open, close chat first
-    const chatModal=document.getElementById('chat-modal');
-    if(chatModal&&chatModal.classList.contains('open')){closeChat();history.pushState(null,'',location.href);return;}
+    const chatModal = document.getElementById('chat-modal');
+    if(chatModal && chatModal.classList.contains('open')){
+      closeChat();
+      return;
+    }
     // If any modal is open, close it
-    const openModal=document.querySelector('.modal-overlay.open');
-    if(openModal){openModal.classList.remove('open');history.pushState(null,'',location.href);return;}
-    // Always trap back — never let user leave the app while logged in
-    history.pushState(null,'',location.href);
+    const openModal = document.querySelector('.modal-overlay.open');
+    if(openModal){
+      openModal.classList.remove('open');
+      document.body.classList.remove('modal-open');
+      return;
+    }
+    // If camera is open, close it
+    const camModal = document.getElementById('camera-modal');
+    if(camModal && camModal.classList.contains('open')){
+      closeCamera();
+      return;
+    }
+    // If logged in, do nothing (stay in app)
+    // If not logged in, already on login page
   });
-  // Push two states so the first back press is absorbed
-  history.pushState(null,'',location.href);
-  history.pushState(null,'',location.href);
 })();
 
 // ── AUTH ──
@@ -656,9 +672,13 @@ async function sendLeaveRequest(leaveType){
   const ar=currentLang==='ar';
   const reason=(leaveType==='vacation'?document.getElementById('vacation-reason'):document.getElementById('leave-reason'))?.value?.trim()||'';
   const duration=leaveType==='vacation'?0:parseInt(document.getElementById('leave-duration')?.value||'0');
-  const leaveDate=leaveType==='vacation'?(document.getElementById('vacation-date')?.value||todayStr()):todayStr();
+  // Validate vacation date FIRST before reading it
+  if(leaveType==='vacation'){
+    const vacDateVal=document.getElementById('vacation-date')?.value||'';
+    if(!vacDateVal)return notify(ar?'اختر تاريخ الإجازة أولاً':'Select vacation date first','error');
+  }
   if(!reason)return notify(ar?'أدخل السبب':'Enter reason','error');
-  if(leaveType==='vacation'&&!document.getElementById('vacation-date')?.value)return notify(ar?'اختر تاريخ الإجازة':'Select vacation date','error');
+  const leaveDate=leaveType==='vacation'?(document.getElementById('vacation-date')?.value||todayStr()):todayStr();
   _leaveSending=true;
   try{
     await dbPost('leave_requests',{
@@ -704,6 +724,12 @@ async function loadAdminDashboard(){
     document.getElementById('adm-present').textContent=present;
     window._todayPresentIds=(todayAtt||[]).map(a=>a.employee_id);
     document.getElementById('adm-absent').textContent=Math.max(0,allEmployees.length-present);
+    // Make present count clickable too
+    const presentEl=document.getElementById('adm-present');
+    if(presentEl){
+      presentEl.style.cursor='pointer';
+      presentEl.onclick=function(){showPresentEmployees(todayAtt||[]);};
+    }
     const[todaySales,monthSales]=await Promise.all([dbGet('sales',`?date=eq.${today}&select=total_amount,employee_id`),dbGet('sales',`?date=gte.${pm.start}&date=lte.${pm.end}&select=total_amount,employee_id,product_name`)]);
     let todayTotal=0,monthTotal=0;
     (todaySales||[]).forEach(s=>todayTotal+=s.total_amount);(monthSales||[]).forEach(s=>monthTotal+=s.total_amount);
@@ -1008,15 +1034,19 @@ async function loadProductsReport(){
   const sorted=Object.entries(byProduct).sort((a,b)=>b[1].revenue-a[1].revenue);
   if(sorted.length===0){el.innerHTML=`<div class="empty"><div class="empty-icon">📦</div>${ar?'لا توجد مبيعات':'No sales'}</div>`;return}
   const maxRev=sorted[0][1].revenue;
-  el.innerHTML=`<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:12px">📦 ${ar?'أكثر المنتجات مبيعاً':'Top Products'}</div>
-    ${sorted.slice(0,20).map(([name,d],i)=>`<div style="margin-bottom:10px">
+  // Store sales data for product click
+  window._productSalesData = sales || [];
+  window._allEmpsData = await dbGet('employees','?select=*').catch(()=>[]) || [];
+
+  el.innerHTML=`<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:12px">📦 ${ar?'أكثر المنتجات مبيعاً (اضغط لتفاصيل الموظفين)':'Top Products (tap for employee details)'}</div>
+    ${sorted.slice(0,20).map(([name,d],i)=>`<div style="margin-bottom:10px;cursor:pointer" onclick="showProductEmployees('${name.replace(/'/g,"\'")}')">
       <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
         <span style="font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr">${name}</span>
         <span style="color:var(--green);font-weight:700;margin-right:8px">EGP ${fmtEGP(d.revenue)}</span>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <div class="perf-bar-bg" style="flex:1"><div class="perf-bar-fill" style="width:${Math.max(3,Math.round(d.revenue/maxRev*100))}%;background:var(--green)"></div></div>
-        <span style="font-size:10px;color:var(--muted);min-width:40px">${d.qty} ${ar?'قطعة':'pcs'}</span>
+        <span style="font-size:10px;color:var(--muted);min-width:40px">${d.qty} ${ar?'قطعة':'pcs'} 👆</span>
       </div></div>`).join('')}
   </div>`;
 }
@@ -2211,6 +2241,33 @@ function showAbsentEmployees() {
   document.body.appendChild(overlay);
 }
 
+// ── PRESENT EMPLOYEES CLICK ──
+function showPresentEmployees(todayAtt) {
+  const ar = currentLang === 'ar';
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
+  const empMap = {};
+  (allEmployees||[]).forEach(e=>{ empMap[e.id]=e; });
+  overlay.innerHTML = `<div style="background:var(--card);border-radius:22px 22px 0 0;padding:22px 18px;width:100%;max-height:70vh;overflow-y:auto;border-top:2px solid var(--green)">
+    <div style="font-size:16px;font-weight:800;color:var(--green);margin-bottom:14px">✅ ${ar?'الحاضرون اليوم':'Present Today'} (${todayAtt.length})</div>
+    ${todayAtt.length === 0 ? `<div style="text-align:center;color:var(--muted);padding:20px">${ar?'لا يوجد حضور':'No attendance'}</div>` :
+    todayAtt.map(a => {
+      const emp = empMap[a.employee_id] || {};
+      const lateText = a.late_minutes > 0 ? `<span class="badge badge-yellow" style="font-size:10px">⚠️ ${ar?'تأخر':'Late'} ${a.late_minutes}${ar?'د':'m'}</span>` : `<span class="badge badge-green" style="font-size:10px">${ar?'في الوقت':'On time'}</span>`;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div class="emp-avatar" style="width:36px;height:36px;font-size:13px;overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:(emp.name||'?')[0].toUpperCase()}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700">${emp.name||a.employee_id}</div>
+          <div style="font-size:11px;color:var(--muted)">${emp.branch||''} · ${ar?'دخل':'In'}: ${a.check_in||'-'}</div>
+        </div>
+        ${lateText}
+      </div>`;
+    }).join('')}
+    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px">${ar?'إغلاق':'Close'}</button>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
 
 // ── PROFILE PHOTO ──
 async function uploadProfilePhoto(event){
@@ -2341,23 +2398,7 @@ function loadQ1Analytics(){
     </div>`;
   }).join('');
 }
-setTimeout(() => {
-  try {
-    const splash1 = document.getElementById('splash');
-    const splash2 = document.getElementById('splash-screen');
-    if (splash1) splash1.classList.add('hide');
-    if (splash2) splash2.style.display = 'none';
-    // Always use showApp() — it handles all roles correctly including team_leader
-    if (typeof showApp === 'function') {
-      showApp();
-    } else if (typeof showPage === 'function') {
-      showPage(currentUser ? 'admin-app' : 'login-page');
-    }
-  } catch (e) {
-    const login = document.getElementById('login-page');
-    if (login) login.style.display = 'block';
-  }
-}, 800);
+// splash handled by app.js
 
 // ── SHIFT SETTINGS (admin/superadmin) ──
 async function loadShiftSettings(){
@@ -2384,7 +2425,7 @@ async function loadShiftSettings(){
 async function updateEmpShift(empId,shift){
   const ar=currentLang==='ar';
   try{
-    await dbPatch('employees',`?id=eq.${empId}`,{shift});
+    await dbPatch('employees',{shift},`?id=eq.${empId}`);
     const emp=allEmployees.find(e=>e.id===empId);
     if(emp) emp.shift=shift;
     notify(ar?'✅ تم تحديث الشيفت':'✅ Shift updated','success');
@@ -2437,4 +2478,83 @@ function getShiftLabel(shift,lang){
   const ar=lang==='ar';
   if(shift==='evening') return ar?'🌙 مسائي (2م - 10م)':'🌙 Evening (2PM - 10PM)';
   return ar?'🌅 صباحي (10ص - 6م)':'🌅 Morning (10AM - 6PM)';
+}
+
+// ── PRODUCT EMPLOYEES BREAKDOWN ──
+function showProductEmployees(productName) {
+  const ar = currentLang === 'ar';
+  const sales = (window._productSalesData||[]).filter(s=>s.product_name===productName);
+  const emps = window._allEmpsData||[];
+  const empMap = {};
+  emps.forEach(e=>{ empMap[e.id]=e; });
+  // Group by employee
+  const byEmp = {};
+  sales.forEach(s=>{
+    if(!byEmp[s.employee_id]) byEmp[s.employee_id]={name:(empMap[s.employee_id]?.name||s.employee_id),qty:0,total:0};
+    byEmp[s.employee_id].qty += s.quantity;
+    byEmp[s.employee_id].total += s.total_amount;
+  });
+  const sorted = Object.values(byEmp).sort((a,b)=>b.qty-a.qty);
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
+  overlay.innerHTML = `<div style="background:var(--card);border-radius:22px 22px 0 0;padding:22px 18px;width:100%;max-height:75vh;overflow-y:auto;border-top:2px solid var(--green)">
+    <div style="font-size:15px;font-weight:800;margin-bottom:4px;direction:ltr">${productName}</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px">${ar?'مبيعات الموظفين':'Employee Sales'}</div>
+    ${sorted.length===0?`<div style="text-align:center;color:var(--muted);padding:20px">${ar?'لا توجد مبيعات':'No sales'}</div>`:
+    sorted.map((e,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="width:26px;font-size:13px;font-weight:800;color:var(--muted);text-align:center">${i+1}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:700">${e.name}</div></div>
+      <div style="text-align:left">
+        <div style="font-size:14px;font-weight:800;color:var(--green)">${e.qty} ${ar?'قطعة':'pcs'}</div>
+        <div style="font-size:10px;color:var(--muted)">EGP ${fmtEGP(e.total)}</div>
+      </div>
+    </div>`).join('')}
+    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px">${ar?'إغلاق':'Close'}</button>
+  </div>`;
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+// ── iOS CAMERA/GALLERY CHOICE ──
+function openPhotoChoice(inputId) {
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  // On iOS, file input with accept="image/*" already gives camera/gallery option
+  // But we add capture choice for better UX
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  // Remove capture to allow gallery, then click
+  input.removeAttribute('capture');
+  input.click();
+}
+
+function openCameraDirectly(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.setAttribute('capture', 'environment');
+  input.click();
+}
+
+function showPhotoSourceModal(inputId) {
+  const ar = currentLang === 'ar';
+  // On iOS, just click the input - iOS will show the native action sheet
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  if (isIOS) {
+    // iOS shows camera/gallery choice natively when no capture attribute
+    const input = document.getElementById(inputId);
+    if (input) { input.removeAttribute('capture'); input.click(); }
+    return;
+  }
+  // Android: show choice overlay
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
+  overlay.innerHTML = `<div style="background:var(--card);border-radius:22px 22px 0 0;padding:24px 18px;width:100%;border-top:2px solid var(--green)">
+    <div style="font-size:15px;font-weight:800;margin-bottom:18px;text-align:center">${ar?'اختر مصدر الصورة':'Choose image source'}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <button onclick="openCameraDirectly('${inputId}');this.closest('[style*=fixed]').remove()" style="padding:16px;background:var(--card2);border:1.5px solid var(--green);border-radius:14px;color:var(--green);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">📷 ${ar?'الكاميرا':'Camera'}</button>
+      <button onclick="openPhotoChoice('${inputId}');this.closest('[style*=fixed]').remove()" style="padding:16px;background:var(--card2);border:1.5px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">🖼️ ${ar?'المعرض':'Gallery'}</button>
+    </div>
+    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:transparent;border:none;color:var(--muted);font-family:Cairo,sans-serif;font-size:13px;cursor:pointer;margin-top:10px">${ar?'إلغاء':'Cancel'}</button>
+  </div>`;
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
 }

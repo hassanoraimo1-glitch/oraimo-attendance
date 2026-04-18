@@ -1853,7 +1853,7 @@ async function openChat(chatType, title) {
   document.getElementById('chat-title').textContent = title;
   const modal = document.getElementById('chat-modal');
   // Force display via cssText to override any conflicting styles
-  modal.style.cssText = 'display:flex !important;flex-direction:column;position:fixed;inset:0;background:var(--black);z-index:500;-webkit-overflow-scrolling:touch';
+  modal.style.cssText = 'display:flex !important;flex-direction:column;position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:var(--black);z-index:500;-webkit-overflow-scrolling:touch;overflow:hidden';
   // Scroll to bottom after brief paint
   setTimeout(() => {
     const msgs = document.getElementById('chat-messages');

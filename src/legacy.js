@@ -2,2186 +2,2514 @@ window.__LEGACY_LOADED__ = true;
 // ────────────────────────────────────────────────────────────
 // LEGACY UI SCRIPT (classic, non-module)
 // ────────────────────────────────────────────────────────────
-// Must load AFTER /src/app.js (loaded as a module) has populated
-// window globals. Contains page-level UI logic pending migration
-// to dedicated /pages modules. Function declarations in this file
-// become globals automatically (classic script semantics) so
-// inline onclick handlers in index.html can call them.
-// ────────────────────────────────────────────────────────────
 
 const DAYS_AR = window.DAYS_AR;
 const DAYS_EN = window.DAYS_EN;
 
-// ── GLOBAL STATE (declare all vars used before assignment) ──
+// ── GLOBAL STATE ──
 let allAdmins = [];
 let allBranches = [];
-let workSettings = { start: '09:00', end: '18:00' };
+let workSettings = { start: '14:00', end: '22:00' };
 let videoStream = null;
 let capturedPhoto = null;
 let capturedLocation = null;
 let attendMode = 'in';
 let selectedProduct = null;
 let selectedQty = 1;
-let _isSubmitting = false; // prevent double-submit
-// ── BRANCH DATA (Excel 11-04-2026, revenue = qty × price) ──
-const BRANCH_DATA=[{"name":"B.ONLINE","revenue":107911,"prev_revenue":293938,"qty":115,"prev_qty":281,"stock":0,"tier":"S"},{"name":"NEW IMBABA","revenue":79338,"prev_revenue":142122,"qty":69,"prev_qty":133,"stock":194,"tier":"S"},{"name":"ElSoudan Street","revenue":54277,"prev_revenue":83046,"qty":48,"prev_qty":80,"stock":154,"tier":"S"},{"name":"V_Hassan El Maamon","revenue":52883,"prev_revenue":60537,"qty":60,"prev_qty":77,"stock":274,"tier":"S"},{"name":"El Zaher","revenue":44118,"prev_revenue":86811,"qty":37,"prev_qty":75,"stock":144,"tier":"S"},{"name":"Qena","revenue":41988,"prev_revenue":121171,"qty":35,"prev_qty":104,"stock":196,"tier":"S"},{"name":"Qalyub","revenue":39661,"prev_revenue":65373,"qty":34,"prev_qty":59,"stock":112,"tier":"S"},{"name":"Dar El Salam","revenue":38388,"prev_revenue":80582,"qty":41,"prev_qty":73,"stock":216,"tier":"S"},{"name":"El Helmya","revenue":37760,"prev_revenue":76910,"qty":34,"prev_qty":72,"stock":66,"tier":"S"},{"name":"Maadi2","revenue":36598,"prev_revenue":61324,"qty":34,"prev_qty":58,"stock":162,"tier":"S"},{"name":"Banha_Mega_Store","revenue":36166,"prev_revenue":140103,"qty":41,"prev_qty":122,"stock":50,"tier":"S"},{"name":"El kanater","revenue":33847,"prev_revenue":141643,"qty":34,"prev_qty":137,"stock":172,"tier":"S"},{"name":"26th July","revenue":32036,"prev_revenue":107472,"qty":34,"prev_qty":94,"stock":116,"tier":"S"},{"name":"P_Sky Mall El Sherouk","revenue":29149,"prev_revenue":42060,"qty":25,"prev_qty":40,"stock":154,"tier":"S"},{"name":"P_Mall Of October","revenue":28749,"prev_revenue":56409,"qty":22,"prev_qty":61,"stock":82,"tier":"S"},{"name":"Ain Shams","revenue":28565,"prev_revenue":23558,"qty":26,"prev_qty":20,"stock":410,"tier":"S"},{"name":"P_Mega Helwan","revenue":27805,"prev_revenue":52923,"qty":28,"prev_qty":55,"stock":102,"tier":"S"},{"name":"V_City Center Maadi","revenue":27463,"prev_revenue":30186,"qty":23,"prev_qty":27,"stock":184,"tier":"S"},{"name":"V_City Stars Mall","revenue":23540,"prev_revenue":4303,"qty":18,"prev_qty":4,"stock":124,"tier":"S"},{"name":"Oraby","revenue":23422,"prev_revenue":93358,"qty":22,"prev_qty":89,"stock":124,"tier":"S"},{"name":"HQ Call Center stop","revenue":23094,"prev_revenue":70437,"qty":23,"prev_qty":55,"stock":0,"tier":"S"},{"name":"V_El Tahrir","revenue":22459,"prev_revenue":58299,"qty":20,"prev_qty":47,"stock":168,"tier":"S"},{"name":"P_Town Center El Salam","revenue":20885,"prev_revenue":44154,"qty":23,"prev_qty":66,"stock":296,"tier":"S"},{"name":"2Ain Shams","revenue":20685,"prev_revenue":39213,"qty":24,"prev_qty":44,"stock":632,"tier":"S"},{"name":"AKKAD","revenue":20370,"prev_revenue":35607,"qty":20,"prev_qty":38,"stock":396,"tier":"S"},{"name":"V_Maadi Grand Mall","revenue":18983,"prev_revenue":29601,"qty":21,"prev_qty":39,"stock":276,"tier":"S"},{"name":"V_Gesr El Suez","revenue":18272,"prev_revenue":37695,"qty":14,"prev_qty":37,"stock":102,"tier":"S"},{"name":"V_Zayton","revenue":17648,"prev_revenue":3804,"qty":22,"prev_qty":7,"stock":76,"tier":"S"},{"name":"V_Badr","revenue":17519,"prev_revenue":106158,"qty":17,"prev_qty":91,"stock":210,"tier":"S"},{"name":"Shobra","revenue":17342,"prev_revenue":108644,"qty":15,"prev_qty":102,"stock":80,"tier":"S"},{"name":"Faisal","revenue":17262,"prev_revenue":53315,"qty":18,"prev_qty":59,"stock":150,"tier":"S"},{"name":"V_Dokki","revenue":16291,"prev_revenue":31647,"qty":13,"prev_qty":31,"stock":158,"tier":"S"},{"name":"V_El Sherouk","revenue":15999,"prev_revenue":26522,"qty":15,"prev_qty":22,"stock":110,"tier":"S"},{"name":"Misr Al Gadida","revenue":14425,"prev_revenue":23047,"qty":10,"prev_qty":27,"stock":272,"tier":"S"},{"name":"V_ElSayeda Zainab","revenue":13550,"prev_revenue":8846,"qty":18,"prev_qty":9,"stock":110,"tier":"S"},{"name":"Delta_Berket_ElSabaa","revenue":12791,"prev_revenue":32553,"qty":10,"prev_qty":25,"stock":16,"tier":"S"},{"name":"V_Bani Suef","revenue":12227,"prev_revenue":41077,"qty":13,"prev_qty":41,"stock":18,"tier":"S"},{"name":"BTECH mini Dandy Mall","revenue":11634,"prev_revenue":8614,"qty":6,"prev_qty":8,"stock":40,"tier":"S"},{"name":"P_Almaza","revenue":11043,"prev_revenue":13607,"qty":12,"prev_qty":12,"stock":656,"tier":"S"},{"name":"BTECH mini Ramses Station","revenue":10876,"prev_revenue":11517,"qty":11,"prev_qty":12,"stock":120,"tier":"S"},{"name":"V_Sheraton","revenue":10294,"prev_revenue":12165,"qty":15,"prev_qty":15,"stock":110,"tier":"S"},{"name":"P_GateWay Mall El Rehab","revenue":10003,"prev_revenue":14778,"qty":10,"prev_qty":14,"stock":108,"tier":"S"},{"name":"New Sohag","revenue":9542,"prev_revenue":28633,"qty":9,"prev_qty":28,"stock":32,"tier":"S"},{"name":"P_Mall OF Egypt","revenue":8606,"prev_revenue":36318,"qty":14,"prev_qty":43,"stock":204,"tier":"S"},{"name":"V_Sidi Bishr","revenue":8501,"prev_revenue":7781,"qty":8,"prev_qty":10,"stock":22,"tier":"S"},{"name":"V_ElRehab Mall1","revenue":8257,"prev_revenue":13138,"qty":7,"prev_qty":16,"stock":106,"tier":"A"},{"name":"P_Mega Shubra El Kheima","revenue":7794,"prev_revenue":30783,"qty":6,"prev_qty":34,"stock":156,"tier":"A"},{"name":"Ismailia","revenue":7678,"prev_revenue":8906,"qty":6,"prev_qty":10,"stock":110,"tier":"A"},{"name":"V_Mataria","revenue":7221,"prev_revenue":5293,"qty":5,"prev_qty":6,"stock":22,"tier":"A"},{"name":"V_AUC","revenue":6981,"prev_revenue":14309,"qty":7,"prev_qty":14,"stock":130,"tier":"A"},{"name":"V_Elmenia","revenue":6866,"prev_revenue":25034,"qty":8,"prev_qty":24,"stock":40,"tier":"A"},{"name":"V_Ismailia Square","revenue":6655,"prev_revenue":26440,"qty":8,"prev_qty":23,"stock":116,"tier":"A"},{"name":"P_Uni Mall El Obour","revenue":6571,"prev_revenue":11633,"qty":6,"prev_qty":11,"stock":146,"tier":"A"},{"name":"Delta_Dakernis","revenue":6510,"prev_revenue":14415,"qty":7,"prev_qty":15,"stock":10,"tier":"A"},{"name":"Makram Ebaid","revenue":6464,"prev_revenue":14075,"qty":7,"prev_qty":19,"stock":304,"tier":"A"},{"name":"New Domyat","revenue":6402,"prev_revenue":29787,"qty":8,"prev_qty":32,"stock":26,"tier":"A"},{"name":"P_District 5","revenue":6395,"prev_revenue":7392,"qty":6,"prev_qty":7,"stock":4,"tier":"A"},{"name":"V_Obour2","revenue":5937,"prev_revenue":31425,"qty":6,"prev_qty":24,"stock":144,"tier":"A"},{"name":"V_Gardenia Tagamo","revenue":5931,"prev_revenue":13434,"qty":5,"prev_qty":10,"stock":100,"tier":"A"},{"name":"V_The Gate Zayed","revenue":5586,"prev_revenue":4943,"qty":4,"prev_qty":5,"stock":4,"tier":"A"},{"name":"BTECH mini  Kafr El Dawaar","revenue":5468,"prev_revenue":9892,"qty":5,"prev_qty":10,"stock":0,"tier":"A"},{"name":"V_Open Air Mall","revenue":5355,"prev_revenue":2095,"qty":8,"prev_qty":1,"stock":126,"tier":"A"},{"name":"V_El Amiria","revenue":4884,"prev_revenue":3369,"qty":3,"prev_qty":3,"stock":12,"tier":"A"},{"name":"Haram","revenue":4774,"prev_revenue":6348,"qty":4,"prev_qty":8,"stock":214,"tier":"A"},{"name":"Zahra El Asher","revenue":4539,"prev_revenue":13261,"qty":3,"prev_qty":14,"stock":52,"tier":"A"},{"name":"V_ElBahr ElAzam","revenue":4531,"prev_revenue":1744,"qty":3,"prev_qty":2,"stock":8,"tier":"A"},{"name":"MEGA ElDahar","revenue":4416,"prev_revenue":13615,"qty":6,"prev_qty":14,"stock":84,"tier":"A"},{"name":"El Menia Mega Store","revenue":4303,"prev_revenue":31887,"qty":4,"prev_qty":30,"stock":22,"tier":"A"},{"name":"Fakous","revenue":4189,"prev_revenue":39927,"qty":4,"prev_qty":40,"stock":4,"tier":"A"},{"name":"V_Roxcy","revenue":4128,"prev_revenue":11462,"qty":6,"prev_qty":12,"stock":220,"tier":"A"},{"name":"Delta Ismalia 2","revenue":3841,"prev_revenue":3257,"qty":3,"prev_qty":3,"stock":100,"tier":"A"},{"name":"Nagaa Hamadi Mega Store","revenue":3836,"prev_revenue":3140,"qty":4,"prev_qty":4,"stock":16,"tier":"A"},{"name":"Mall Of Arabia","revenue":3726,"prev_revenue":28912,"qty":3,"prev_qty":27,"stock":42,"tier":"A"},{"name":"Faiyoum 2","revenue":3726,"prev_revenue":584,"qty":3,"prev_qty":1,"stock":8,"tier":"A"},{"name":"V_45","revenue":3495,"prev_revenue":7091,"qty":3,"prev_qty":8,"stock":0,"tier":"A"},{"name":"El Faiyum","revenue":3376,"prev_revenue":4135,"qty":3,"prev_qty":4,"stock":8,"tier":"A"},{"name":"Elagamy2","revenue":3376,"prev_revenue":3085,"qty":3,"prev_qty":4,"stock":20,"tier":"A"},{"name":"Assuit_Mega_Store","revenue":3372,"prev_revenue":7798,"qty":2,"prev_qty":8,"stock":58,"tier":"A"},{"name":"V_Al Zamalek","revenue":3259,"prev_revenue":11723,"qty":4,"prev_qty":14,"stock":110,"tier":"A"},{"name":"V_Sohag","revenue":3201,"prev_revenue":13500,"qty":4,"prev_qty":16,"stock":10,"tier":"A"},{"name":"P_El Tagamo Mega Store 1","revenue":3199,"prev_revenue":1945,"qty":4,"prev_qty":3,"stock":92,"tier":"A"},{"name":"Delta_Quesna","revenue":3138,"prev_revenue":12552,"qty":3,"prev_qty":12,"stock":2,"tier":"A"},{"name":"Domyat","revenue":3028,"prev_revenue":35137,"qty":3,"prev_qty":31,"stock":4,"tier":"A"},{"name":"Partner Truck 2","revenue":2796,"prev_revenue":0,"qty":3,"prev_qty":0,"stock":6,"tier":"A"},{"name":"El Galaa","revenue":2793,"prev_revenue":10128,"qty":2,"prev_qty":9,"stock":10,"tier":"A"},{"name":"V_Kafr El Zayat","revenue":2790,"prev_revenue":16750,"qty":3,"prev_qty":16,"stock":8,"tier":"A"},{"name":"Hadayek","revenue":2382,"prev_revenue":2848,"qty":3,"prev_qty":4,"stock":26,"tier":"A"},{"name":"Alex_Smouha","revenue":2330,"prev_revenue":9686,"qty":2,"prev_qty":11,"stock":26,"tier":"A"},{"name":"BTECH mini  Shebin El koum","revenue":2330,"prev_revenue":1165,"qty":2,"prev_qty":1,"stock":4,"tier":"A"},{"name":"V_Alex_ Tusun","revenue":2330,"prev_revenue":5993,"qty":2,"prev_qty":6,"stock":8,"tier":"A"},{"name":"V_El Rehab North","revenue":2326,"prev_revenue":8446,"qty":4,"prev_qty":9,"stock":72,"tier":"B"},{"name":"P_El Tagamo Mega Store 2","revenue":2211,"prev_revenue":10763,"qty":2,"prev_qty":9,"stock":102,"tier":"B"},{"name":"V_Zagazig","revenue":2211,"prev_revenue":7560,"qty":2,"prev_qty":7,"stock":18,"tier":"B"},{"name":"Zagazig_Mega_Store","revenue":2211,"prev_revenue":8262,"qty":2,"prev_qty":7,"stock":120,"tier":"B"},{"name":"BTECH Mini Air Force House","revenue":2209,"prev_revenue":0,"qty":1,"prev_qty":0,"stock":4,"tier":"B"},{"name":"New Damanhour","revenue":2094,"prev_revenue":16633,"qty":3,"prev_qty":15,"stock":16,"tier":"B"},{"name":"Mansoura","revenue":2092,"prev_revenue":1165,"qty":2,"prev_qty":1,"stock":0,"tier":"B"},{"name":"P_Tanta Mall","revenue":2092,"prev_revenue":5230,"qty":2,"prev_qty":5,"stock":2,"tier":"B"},{"name":"V_Assuit","revenue":2092,"prev_revenue":11523,"qty":2,"prev_qty":12,"stock":20,"tier":"B"},{"name":"V_Mahala","revenue":2092,"prev_revenue":4537,"qty":2,"prev_qty":5,"stock":0,"tier":"B"},{"name":"P_Delta Tanta Mega Store","revenue":1976,"prev_revenue":6276,"qty":2,"prev_qty":6,"stock":18,"tier":"B"},{"name":"V_El Mosher Axis","revenue":1895,"prev_revenue":0,"qty":2,"prev_qty":0,"stock":86,"tier":"B"},{"name":"New Roxy","revenue":1835,"prev_revenue":18878,"qty":6,"prev_qty":24,"stock":152,"tier":"B"},{"name":"BTECH mini ElShams Club","revenue":1744,"prev_revenue":2325,"qty":2,"prev_qty":2,"stock":38,"tier":"B"},{"name":"Ras Ghareb","revenue":1396,"prev_revenue":4424,"qty":1,"prev_qty":4,"stock":86,"tier":"B"},{"name":"V_Manial","revenue":1396,"prev_revenue":2674,"qty":2,"prev_qty":2,"stock":22,"tier":"B"},{"name":"V_Hegaz","revenue":1389,"prev_revenue":3555,"qty":3,"prev_qty":8,"stock":114,"tier":"B"},{"name":"Damanhur","revenue":1280,"prev_revenue":13034,"qty":2,"prev_qty":14,"stock":32,"tier":"B"},{"name":"BTECH mini Gzirt El Ward","revenue":1279,"prev_revenue":698,"qty":1,"prev_qty":1,"stock":26,"tier":"B"},{"name":"Marina_Kaian","revenue":1165,"prev_revenue":1744,"qty":1,"prev_qty":2,"stock":74,"tier":"B"},{"name":"BTECH mini Al Ittihad Club","revenue":1165,"prev_revenue":1686,"qty":1,"prev_qty":2,"stock":20,"tier":"B"},{"name":"BTECH mini Green Plaza Mall","revenue":1165,"prev_revenue":11975,"qty":1,"prev_qty":13,"stock":8,"tier":"B"},{"name":"BTECH mini Maadi Club","revenue":1165,"prev_revenue":3034,"qty":1,"prev_qty":2,"stock":2,"tier":"B"},{"name":"Desouk","revenue":1165,"prev_revenue":29656,"qty":1,"prev_qty":28,"stock":0,"tier":"B"},{"name":"P_Alex_Loran_Mega_Store","revenue":1165,"prev_revenue":3491,"qty":1,"prev_qty":2,"stock":20,"tier":"B"},{"name":"ElNozha","revenue":1078,"prev_revenue":17972,"qty":2,"prev_qty":12,"stock":62,"tier":"B"},{"name":"Aswan Mega store","revenue":1046,"prev_revenue":1455,"qty":1,"prev_qty":2,"stock":76,"tier":"B"},{"name":"BTECH mini Egyptian Shooting","revenue":1046,"prev_revenue":0,"qty":1,"prev_qty":0,"stock":4,"tier":"B"},{"name":"El Sadat","revenue":1046,"prev_revenue":5053,"qty":1,"prev_qty":7,"stock":4,"tier":"B"},{"name":"P_Flag MallPlus Flag Mall","revenue":1046,"prev_revenue":17804,"qty":1,"prev_qty":18,"stock":4,"tier":"B"},{"name":"P_Tanta","revenue":1046,"prev_revenue":13961,"qty":1,"prev_qty":9,"stock":4,"tier":"B"},{"name":"V_Fayoum","revenue":1046,"prev_revenue":4303,"qty":1,"prev_qty":4,"stock":20,"tier":"B"},{"name":"V_Gihan3 Abasia","revenue":1046,"prev_revenue":2092,"qty":1,"prev_qty":2,"stock":18,"tier":"B"},{"name":"V_Mansoura","revenue":1046,"prev_revenue":11163,"qty":1,"prev_qty":8,"stock":0,"tier":"B"},{"name":"V_Moharam Bek","revenue":1046,"prev_revenue":1863,"qty":1,"prev_qty":2,"stock":10,"tier":"B"},{"name":"V_Safwa Zaid","revenue":1046,"prev_revenue":698,"qty":1,"prev_qty":1,"stock":42,"tier":"B"},{"name":"MAX Arabia Mall","revenue":698,"prev_revenue":5590,"qty":1,"prev_qty":5,"stock":0,"tier":"B"},{"name":"BTECH MAX Taj City","revenue":698,"prev_revenue":0,"qty":1,"prev_qty":0,"stock":156,"tier":"B"},{"name":"El Mokattam","revenue":698,"prev_revenue":3372,"qty":1,"prev_qty":4,"stock":34,"tier":"B"},{"name":"BTECH mini Al Zohour Club","revenue":698,"prev_revenue":1046,"qty":1,"prev_qty":1,"stock":20,"tier":"B"},{"name":"V_Winget","revenue":698,"prev_revenue":13676,"qty":1,"prev_qty":13,"stock":0,"tier":"B"},{"name":"Mega Faisal","revenue":640,"prev_revenue":4882,"qty":1,"prev_qty":5,"stock":2,"tier":"B"},{"name":"P_Mega Alex Sidi Gaber","revenue":640,"prev_revenue":2561,"qty":1,"prev_qty":3,"stock":12,"tier":"B"},{"name":"V_Midor","revenue":640,"prev_revenue":10595,"qty":1,"prev_qty":10,"stock":22,"tier":"B"},{"name":"El Gouna Business Park","revenue":584,"prev_revenue":3257,"qty":1,"prev_qty":3,"stock":20,"tier":"B"},{"name":"V_Hadayek El Ahram","revenue":106,"prev_revenue":17786,"qty":1,"prev_qty":16,"stock":16,"tier":"B"},{"name":"El Betash","revenue":0,"prev_revenue":7440,"qty":0,"prev_qty":7,"stock":40,"tier":"NO_SALES"},{"name":"Shebin El Koum","revenue":0,"prev_revenue":12552,"qty":0,"prev_qty":12,"stock":4,"tier":"NO_SALES"},{"name":"Suez_Branch","revenue":0,"prev_revenue":5936,"qty":0,"prev_qty":7,"stock":138,"tier":"NO_SALES"},{"name":"Port Said","revenue":0,"prev_revenue":2674,"qty":0,"prev_qty":2,"stock":52,"tier":"NO_SALES"},{"name":"10th of Ramadan WHRe-9026","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":1232,"tier":"NO_SALES"},{"name":"10th Show Room WH","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":1674,"tier":"NO_SALES"},{"name":"Agami","revenue":0,"prev_revenue":1165,"qty":0,"prev_qty":1,"stock":50,"tier":"NO_SALES"},{"name":"AsafraAlex_2011","revenue":0,"prev_revenue":2966,"qty":0,"prev_qty":3,"stock":28,"tier":"NO_SALES"},{"name":"Assuit 2","revenue":0,"prev_revenue":13619,"qty":0,"prev_qty":11,"stock":2,"tier":"NO_SALES"},{"name":"Aswan Dark Store","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":4,"tier":"NO_SALES"},{"name":"Asyut WH","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":26,"tier":"NO_SALES"},{"name":"B.Mobile WH2_64","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":0,"tier":"NO_SALES"},{"name":"Beni Suef","revenue":0,"prev_revenue":12330,"qty":0,"prev_qty":14,"stock":36,"tier":"NO_SALES"},{"name":"BTECH mini Arab Contractors Club","revenue":0,"prev_revenue":6500,"qty":0,"prev_qty":5,"stock":36,"tier":"NO_SALES"},{"name":"BTECH mini CC Banha","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":20,"tier":"NO_SALES"},{"name":"BTECH mini CC Shebin Elkoum","revenue":0,"prev_revenue":127,"qty":0,"prev_qty":1,"stock":28,"tier":"NO_SALES"},{"name":"BTECH mini Dewaka","revenue":0,"prev_revenue":4184,"qty":0,"prev_qty":4,"stock":8,"tier":"NO_SALES"},{"name":"BTECH mini El Jazeera Youth Center","revenue":0,"prev_revenue":4189,"qty":0,"prev_qty":5,"stock":34,"tier":"NO_SALES"},{"name":"BTECH Mini MPC","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":0,"tier":"NO_SALES"},{"name":"BTECH mini Smouha Club","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":16,"tier":"NO_SALES"},{"name":"BTECH mini Sporting Club","revenue":0,"prev_revenue":4422,"qty":0,"prev_qty":4,"stock":20,"tier":"NO_SALES"},{"name":"BTECH mini Teachers Club","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":6,"tier":"NO_SALES"},{"name":"BTECH mini  Abu Al Matamir","revenue":0,"prev_revenue":3954,"qty":0,"prev_qty":4,"stock":16,"tier":"NO_SALES"},{"name":"BTECH mini  El Mandara","revenue":0,"prev_revenue":3607,"qty":0,"prev_qty":4,"stock":2,"tier":"NO_SALES"},{"name":"BTECH mini  Shinzo Abe","revenue":0,"prev_revenue":6051,"qty":0,"prev_qty":3,"stock":60,"tier":"NO_SALES"},{"name":"Cairo Retail Warehouses","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":988,"tier":"NO_SALES"},{"name":"Call center-WH-Tanash","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":32,"tier":"NO_SALES"},{"name":"Luxor_2","revenue":0,"prev_revenue":69701,"qty":0,"prev_qty":67,"stock":108,"tier":"NO_SALES"},{"name":"Mahalla","revenue":0,"prev_revenue":3374,"qty":0,"prev_qty":2,"stock":26,"tier":"NO_SALES"},{"name":"Maintenance BMobile","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":0,"tier":"NO_SALES"},{"name":"Makadi Bay","revenue":0,"prev_revenue":1046,"qty":0,"prev_qty":1,"stock":36,"tier":"NO_SALES"},{"name":"Malawi","revenue":0,"prev_revenue":24155,"qty":0,"prev_qty":24,"stock":14,"tier":"NO_SALES"},{"name":"Mansoura Outlet","revenue":0,"prev_revenue":2326,"qty":0,"prev_qty":1,"stock":0,"tier":"NO_SALES"},{"name":"Masara outlet","revenue":0,"prev_revenue":441,"qty":0,"prev_qty":2,"stock":0,"tier":"NO_SALES"},{"name":"Mohandesin Outlet","revenue":0,"prev_revenue":2917,"qty":0,"prev_qty":5,"stock":0,"tier":"NO_SALES"},{"name":"P_CFC Mall","revenue":0,"prev_revenue":6629,"qty":0,"prev_qty":5,"stock":2,"tier":"NO_SALES"},{"name":"P_El Souf","revenue":0,"prev_revenue":2092,"qty":0,"prev_qty":2,"stock":28,"tier":"NO_SALES"},{"name":"P_Salah_Salim_Mega_Store","revenue":0,"prev_revenue":15068,"qty":0,"prev_qty":14,"stock":32,"tier":"NO_SALES"},{"name":"Partner Truck 1","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":2,"tier":"NO_SALES"},{"name":"Partner Vodafone 2","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":0,"tier":"NO_SALES"},{"name":"Show Room - Corp. Sale-38","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":2674,"tier":"NO_SALES"},{"name":"Sohag","revenue":0,"prev_revenue":1863,"qty":0,"prev_qty":2,"stock":48,"tier":"NO_SALES"},{"name":"Tanash OUTLET Store","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":0,"tier":"NO_SALES"},{"name":"V_2Mansoura","revenue":0,"prev_revenue":12443,"qty":0,"prev_qty":9,"stock":24,"tier":"NO_SALES"},{"name":"V_City Center Alex","revenue":0,"prev_revenue":0,"qty":0,"prev_qty":0,"stock":24,"tier":"NO_SALES"},{"name":"V_El Mataria","revenue":0,"prev_revenue":8487,"qty":0,"prev_qty":8,"stock":12,"tier":"NO_SALES"},{"name":"V_Kafr ElSheikh","revenue":0,"prev_revenue":29081,"qty":0,"prev_qty":27,"stock":8,"tier":"NO_SALES"},{"name":"V_Kasr El Einy","revenue":0,"prev_revenue":4060,"qty":0,"prev_qty":2,"stock":10,"tier":"NO_SALES"},{"name":"V_San_Stefano Mall","revenue":0,"prev_revenue":4772,"qty":0,"prev_qty":5,"stock":22,"tier":"NO_SALES"}];
+let _isSubmitting = false;
+let _leaveSending = false;
+let _saleSending = false;
+let currentChat = null;
+let chatSubscription = null;
+let uploadHistory = [];
+let selectedDayOff = -1;
+let editingManagerId = null;
+let managerTeamData = {};
 
-const PRODUCTS=[
-  {n:"Oraimo A to C Cable OCDC3200 3A 1M",p:85},{n:"Oraimo BT Headphone OHP-610S",p:1517},
-  {n:"Oraimo C to C Cable OCD-154CC 3A 1.5M",p:105},{n:"Oraimo CH OCW5183E +L53 PD 18W with Cable",p:235},
-  {n:"Oraimo Cable C to C 3M 100W OCD-173CC",p:366},{n:"Oraimo Cable C to Lightning OCD-CL54 2.4A 1M",p:142},
-  {n:"Oraimo Cable C:C 60W OCD114CC",p:113},{n:"Oraimo Car Mount OCM-12",p:235},
-  {n:"Oraimo Car Charger 48W OCC73D",p:466},{n:"Oraimo Charger 18W Gift",p:584},
-  {n:"Oraimo Charger OCW7331E 33W GaN Fast Dual",p:466},{n:"Oraimo Charger QC3+PD3 20W OCW5203ECC",p:290},
-  {n:"Oraimo Charger Kit OCW-E106S-CL55",p:290},{n:"Oraimo Data Cable Type-C OCD-C53 2A 1M",p:75},
-  {n:"Oraimo Earphone Type-C OEP-650",p:185},{n:"Oraimo Neckband OEB611 ANC",p:1396},
-  {n:"Oraimo OCD 152C USB A to C 1m Fast",p:85},{n:"Oraimo OCW-5451ECC 45W GaN Ultra PD",p:599},
-  {n:"Oraimo P.Bank OPB-7103C 22.5W 10K",p:1279},{n:"Oraimo Portable Speaker OBS382",p:1165},
-  {n:"Oraimo Power Bank 10K OPB-7100Q",p:698},{n:"Oraimo Power Bank 10K OPB-P5101",p:698},
-  {n:"Oraimo Power Bank 10K OPB-P7101",p:930},{n:"Oraimo PowerHub OWSE3420 20W 6in1",p:837},
-  {n:"Oraimo PowerJet 130 OPB-727SQ 27600mAh",p:3499},{n:"Oraimo PowerNova L21 OPB-7203C 30W 20K",p:1749},
-  {n:"Oraimo Smart Watch 6N OSW-8000N",p:930},{n:"Oraimo Smart Watch Nova2 OSW814",p:2326},
-  {n:"Oraimo Smart Watch OSW-20BK",p:1619},{n:"Oraimo Smart Watch OSW-30",p:1517},
-  {n:"Oraimo Smart Watch OSW-42",p:1862},{n:"Oraimo Smart Watch OSW-801",p:1365},
-  {n:"Oraimo Smart Watch OSW-802N",p:2443},{n:"Oraimo Smart Watch OSW-804",p:1165},
-  {n:"Oraimo Smart Watch OSW-805",p:1046},{n:"Oraimo Smart Watch OSW-810",p:1988},
-  {n:"Oraimo Smart Watch OSW-812",p:1628},{n:"Oraimo Smart Watch OSW-850H",p:6906},
-  {n:"Oraimo TWS E02D",p:859},{n:"Oraimo TWS Earbuds Lite OTW-330",p:657},
-  {n:"Oraimo TWS OEB-E104DC",p:1012},{n:"Oraimo TWS OEB-E108D",p:2095},
-  {n:"Oraimo TWS OHP317",p:1222},{n:"Oraimo TWS OTW-323",p:698},
-  {n:"Oraimo TWS OTW-330",p:607},{n:"Oraimo TWS OTW-330S Speed",p:640},
-  {n:"Oraimo TWS OTW-625 SpaceBuds Z ANC",p:1165},{n:"Oraimo TWS OTW-630",p:2124},
-  {n:"Oraimo TWS OTW-930",p:3954},{n:"Oraimo TWS OTW323",p:698},
-  {n:"Oraimo TWS OTW323P Speed",p:1046},{n:"Oraimo TWS OTW323SP",p:1165},
-  {n:"Oraimo TWS OTW324 SpaceBuds Lite",p:698},{n:"Oraimo TWS OpenArc OPN675",p:3024},
-  {n:"Oraimo TWS Openpods OPN-50D",p:2209},{n:"Oraimo Type-C Cable OCD-C54",p:100},
-  {n:"Oraimo USB A to Lightning OCD-L32",p:95},{n:"Oraimo Wall Charger 18W OCW-E97S",p:228},
-  {n:"Oraimo Wall Charger 25W OCW-E100D",p:407},{n:"Oraimo Watch OSW-16",p:708},
-  {n:"Oraimo Wired Earphone OEP320",p:95},{n:"Oraimo Wired Earphone OEP320S",p:118},
-  {n:"Oraimo Wireless Charger 15W OWH-1151",p:576},{n:"Oraimo Wireless Headset OHP917",p:2198},
-  {n:"Oraimo Wireless Speaker SpaceBox Pro 80W OBS682",p:4604},
-  {n:"Oraimo Watch Strap WB03",p:101},{n:"Oraimo Wired Headphone OEP-E11",p:85},
-  {n:"Oraimo Wired Headphone OEP-E21P",p:122}
-].map(x=>({name:x.n,price:x.p}));
+// ── BRANCH DATA ──
+const BRANCH_DATA = [{"name":"B.ONLINE","revenue":107911,"prev_revenue":293938,"qty":115,"prev_qty":281,"stock":0,"tier":"S"},{"name":"NEW IMBABA","revenue":79338,"prev_revenue":142122,"qty":69,"prev_qty":133,"stock":194,"tier":"S"},{"name":"ElSoudan Street","revenue":54277,"prev_revenue":83046,"qty":48,"prev_qty":80,"stock":154,"tier":"S"},{"name":"V_Hassan El Maamon","revenue":52883,"prev_revenue":60537,"qty":60,"prev_qty":77,"stock":274,"tier":"S"},{"name":"El Zaher","revenue":44118,"prev_revenue":86811,"qty":37,"prev_qty":75,"stock":144,"tier":"S"},{"name":"Qena","revenue":41988,"prev_revenue":121171,"qty":35,"prev_qty":104,"stock":196,"tier":"S"},{"name":"Qalyub","revenue":39661,"prev_revenue":65373,"qty":34,"prev_qty":59,"stock":112,"tier":"S"},{"name":"Dar El Salam","revenue":38388,"prev_revenue":80582,"qty":41,"prev_qty":73,"stock":216,"tier":"S"},{"name":"El Helmya","revenue":37760,"prev_revenue":76910,"qty":34,"prev_qty":72,"stock":66,"tier":"S"},{"name":"Maadi2","revenue":36598,"prev_revenue":61324,"qty":34,"prev_qty":58,"stock":162,"tier":"S"}];
 
-
+const PRODUCTS = [
+  {name:"Oraimo A to C Cable OCDC3200 3A 1M", price:85},
+  {name:"Oraimo BT Headphone OHP-610S", price:1517},
+  {name:"Oraimo C to C Cable OCD-154CC 3A 1.5M", price:105},
+  {name:"Oraimo CH OCW5183E +L53 PD 18W with Cable", price:235},
+  {name:"Oraimo Cable C to C 3M 100W OCD-173CC", price:366},
+  {name:"Oraimo TWS OTW-323", price:698},
+  {name:"Oraimo Smart Watch OSW-30", price:1517},
+  {name:"Oraimo Power Bank 10K OPB-7100Q", price:698}
+];
 
 // ── INIT ──
-// Init immediately since legacy.js loads AFTER app:ready (load event already fired)
-(async function initApp(){
-
+(function initApp() {
   try {
-
-    // اقفل الشات لو مفتوح
-    const chatM = document.getElementById('chat-modal');
+    var chatM = document.getElementById('chat-modal');
     if (chatM) chatM.style.display = 'none';
-
-    // شغل الدوال بس لو موجودة
+    
     if (typeof applyLang === 'function') applyLang();
     if (typeof startClock === 'function') startClock();
-
-    if (typeof dbGet === 'function') {
-      dbGet('settings','?select=*')
-        .then(r => console.log('settings loaded'))
-        .catch(e => console.log('db error'));
-    }
-
-    // أهم حاجة 👇
-    // افتح صفحة اللوجين إجباري
+    
     if (typeof showPage === 'function') {
       if (typeof currentUser !== 'undefined' && currentUser) {
-  showPage('home-page');
-} else {
-  showPage('login-page');
-}
+        showPage('emp-app');
+      } else {
+        showPage('login-page');
+      }
     }
-
-  } catch (e) {
-
-    // fallback
-    const login = document.getElementById('login-page');
+  } catch(e) {
+    var login = document.getElementById('login-page');
     if (login) login.style.display = 'block';
-
   }
-
 })();
-function hideSplash(){   const splash = document.getElementById('splash');   if(splash) splash.classList.add('hide'); }
+
+function hideSplash() {
+  var splash = document.getElementById('splash');
+  if(splash) splash.classList.add('hide');
+}
 
 // ── PAGE TRANSITIONS ──
-let _prevPage='login-page';
-const PAGE_ORDER=['login-page','emp-app','admin-app'];
-function showPage(id){
-  // Always hide chat modal first
-  const chat=document.getElementById('chat-modal');
-  if(chat) chat.style.display='none';
-  const prevIdx=PAGE_ORDER.indexOf(_prevPage),nextIdx=PAGE_ORDER.indexOf(id);
-  document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active','slide-in-right','slide-in-left');p.style.display='none'});
-  const el=document.getElementById(id);
-  if(el){
-    el.style.display='block';
+var _prevPage = 'login-page';
+var PAGE_ORDER = ['login-page', 'emp-app', 'admin-app'];
+
+function showPage(id) {
+  var chat = document.getElementById('chat-modal');
+  if(chat) chat.style.display = 'none';
+  
+  var prevIdx = PAGE_ORDER.indexOf(_prevPage);
+  var nextIdx = PAGE_ORDER.indexOf(id);
+  
+  var pages = document.querySelectorAll('.page');
+  for(var i = 0; i < pages.length; i++) {
+    pages[i].classList.remove('active', 'slide-in-right', 'slide-in-left');
+    pages[i].style.display = 'none';
+  }
+  
+  var el = document.getElementById(id);
+  if(el) {
+    el.style.display = 'block';
     el.classList.add('active');
-    if(nextIdx<prevIdx) el.classList.add('slide-in-left');
-    else if(nextIdx>prevIdx) el.classList.add('slide-in-right');
+    if(nextIdx < prevIdx) el.classList.add('slide-in-left');
+    else if(nextIdx > prevIdx) el.classList.add('slide-in-right');
   }
-  _prevPage=id;
+  _prevPage = id;
 }
 
-function showApp(){
-  if(!currentUser)return showPage('login-page');
-  applyLang();
-  // ALWAYS reset nav state first to prevent bleed from previous session
-  document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});
-  const visNavReset=document.getElementById('adm-visits-nav');
-  if(visNavReset) visNavReset.style.display='none';
-  document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
-  ['add-emp-btn','add-emp-btn2'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='';});
-  document.getElementById('admins-section').style.display='none';
-  // Make first nav item active
-  const firstNav=document.querySelector('#admin-app .bottom-nav .nav-item');
-  if(firstNav) firstNav.classList.add('active');
-
-  const isAdmin=['superadmin','admin','manager','viewer','team_leader'].includes(currentUser.role);
-  if(isAdmin){
-    document.getElementById('admin-name-top').textContent=currentUser.name||'Admin';
-    const chip=document.getElementById('admin-role-chip');
-    chip.textContent=currentUser.role==='superadmin'?'Super Admin':currentUser.role==='manager'?'Team Leader':currentUser.role==='team_leader'?'Team Leader':currentUser.role.charAt(0).toUpperCase()+currentUser.role.slice(1);
-    chip.className='role-chip badge role-'+currentUser.role;
-    if(currentUser.role==='viewer')document.getElementById('settings-nav-item').style.display='none';
-    if(currentUser.role==='superadmin')document.getElementById('admins-section').style.display='block';
-    if(currentUser.role==='viewer'){const b=document.getElementById('add-emp-btn');if(b)b.style.display='none'}
+function showApp() {
+  if(!currentUser) {
+    showPage('login-page');
+    return;
+  }
+  
+  if(typeof applyLang === 'function') applyLang();
+  
+  var isAdmin = (currentUser.role === 'superadmin' || currentUser.role === 'admin' || currentUser.role === 'manager' || currentUser.role === 'viewer' || currentUser.role === 'team_leader');
+  
+  if(isAdmin) {
+    var nameTop = document.getElementById('admin-name-top');
+    if(nameTop) nameTop.textContent = currentUser.name || 'Admin';
     showPage('admin-app');
-    loadAdminDashboard();loadAllEmployees();loadBranches();clearOldVisitPhotos();
-    if(currentUser.role==='superadmin')loadAdminsList();
-    // Reset all nav items to visible for admin/superadmin
-    if(currentUser.role==='superadmin'||currentUser.role==='admin'||currentUser.role==='viewer'){
-      document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>n.style.display='');
-      document.getElementById('adm-visits-nav').style.display='none';
-    }
-    if(currentUser.role==='manager'){
-      // Manager from admins table: show visits nav too
-      setTimeout(()=>{
-        const admVisNav=document.getElementById('adm-visits-nav');
-        if(admVisNav) admVisNav.style.display='flex';
-      },100);
-    }
-  setTimeout(fixNavDirection, 100);
-  if(currentUser.role==='team_leader'){
-      // Team leader: show ONLY visits + employees nav, hide everything else
-      setTimeout(()=>{
-        // show visits nav
-        const admVisNav=document.getElementById('adm-visits-nav');
-        if(admVisNav) admVisNav.style.display='flex';
-        // hide branches, settings, reports
-        ['adm-branches-nav','settings-nav-item'].forEach(id=>{
-          const el=document.getElementById(id);
-          if(el) el.style.display='none';
-        });
-        // hide reports nav
-        document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{
-          const oc=n.getAttribute('onclick')||'';
-          if(oc.includes('reports')) n.style.display='none';
-        });
-        // hide add employee button
-        ['add-emp-btn','add-emp-btn2'].forEach(id=>{
-          const el=document.getElementById(id);
-          if(el) el.style.display='none';
-        });
-        // auto-navigate to visits tab
-        const visNavEl=document.getElementById('adm-visits-nav');
-        if(visNavEl){
-          document.querySelectorAll('#admin-app .nav-item').forEach(n=>n.classList.remove('active'));
-          visNavEl.classList.add('active');
-          ['dashboard','employees','branches','reports','settings'].forEach(t=>{
-            const d=document.getElementById('admin-'+t);if(d)d.style.display='none';
-          });
-          const vd=document.getElementById('admin-visits');
-          if(vd) vd.style.display='block';
-          loadTLVisitsTab();
-        }
-      },200);
-    }
-  }else{
+    if(typeof loadAdminDashboard === 'function') loadAdminDashboard();
+    if(typeof loadAllEmployees === 'function') loadAllEmployees();
+    if(typeof loadBranches === 'function') loadBranches();
+  } else {
     showPage('emp-app');
-    document.getElementById('emp-name-top').textContent=currentUser.name;
-    document.getElementById('profile-name').textContent=currentUser.name;
-    document.getElementById('profile-branch').textContent=currentUser.branch||'';
-    const dayLabel=currentLang==='ar'?DAYS_AR[currentUser.day_off]:DAYS_EN[currentUser.day_off];
-    document.getElementById('profile-dayoff').innerHTML=`<span class="badge badge-blue">${currentLang==='ar'?'الإجازة:':'Day Off:'} ${dayLabel||'-'}</span>`;
-    loadEmpData();renderProducts();loadModelTargetAlert();
-    // Hide visits tab (team leaders only via admin app)
-    const visNav=document.querySelector('#emp-app .nav-item[onclick*=\"visits\"]');
-    if(visNav) visNav.style.display='none';
+    var empName = document.getElementById('emp-name-top');
+    if(empName) empName.textContent = currentUser.name;
+    if(typeof loadEmpData === 'function') loadEmpData();
+    if(typeof renderProducts === 'function') renderProducts();
   }
-  // Register OneSignal for ALL users (admin + employees) & fix nav direction
-  if(typeof registerOneSignalUser==='function') registerOneSignalUser();
-  setTimeout(fixNavDirection, 100);
+  
+  if(typeof registerOneSignalUser === 'function') registerOneSignalUser();
+  if(typeof fixNavDirection === 'function') setTimeout(fixNavDirection, 100);
 }
-
-// ── BACK BUTTON HANDLING ──
-(function(){
-  // Push state when entering app so back button works inside
-  window.addEventListener('popstate', function(e) {
-    // If chat is open, close chat first
-    const chatModal=document.getElementById('chat-modal');
-    if(chatModal&&chatModal.style.display==='flex'){closeChat();history.pushState(null,'',location.href);return;}
-    // If any modal is open, close it
-    const openModal=document.querySelector('.modal-overlay.open');
-    if(openModal){openModal.classList.remove('open');history.pushState(null,'',location.href);return;}
-    // If user is logged in, prevent going to blank page
-    if(currentUser){history.pushState(null,'',location.href);return;}
-  });
-  // Push initial state
-  history.pushState(null,'',location.href);
-})();
 
 // ── AUTH ──
-async function doLogin(){
+async function doLogin() {
   if(_isSubmitting) return;
-  const username=document.getElementById('login-user').value.trim();
-  const pass=document.getElementById('login-pass').value.trim();
-  const errEl=document.getElementById('login-err');
-  const btn=document.querySelector('#login-page .btn-green');
-  if(!username||!pass){errEl.textContent=currentLang==='ar'?'أدخل بيانات الدخول':'Enter your credentials';return}
-  _isSubmitting=true;
-  if(btn){btn.disabled=true;btn.textContent=currentLang==='ar'?'جاري الدخول...':'Signing in...';}
-  errEl.textContent='';
-  try{
-    if(username==='admin'&&pass==='Oraimo@Admin2026'){
-      currentUser={role:'superadmin',name:'Super Admin'};
-      localStorage.setItem('oraimo_user',JSON.stringify(currentUser));
-      showApp();return;
+  
+  var username = document.getElementById('login-user').value.trim();
+  var pass = document.getElementById('login-pass').value.trim();
+  var errEl = document.getElementById('login-err');
+  var btn = document.querySelector('#login-page .btn-green');
+  
+  if(!username || !pass) {
+    errEl.textContent = (currentLang === 'ar') ? 'أدخل بيانات الدخول' : 'Enter your credentials';
+    return;
+  }
+  
+  _isSubmitting = true;
+  if(btn) {
+    btn.disabled = true;
+    btn.textContent = (currentLang === 'ar') ? 'جاري الدخول...' : 'Signing in...';
+  }
+  errEl.textContent = '';
+  
+  try {
+    if(username === 'admin' && pass === 'Oraimo@Admin2026') {
+      currentUser = { role: 'superadmin', name: 'Super Admin' };
+      localStorage.setItem('oraimo_user', JSON.stringify(currentUser));
+      showApp();
+      return;
     }
-    const admRes=await dbGet('admins',`?username=eq.${username}&password=eq.${pass}&select=*`).catch(()=>[]);
-    if(admRes&&admRes.length>0){
-      currentUser={...admRes[0],role:admRes[0].role||'admin'};
+    
+    var admRes = await dbGet('admins', '?select=*').catch(function() { return []; });
+    var foundAdmin = null;
+    if(admRes) {
+      for(var i = 0; i < admRes.length; i++) {
+        if(admRes[i].username === username && admRes[i].password === pass) {
+          foundAdmin = admRes[i];
+          break;
+        }
+      }
+    }
+    
+    if(foundAdmin) {
+      currentUser = foundAdmin;
+      currentUser.role = currentUser.role || 'admin';
       delete currentUser.password;
-      localStorage.setItem('oraimo_user',JSON.stringify(currentUser));
-      showApp();return;
+      localStorage.setItem('oraimo_user', JSON.stringify(currentUser));
+      showApp();
+      return;
     }
-    const empRes=await dbGet('employees',`?username=eq.${username}&password=eq.${pass}&select=*`).catch(()=>[]);
-    if(!empRes||empRes.length===0){errEl.textContent=currentLang==='ar'?'بيانات دخول غير صحيحة':'Invalid credentials';return}
-    currentUser={...empRes[0],role:empRes[0].role||'employee'};
+    
+    var empRes = await dbGet('employees', '?select=*').catch(function() { return []; });
+    var foundEmp = null;
+    if(empRes) {
+      for(var j = 0; j < empRes.length; j++) {
+        if(empRes[j].username === username && empRes[j].password === pass) {
+          foundEmp = empRes[j];
+          break;
+        }
+      }
+    }
+    
+    if(!foundEmp) {
+      errEl.textContent = (currentLang === 'ar') ? 'بيانات دخول غير صحيحة' : 'Invalid credentials';
+      return;
+    }
+    
+    currentUser = foundEmp;
+    currentUser.role = currentUser.role || 'employee';
     delete currentUser.password;
-    localStorage.setItem('oraimo_user',JSON.stringify(currentUser));
+    localStorage.setItem('oraimo_user', JSON.stringify(currentUser));
     showApp();
-  }catch(e){
-    errEl.textContent=currentLang==='ar'?'خطأ في الاتصال، حاول مرة أخرى':'Connection error, try again';
-  }finally{
-    _isSubmitting=false;
-    if(btn){btn.disabled=false;btn.textContent=currentLang==='ar'?'تسجيل الدخول':'Sign In';}
+    
+  } catch(e) {
+    errEl.textContent = (currentLang === 'ar') ? 'خطأ في الاتصال، حاول مرة أخرى' : 'Connection error, try again';
+  } finally {
+    _isSubmitting = false;
+    if(btn) {
+      btn.disabled = false;
+      btn.textContent = (currentLang === 'ar') ? 'تسجيل الدخول' : 'Sign In';
+    }
   }
 }
-function doLogout(){
-  // Stop any active camera
-  if(videoStream){try{videoStream.getTracks().forEach(t=>t.stop());}catch(_){}videoStream=null;}
-  // Stop chat polling
-  if(chatSubscription){
-    try{if(typeof chatSubscription==='function')chatSubscription();else clearInterval(chatSubscription);}catch(_){}
-    chatSubscription=null;
+
+function doLogout() {
+  if(videoStream) {
+    try {
+      videoStream.getTracks().forEach(function(t) { t.stop(); });
+    } catch(e) {}
+    videoStream = null;
   }
-  currentChat=null;
-  // Clear session
+  
   localStorage.removeItem('oraimo_user');
-  currentUser=null;
-  allAdmins=[];allBranches=[];
-  managerTeamData={};
-  // Reset admin nav
-  document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});
-  const visNav=document.getElementById('adm-visits-nav');if(visNav)visNav.style.display='none';
-  // Reset tabs
-  ['dashboard','employees','branches','reports','settings','visits'].forEach(t=>{
-    const d=document.getElementById('admin-'+t);if(d)d.style.display='none';
-  });
-  document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
-  ['add-emp-btn','add-emp-btn2'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='';});
-  // Clear login form
-  const lu=document.getElementById('login-user');if(lu)lu.value='';
-  const lp=document.getElementById('login-pass');if(lp)lp.value='';
-  const le=document.getElementById('login-err');if(le)le.textContent='';
+  currentUser = null;
   showPage('login-page');
+  
+  var loginUser = document.getElementById('login-user');
+  var loginPass = document.getElementById('login-pass');
+  var loginErr = document.getElementById('login-err');
+  if(loginUser) loginUser.value = '';
+  if(loginPass) loginPass.value = '';
+  if(loginErr) loginErr.textContent = '';
 }
 
 // ── CLOCK ──
-function startClock(){
-  function tick(){
-    const now=new Date(),locale=currentLang==='ar'?'ar-EG':'en-US';
-    const el=document.getElementById('live-clock'),del=document.getElementById('live-date');
-    if(el)el.textContent=now.toLocaleTimeString(locale,{hour12:false});
-    if(del)del.textContent=now.toLocaleDateString(locale,{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+function startClock() {
+  function tick() {
+    var now = new Date();
+    var locale = (currentLang === 'ar') ? 'ar-EG' : 'en-US';
+    var el = document.getElementById('live-clock');
+    var del = document.getElementById('live-date');
+    if(el) el.textContent = now.toLocaleTimeString(locale, { hour12: false });
+    if(del) del.textContent = now.toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   }
-  tick();setInterval(tick,1000);
+  tick();
+  setInterval(tick, 1000);
 }
 
-// ── EMP DATA ──
-async function loadEmpData(){
-  try{
-    const today=todayStr(),pm=getPayrollMonth();
-    const todayAtt=await dbGet('attendance',`?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`);
-    updateAttendBtn(todayAtt&&todayAtt.length>0?todayAtt[0]:null);
-    const monthAtt=await dbGet('attendance',`?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`);
-    document.getElementById('emp-attend-count').textContent=monthAtt?monthAtt.length:0;
-    let lateTotal=0;(monthAtt||[]).forEach(a=>{lateTotal+=(a.late_minutes||0)});
-    document.getElementById('emp-late-total').textContent=lateTotal+(currentLang==='ar'?' د':'m');
-    const monthSales=await dbGet('sales',`?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`);
-    let salesTotal=0;(monthSales||[]).forEach(s=>{salesTotal+=s.total_amount});
-    document.getElementById('emp-sales-total').textContent='EGP '+fmtEGP(salesTotal);
-    const mon=pm.start.substring(0,7);
-    const targetRes=await dbGet('targets',`?employee_id=eq.${currentUser.id}&month=eq.${mon}&select=*`);
-    const target=targetRes&&targetRes.length>0?targetRes[0].amount:0;
-    const kmodel=targetRes&&targetRes.length>0?targetRes[0].kmodel_amount:0;
-    document.getElementById('target-achieved').textContent='EGP '+fmtEGP(salesTotal);
-    document.getElementById('target-goal').textContent=(currentLang==='ar'?'التارجت: ':'Target: ')+'EGP '+fmtEGP(target);
-    const pct=target>0?Math.min(100,Math.round(salesTotal/target*100)):0;
-    document.getElementById('target-fill').style.width=pct+'%';
-    document.getElementById('target-pct').textContent=pct+'%';
-    // K Model
-    const kr=document.getElementById('kmodel-row');
-    if(kmodel>0&&kr){
-      kr.style.display='block';
-      const kpct=Math.min(100,Math.round(salesTotal/kmodel*100));
-      document.getElementById('kmodel-fill').style.width=kpct+'%';
-      document.getElementById('kmodel-pct').textContent=kpct+'%';
-    }else if(kr)kr.style.display='none';
-    // Absent
-    const startD=new Date(pm.start),endD=new Date(Math.min(new Date(pm.end),new Date()));
-    let absent=0;
-    for(let d=new Date(startD);d<=endD;d.setDate(d.getDate()+1)){
-      if(d.getDay()===currentUser.day_off)continue;
-      const ds=fmtDate(new Date(d));
-      if(!(monthAtt||[]).find(a=>a.date===ds))absent++;
+// ── HELPER FUNCTIONS ──
+function todayStr() {
+  var d = new Date();
+  var year = d.getFullYear();
+  var month = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  return year + '-' + month + '-' + day;
+}
+
+function fmtEGP(n) {
+  var num = Number(n);
+  if(isNaN(num)) return '0';
+  if(num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if(num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return String(Math.round(num));
+}
+
+function getPayrollMonth() {
+  var d = new Date();
+  var m = d.getMonth();
+  var y = d.getFullYear();
+  var day = d.getDate();
+  var start, end;
+  
+  if(day >= 21) {
+    start = new Date(y, m, 21);
+    end = new Date(y, m + 1, 20);
+  } else {
+    start = new Date(y, m - 1, 21);
+    end = new Date(y, m, 20);
+  }
+  
+  var startStr = start.toISOString().split('T')[0];
+  var endStr = end.toISOString().split('T')[0];
+  var label = (currentLang === 'ar') ? 'الفترة من 21 إلى 20' : 'Period 21st to 20th';
+  
+  return { start: startStr, end: endStr, label: label };
+}
+
+function notify(msg, type) {
+  var el = document.createElement('div');
+  el.className = 'notif ' + (type || 'success');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(function() { el.remove(); }, 3000);
+}
+
+function openModal(id) {
+  var modal = document.getElementById(id);
+  if(modal) modal.classList.add('open');
+}
+
+function closeModal(id) {
+  var modal = document.getElementById(id);
+  if(modal) modal.classList.remove('open');
+}
+
+// ── SEND LEAVE REQUEST (FIXED - NO OPTIONAL CHAINING) ──
+async function sendLeaveRequest(leaveType) {
+  if(_leaveSending) return;
+  if(!leaveType) leaveType = 'permission';
+  var ar = (currentLang === 'ar');
+  
+  var reasonEl = (leaveType === 'vacation') ? document.getElementById('vacation-reason') : document.getElementById('leave-reason');
+  var reason = (reasonEl && reasonEl.value) ? reasonEl.value.trim() : '';
+  
+  var durationEl = document.getElementById('leave-duration');
+  var duration = 0;
+  if(leaveType !== 'vacation' && durationEl) {
+    duration = parseInt(durationEl.value) || 0;
+  }
+  
+  var vacationDateEl = document.getElementById('vacation-date');
+  var leaveDate = todayStr();
+  if(leaveType === 'vacation' && vacationDateEl && vacationDateEl.value) {
+    leaveDate = vacationDateEl.value;
+  }
+  
+  if(!reason) {
+    notify(ar ? 'أدخل السبب' : 'Enter reason', 'error');
+    return;
+  }
+  
+  if(leaveType === 'vacation' && (!vacationDateEl || !vacationDateEl.value)) {
+    notify(ar ? 'اختر تاريخ الإجازة' : 'Select vacation date', 'error');
+    return;
+  }
+  
+  _leaveSending = true;
+  
+  try {
+    await dbPost('leave_requests', {
+      employee_id: currentUser.id,
+      employee_name: currentUser.name,
+      reason: reason,
+      duration_minutes: duration,
+      leave_type: leaveType,
+      leave_date: leaveDate,
+      status: 'pending',
+      date: todayStr()
+    });
+    
+    notify(ar ? 'تم إرسال الطلب ✅' : 'Request sent ✅', 'success');
+    
+    if(leaveType === 'vacation') {
+      if(vacationDateEl) vacationDateEl.value = '';
+      var vacReasonEl = document.getElementById('vacation-reason');
+      if(vacReasonEl) vacReasonEl.value = '';
+    } else {
+      var leaveReasonEl = document.getElementById('leave-reason');
+      if(leaveReasonEl) leaveReasonEl.value = '';
     }
-    document.getElementById('emp-absent-count').textContent=absent;
-    renderDailySalesGrid(monthSales,pm);renderEmpPerfChart(monthSales,pm);
-    const recent=await dbGet('attendance',`?employee_id=eq.${currentUser.id}&order=date.desc&limit=7&select=*`);
-    renderAttendHistory(recent);loadEmpWarnings();loadTodaySales();
-  }catch(e){console.error(e)}
-}
-
-function updateAttendBtn(record){
-  const btn=document.getElementById('attend-btn'),status=document.getElementById('attend-status');if(!btn)return;
-  const ar=currentLang==='ar';
-  if(record&&record.check_in&&!record.check_out){
-    btn.classList.add('checked-in');btn.querySelector('.attend-icon').textContent='🔴';
-    btn.querySelector('.attend-label').textContent=ar?'تسجيل خروج':'Check Out';
-    status.textContent=`${ar?'دخل الساعة':'In at'} ${record.check_in}${record.late_minutes>0?(ar?' (تأخر '+record.late_minutes+' د)':' ('+record.late_minutes+'m late)'):''}`;
-  }else if(record&&record.check_out){
-    btn.classList.remove('checked-in');btn.querySelector('.attend-icon').textContent='✅';
-    btn.querySelector('.attend-label').textContent=ar?'تم':'Done';btn.onclick=null;
-    status.textContent=`${ar?'دخول':'In'}: ${record.check_in} – ${ar?'خروج':'Out'}: ${record.check_out}`;
-  }else{
-    btn.classList.remove('checked-in');btn.querySelector('.attend-icon').textContent='🟢';
-    btn.querySelector('.attend-label').textContent=ar?'تسجيل دخول':'Check In';
-    status.textContent=ar?'لم يتم تسجيل حضور اليوم':'No attendance recorded today';
+  } catch(e) {
+    notify('Error: ' + (e.message || ''), 'error');
+  } finally {
+    _leaveSending = false;
   }
 }
-function handleAttendClick(){
-  const btn=document.getElementById('attend-btn');if(btn.querySelector('.attend-icon').textContent==='✅')return;
-  attendMode=btn.classList.contains('checked-in')?'out':'in';
-  const ar=currentLang==='ar';
-  document.getElementById('selfie-modal-title').textContent=attendMode==='in'?(ar?'تأكيد تسجيل الدخول':'Confirm Check In'):(ar?'تأكيد تسجيل الخروج':'Confirm Check Out');
-  document.getElementById('camera-label').textContent=attendMode==='in'?(ar?'📸 التقط سيلفي للدخول':'📸 Take selfie to check in'):(ar?'📸 التقط سيلفي للخروج':'📸 Take selfie to check out');
+
+// ── LOAD EMP DATA ──
+async function loadEmpData() {
+  try {
+    var today = todayStr();
+    var pm = getPayrollMonth();
+    
+    var todayAtt = await dbGet('attendance', '?employee_id=eq.' + currentUser.id + '&date=eq.' + today + '&select=*');
+    updateAttendBtn(todayAtt && todayAtt.length > 0 ? todayAtt[0] : null);
+    
+    var monthAtt = await dbGet('attendance', '?employee_id=eq.' + currentUser.id + '&date=gte.' + pm.start + '&date=lte.' + pm.end + '&select=*');
+    var attendCount = document.getElementById('emp-attend-count');
+    if(attendCount) attendCount.textContent = monthAtt ? monthAtt.length : 0;
+    
+    var lateTotal = 0;
+    if(monthAtt) {
+      for(var i = 0; i < monthAtt.length; i++) {
+        lateTotal += (monthAtt[i].late_minutes || 0);
+      }
+    }
+    var lateEl = document.getElementById('emp-late-total');
+    if(lateEl) lateEl.textContent = lateTotal + ((currentLang === 'ar') ? ' د' : 'm');
+    
+    var monthSales = await dbGet('sales', '?employee_id=eq.' + currentUser.id + '&date=gte.' + pm.start + '&date=lte.' + pm.end + '&select=*');
+    var salesTotal = 0;
+    if(monthSales) {
+      for(var j = 0; j < monthSales.length; j++) {
+        salesTotal += monthSales[j].total_amount;
+      }
+    }
+    var salesEl = document.getElementById('emp-sales-total');
+    if(salesEl) salesEl.textContent = 'EGP ' + fmtEGP(salesTotal);
+    
+    var mon = pm.start.substring(0, 7);
+    var targetRes = await dbGet('targets', '?employee_id=eq.' + currentUser.id + '&month=eq.' + mon + '&select=*');
+    var target = (targetRes && targetRes.length > 0) ? targetRes[0].amount : 0;
+    
+    var achievedEl = document.getElementById('target-achieved');
+    if(achievedEl) achievedEl.textContent = 'EGP ' + fmtEGP(salesTotal);
+    
+    var goalEl = document.getElementById('target-goal');
+    if(goalEl) goalEl.textContent = ((currentLang === 'ar') ? 'التارجت: ' : 'Target: ') + 'EGP ' + fmtEGP(target);
+    
+    var pct = (target > 0) ? Math.min(100, Math.round(salesTotal / target * 100)) : 0;
+    var fillEl = document.getElementById('target-fill');
+    if(fillEl) fillEl.style.width = pct + '%';
+    
+    var pctEl = document.getElementById('target-pct');
+    if(pctEl) pctEl.textContent = pct + '%';
+    
+  } catch(e) {
+    console.error('loadEmpData error:', e);
+  }
+}
+
+function updateAttendBtn(record) {
+  var btn = document.getElementById('attend-btn');
+  var status = document.getElementById('attend-status');
+  if(!btn) return;
+  
+  var ar = (currentLang === 'ar');
+  
+  if(record && record.check_in && !record.check_out) {
+    btn.classList.add('checked-in');
+    var icon = btn.querySelector('.attend-icon');
+    if(icon) icon.textContent = '🔴';
+    var label = btn.querySelector('.attend-label');
+    if(label) label.textContent = ar ? 'تسجيل خروج' : 'Check Out';
+    if(status) {
+      var lateText = (record.late_minutes > 0) ? (ar ? ' (تأخر ' + record.late_minutes + ' د)' : ' (' + record.late_minutes + 'm late)') : '';
+      status.textContent = (ar ? 'دخل الساعة ' : 'In at ') + record.check_in + lateText;
+    }
+  } else if(record && record.check_out) {
+    btn.classList.remove('checked-in');
+    var icon2 = btn.querySelector('.attend-icon');
+    if(icon2) icon2.textContent = '✅';
+    var label2 = btn.querySelector('.attend-label');
+    if(label2) label2.textContent = ar ? 'تم' : 'Done';
+    btn.onclick = null;
+    if(status) {
+      status.textContent = (ar ? 'دخول: ' : 'In: ') + record.check_in + ' – ' + (ar ? 'خروج: ' : 'Out: ') + record.check_out;
+    }
+  } else {
+    btn.classList.remove('checked-in');
+    var icon3 = btn.querySelector('.attend-icon');
+    if(icon3) icon3.textContent = '🟢';
+    var label3 = btn.querySelector('.attend-label');
+    if(label3) label3.textContent = ar ? 'تسجيل دخول' : 'Check In';
+    if(status) status.textContent = ar ? 'لم يتم تسجيل حضور اليوم' : 'No attendance recorded today';
+  }
+}
+
+function handleAttendClick() {
+  var btn = document.getElementById('attend-btn');
+  if(!btn) return;
+  
+  var icon = btn.querySelector('.attend-icon');
+  if(icon && icon.textContent === '✅') return;
+  
+  attendMode = btn.classList.contains('checked-in') ? 'out' : 'in';
+  var ar = (currentLang === 'ar');
+  
+  var titleEl = document.getElementById('selfie-modal-title');
+  if(titleEl) {
+    titleEl.textContent = (attendMode === 'in') ? (ar ? 'تأكيد تسجيل الدخول' : 'Confirm Check In') : (ar ? 'تأكيد تسجيل الخروج' : 'Confirm Check Out');
+  }
+  
+  var labelEl = document.getElementById('camera-label');
+  if(labelEl) {
+    labelEl.textContent = (attendMode === 'in') ? (ar ? '📸 التقط سيلفي للدخول' : '📸 Take selfie to check in') : (ar ? '📸 التقط سيلفي للخروج' : '📸 Take selfie to check out');
+  }
+  
   openCamera();
 }
 
-function renderAttendHistory(records){
-  const el=document.getElementById('emp-attend-history');if(!el)return;
-  const ar=currentLang==='ar';
-  if(!records||records.length===0){el.innerHTML=`<div class="empty"><div class="empty-icon">📭</div>${ar?'لا توجد سجلات':'No records'}</div>`;return}
-  el.innerHTML=records.map(r=>`<div class="history-item">
-    <div class="hist-top"><div class="hist-name">${r.date}</div>
-    <span class="badge ${r.late_minutes>0?'badge-yellow':'badge-green'}">${r.late_minutes>0?r.late_minutes+(ar?' د تأخير':'m late'):(ar?'في الوقت':'On time')}</span></div>
-    <div style="display:flex;justify-content:space-between">
-      <div class="hist-meta">${ar?'دخول':'In'}: ${r.check_in||'-'}</div>
-      <div class="hist-meta">${ar?'خروج':'Out'}: ${r.check_out||'-'}</div>
-    </div></div>`).join('');
-}
-
-function renderDailySalesGrid(monthSales,pm){
-  const el=document.getElementById('daily-sales-grid');if(!el)return;
-  const salesByDate={};(monthSales||[]).forEach(s=>{salesByDate[s.date]=(salesByDate[s.date]||0)+s.total_amount});
-  const startD=new Date(pm.start),endD=new Date(pm.end),today=new Date();
-  let html='';
-  for(let d=new Date(startD);d<=endD;d.setDate(d.getDate()+1)){
-    const ds=fmtDate(new Date(d)),isToday=ds===fmtDate(today),isDayOff=d.getDay()===currentUser.day_off,amt=salesByDate[ds]||0;
-    let cls='day-cell';
-    if(isToday)cls+=' today';
-    if(isDayOff)cls+=' day-off';
-    else if(amt>0)cls+=' has-sale';
-    else if(d<today)cls+=' absent';
-    html+=`<div class="${cls}"><span class="day-num">${d.getDate()}</span>${amt>0?`<span class="day-amt">${fmtEGP(amt)}</span>`:''}</div>`;
-  }
-  el.innerHTML=html;
-}
-
-function renderEmpPerfChart(monthSales,pm){
-  const el=document.getElementById('emp-perf-chart');if(!el)return;
-  const salesByDate={};(monthSales||[]).forEach(s=>{salesByDate[s.date]=(salesByDate[s.date]||0)+s.total_amount});
-  const days=[];const startD=new Date(pm.start),endD=new Date(pm.end),today=new Date();
-  for(let d=new Date(startD);d<=endD&&d<=today;d.setDate(d.getDate()+1)){
-    if(d.getDay()!==currentUser.day_off)days.push({ds:fmtDate(new Date(d)),day:d.getDate()});
-  }
-  const vals=days.map(d=>salesByDate[d.ds]||0);const max=Math.max(...vals,1);
-  el.innerHTML=days.slice(-14).map(d=>{const v=salesByDate[d.ds]||0;const h=Math.max(4,Math.round((v/max)*120));
-    return`<div class="chart-bar-wrap"><div class="chart-bar" style="height:${h}px;background:${v>0?'var(--green)':'var(--border)'}"></div><div class="chart-label">${d.day}</div></div>`;
-  }).join('');
-}
-
-async function loadEmpWarnings(){
-  try{
-    const warns=await dbGet('warnings',`?employee_id=eq.${currentUser.id}&order=created_at.desc&limit=5&select=*`);
-    const card=document.getElementById('emp-warnings-card'),list=document.getElementById('emp-warnings-list');
-    if(!warns||warns.length===0){if(card)card.style.display='none';return}
-    if(card)card.style.display='block';
-    if(list)list.innerHTML=warns.map(w=>`<div class="perm-card" style="border-color:var(--yellow)">
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-        <span class="badge badge-yellow">${currentLang==='ar'?'تحذير':'Warning'}</span>
-        <span style="font-size:10px;color:var(--muted)">${(w.created_at||'').substring(0,10)}</span>
-      </div><div style="font-size:12px">${w.message}</div></div>`).join('');
-  }catch(e){}
-}
-
-async function loadEmpDailyLog(){
-  const pm=getPayrollMonth();const ar=currentLang==='ar';
-  const att=await dbGet('attendance',`?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*&order=date.desc`)||[];
-  const el=document.getElementById('emp-daily-log');if(!el)return;
-  if(att.length===0){el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div>${ar?'لا توجد سجلات':'No records'}</div>`;return}
-  el.innerHTML=`<div class="table-wrap"><table>
-    <tr><th>${ar?'التاريخ':'Date'}</th><th>${ar?'دخول':'In'}</th><th>${ar?'خروج':'Out'}</th><th>${ar?'تأخير':'Late'}</th></tr>
-    ${att.map(a=>`<tr><td>${a.date}</td><td>${a.check_in||'-'}</td><td>${a.check_out||'-'}</td>
-      <td>${a.late_minutes>0?`<span class="badge badge-yellow">${a.late_minutes}${ar?'د':'m'}</span>`:'<span class="badge badge-green">✓</span>'}</td></tr>`).join('')}
-  </table></div>`;
-}
-
-async function loadEmpMonthlyReport(){
-  const pm=getPayrollMonth();const ar=currentLang==='ar';
-  const[att,sales]=await Promise.all([
-    dbGet('attendance',`?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`),
-    dbGet('sales',`?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`)
-  ]);
-  let salesTotal=0;(sales||[]).forEach(s=>salesTotal+=s.total_amount);
-  let lateTotal=0;(att||[]).forEach(a=>lateTotal+=(a.late_minutes||0));
-  const el=document.getElementById('monthly-report-emp');if(!el)return;
-  const rows=ar?[['أيام الحضور',(att||[]).length+' أيام','var(--green)'],['دقائق التأخير',lateTotal+' د','var(--yellow)'],['إجمالي المبيعات','EGP '+salesTotal.toLocaleString(),'var(--green)'],['عدد المعاملات',(sales||[]).length,'var(--text)']]
-    :[['Attendance',(att||[]).length+' days','var(--green)'],['Late',lateTotal+'m','var(--yellow)'],['Total Sales','EGP '+salesTotal.toLocaleString(),'var(--green)'],['Transactions',(sales||[]).length,'var(--text)']];
-  el.innerHTML=`<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${pm.label}</div>`+rows.map(([l,v,c])=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--muted)">${l}</span><span style="font-size:13px;font-weight:700;color:${c}">${v}</span></div>`).join('');
-}
-
 // ── CAMERA ──
-async function openCamera(){
-  try{videoStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});document.getElementById('video').srcObject=videoStream;document.getElementById('camera-modal').classList.add('open');}
-  catch(e){notify((currentLang==='ar'?'خطأ كاميرا: ':'Camera error: ')+e.message,'error')}
+async function openCamera() {
+  try {
+    videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    var video = document.getElementById('video');
+    if(video) video.srcObject = videoStream;
+    var modal = document.getElementById('camera-modal');
+    if(modal) modal.classList.add('open');
+  } catch(e) {
+    notify((currentLang === 'ar' ? 'خطأ كاميرا: ' : 'Camera error: ') + e.message, 'error');
+  }
 }
-function closeCamera(){if(videoStream){videoStream.getTracks().forEach(t=>t.stop());videoStream=null}document.getElementById('camera-modal').classList.remove('open')}
-function capturePhoto(){
-  const video=document.getElementById('video'),canvas=document.getElementById('canvas');
-  canvas.width=video.videoWidth;canvas.height=video.videoHeight;
-  const ctx=canvas.getContext('2d');ctx.translate(canvas.width,0);ctx.scale(-1,1);ctx.drawImage(video,0,0);
-  capturedPhoto=canvas.toDataURL('image/jpeg',0.65);closeCamera();
-  document.getElementById('selfie-preview-img').src=capturedPhoto;
-  document.getElementById('selfie-modal').classList.add('open');
-  document.getElementById('confirm-attend-btn').disabled=false;
-  const ar=currentLang==='ar';
-  document.getElementById('location-status').textContent=ar?'📍 جاري تحديد الموقع...':'📍 Getting location...';
-  capturedLocation=null;
-  if(!navigator.geolocation){document.getElementById('location-status').textContent=ar?'⚠️ تحديد الموقع غير متاح':'⚠️ Geolocation not supported';return}
-  const locTimer=setTimeout(()=>{if(!capturedLocation)document.getElementById('location-status').textContent=ar?'⚠️ انتهت مهلة الموقع':'⚠️ Location timeout'},12000);
-  navigator.geolocation.getCurrentPosition(pos=>{
-    clearTimeout(locTimer);capturedLocation={lat:pos.coords.latitude,lng:pos.coords.longitude};
-    document.getElementById('location-status').innerHTML=`✅ ${ar?'تم تحديد الموقع':'Location found'} (±${Math.round(pos.coords.accuracy)}m) — <a href="https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}" target="_blank" style="color:var(--green)">${ar?'عرض':'View'}</a>`;
-  },()=>{clearTimeout(locTimer);capturedLocation=null;document.getElementById('location-status').textContent=ar?'⚠️ تعذر تحديد الموقع':'⚠️ Location unavailable'},{enableHighAccuracy:true,timeout:10000});
+
+function closeCamera() {
+  if(videoStream) {
+    videoStream.getTracks().forEach(function(t) { t.stop(); });
+    videoStream = null;
+  }
+  var modal = document.getElementById('camera-modal');
+  if(modal) modal.classList.remove('open');
 }
-async function confirmAttendance(){
-  const today=todayStr(),now=new Date(),timeStr=now.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
-  const ar=currentLang==='ar';
-  try{
-    const todayAtt=await dbGet('attendance',`?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`);
-    if(attendMode==='in'){
-      const[wh,wm]=workSettings.start.split(':').map(Number),[ah,am]=timeStr.split(':').map(Number);
-      const lateMin=Math.max(0,(ah*60+am)-(wh*60+wm));
-      await dbPost('attendance',{employee_id:currentUser.id,date:today,check_in:timeStr,late_minutes:lateMin,selfie_in:capturedPhoto,location_lat:capturedLocation?.lat,location_lng:capturedLocation?.lng});
-      notify(ar?'تم تسجيل الدخول ✅':'Checked in ✅','success');
-    }else{
-      if(todayAtt&&todayAtt.length>0){await dbPatch('attendance',{check_out:timeStr,selfie_out:capturedPhoto},`?employee_id=eq.${currentUser.id}&date=eq.${today}`);notify(ar?'تم تسجيل الخروج ✅':'Checked out ✅','success');}
+
+function capturePhoto() {
+  var video = document.getElementById('video');
+  var canvas = document.getElementById('canvas');
+  if(!video || !canvas) return;
+  
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  var ctx = canvas.getContext('2d');
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0);
+  capturedPhoto = canvas.toDataURL('image/jpeg', 0.65);
+  closeCamera();
+  
+  var preview = document.getElementById('selfie-preview-img');
+  if(preview) preview.src = capturedPhoto;
+  
+  var modal = document.getElementById('selfie-modal');
+  if(modal) modal.classList.add('open');
+  
+  var confirmBtn = document.getElementById('confirm-attend-btn');
+  if(confirmBtn) confirmBtn.disabled = false;
+  
+  var locStatus = document.getElementById('location-status');
+  var ar = (currentLang === 'ar');
+  if(locStatus) locStatus.textContent = ar ? '📍 جاري تحديد الموقع...' : '📍 Getting location...';
+  
+  capturedLocation = null;
+  
+  if(!navigator.geolocation) {
+    if(locStatus) locStatus.textContent = ar ? '⚠️ تحديد الموقع غير متاح' : '⚠️ Geolocation not supported';
+    return;
+  }
+  
+  var locTimer = setTimeout(function() {
+    if(!capturedLocation && locStatus) locStatus.textContent = ar ? '⚠️ انتهت مهلة الموقع' : '⚠️ Location timeout';
+  }, 12000);
+  
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    clearTimeout(locTimer);
+    capturedLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    if(locStatus) {
+      locStatus.innerHTML = '✅ ' + (ar ? 'تم تحديد الموقع' : 'Location found') + ' (±' + Math.round(pos.coords.accuracy) + 'm) — <a href="https://maps.google.com/?q=' + pos.coords.latitude + ',' + pos.coords.longitude + '" target="_blank" style="color:var(--green)">' + (ar ? 'عرض' : 'View') + '</a>';
     }
-    closeModal('selfie-modal');loadEmpData();
-  }catch(e){notify((ar?'خطأ: ':'Error: ')+e.message,'error')}
+  }, function() {
+    clearTimeout(locTimer);
+    capturedLocation = null;
+    if(locStatus) locStatus.textContent = ar ? '⚠️ تعذر تحديد الموقع' : '⚠️ Location unavailable';
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+async function confirmAttendance() {
+  var today = todayStr();
+  var now = new Date();
+  var timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+  var ar = (currentLang === 'ar');
+  
+  try {
+    var todayAtt = await dbGet('attendance', '?employee_id=eq.' + currentUser.id + '&date=eq.' + today + '&select=*');
+    
+    if(attendMode === 'in') {
+      var wh = parseInt(workSettings.start.split(':')[0]);
+      var wm = parseInt(workSettings.start.split(':')[1]);
+      var ah = parseInt(timeStr.split(':')[0]);
+      var am = parseInt(timeStr.split(':')[1]);
+      var lateMin = Math.max(0, (ah * 60 + am) - (wh * 60 + wm));
+      
+      await dbPost('attendance', {
+        employee_id: currentUser.id,
+        date: today,
+        check_in: timeStr,
+        late_minutes: lateMin,
+        selfie_in: capturedPhoto,
+        location_lat: capturedLocation ? capturedLocation.lat : null,
+        location_lng: capturedLocation ? capturedLocation.lng : null
+      });
+      notify(ar ? 'تم تسجيل الدخول ✅' : 'Checked in ✅', 'success');
+    } else {
+      if(todayAtt && todayAtt.length > 0) {
+        await dbPatch('attendance', { check_out: timeStr, selfie_out: capturedPhoto }, '?employee_id=eq.' + currentUser.id + '&date=eq.' + today);
+        notify(ar ? 'تم تسجيل الخروج ✅' : 'Checked out ✅', 'success');
+      }
+    }
+    closeModal('selfie-modal');
+    if(typeof loadEmpData === 'function') loadEmpData();
+  } catch(e) {
+    notify((ar ? 'خطأ: ' : 'Error: ') + e.message, 'error');
+  }
 }
 
 // ── SALES ──
-let filteredProducts=[...PRODUCTS];
-function renderProducts(){filteredProducts=[...PRODUCTS];displayProducts()}
-const _filterProductsDebounced=(function(){
-  let t;return function(){clearTimeout(t);t=setTimeout(()=>{
-    const q=(document.getElementById('product-search')||{}).value||'';
-    filteredProducts=PRODUCTS.filter(p=>p.name.toLowerCase().includes(q.toLowerCase()));
-    displayProducts();
-  },150);};
-})();
-function filterProducts(){_filterProductsDebounced();}
-function displayProducts(){
-  const el=document.getElementById('product-list');if(!el)return;
-  const ar=currentLang==='ar';
-  if(filteredProducts.length===0){el.innerHTML=`<div style="padding:16px;text-align:center;color:var(--muted)">${ar?'لا توجد نتائج':'No results'}</div>`;return}
-  el.innerHTML=filteredProducts.slice(0,30).map(p=>`<div class="product-item" onclick="selectProduct('${p.name.replace(/'/g,"\'")}',${p.price})"><div class="product-name">${p.name}</div><div class="product-price">${p.price.toLocaleString()} EGP</div></div>`).join('');
+function renderProducts() {
+  var el = document.getElementById('product-list');
+  if(!el) return;
+  
+  var ar = (currentLang === 'ar');
+  var html = '';
+  for(var i = 0; i < PRODUCTS.length && i < 20; i++) {
+    var p = PRODUCTS[i];
+    html += '<div class="product-item" onclick="selectProduct(\'' + p.name.replace(/'/g, "\\'") + '\',' + p.price + ')">' +
+            '<div class="product-name">' + p.name + '</div>' +
+            '<div class="product-price">' + p.price.toLocaleString() + ' EGP</div>' +
+            '</div>';
+  }
+  el.innerHTML = html || '<div style="padding:16px;text-align:center;color:var(--muted)">' + (ar ? 'لا توجد منتجات' : 'No products') + '</div>';
 }
-function selectProduct(name,price){
-  selectedProduct={name,price};selectedQty=1;
-  document.getElementById('selected-product-name').textContent=name;
-  document.getElementById('selected-product-price').textContent=price.toLocaleString();
-  document.getElementById('qty-val').textContent=1;
-  document.getElementById('sale-total').textContent=price.toLocaleString()+' EGP';
-  const w=document.getElementById('sale-form-wrap');
-  w.style.display='flex';
-  w.style.position='fixed';
-  w.style.bottom='0';
-  w.style.left='0';
-  w.style.right='0';
-  w.style.top='0';
-  w.style.zIndex='5000';
-  w.style.background='rgba(0,0,0,.75)';
-  w.style.alignItems='flex-end';
-  w.style.backdropFilter='blur(4px)';
+
+function filterProducts() {
+  var q = document.getElementById('product-search');
+  if(!q) return;
+  var query = q.value.toLowerCase();
+  var el = document.getElementById('product-list');
+  if(!el) return;
+  
+  var ar = (currentLang === 'ar');
+  var filtered = [];
+  for(var i = 0; i < PRODUCTS.length; i++) {
+    if(PRODUCTS[i].name.toLowerCase().includes(query)) {
+      filtered.push(PRODUCTS[i]);
+    }
+  }
+  
+  if(filtered.length === 0) {
+    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted)">' + (ar ? 'لا توجد نتائج' : 'No results') + '</div>';
+    return;
+  }
+  
+  var html = '';
+  for(var j = 0; j < filtered.length && j < 30; j++) {
+    var p = filtered[j];
+    html += '<div class="product-item" onclick="selectProduct(\'' + p.name.replace(/'/g, "\\'") + '\',' + p.price + ')">' +
+            '<div class="product-name">' + p.name + '</div>' +
+            '<div class="product-price">' + p.price.toLocaleString() + ' EGP</div>' +
+            '</div>';
+  }
+  el.innerHTML = html;
 }
-function changeQty(d){selectedQty=Math.max(1,selectedQty+d);document.getElementById('qty-val').textContent=selectedQty;document.getElementById('sale-total').textContent=(selectedProduct.price*selectedQty).toLocaleString()+' EGP'}
-function cancelSale(){
-  selectedProduct=null;
-  const w=document.getElementById('sale-form-wrap');
-  if(w){w.style.display='none';w.style.position='';w.style.bottom='';w.style.left='';w.style.right='';w.style.zIndex='';w.style.background='';w.style.alignItems='';}
+
+function selectProduct(name, price) {
+  selectedProduct = { name: name, price: price };
+  selectedQty = 1;
+  
+  var nameEl = document.getElementById('selected-product-name');
+  if(nameEl) nameEl.textContent = name;
+  
+  var priceEl = document.getElementById('selected-product-price');
+  if(priceEl) priceEl.textContent = price.toLocaleString();
+  
+  var qtyEl = document.getElementById('qty-val');
+  if(qtyEl) qtyEl.textContent = '1';
+  
+  var totalEl = document.getElementById('sale-total');
+  if(totalEl) totalEl.textContent = price.toLocaleString() + ' EGP';
+  
+  var wrap = document.getElementById('sale-form-wrap');
+  if(wrap) {
+    wrap.style.display = 'flex';
+    wrap.style.position = 'fixed';
+    wrap.style.bottom = '0';
+    wrap.style.left = '0';
+    wrap.style.right = '0';
+    wrap.style.top = '0';
+    wrap.style.zIndex = '5000';
+    wrap.style.background = 'rgba(0,0,0,.75)';
+    wrap.style.alignItems = 'flex-end';
+    wrap.style.backdropFilter = 'blur(4px)';
+  }
+}
+
+function changeQty(d) {
+  selectedQty = Math.max(1, selectedQty + d);
+  var qtyEl = document.getElementById('qty-val');
+  if(qtyEl) qtyEl.textContent = selectedQty;
+  var totalEl = document.getElementById('sale-total');
+  if(totalEl && selectedProduct) totalEl.textContent = (selectedProduct.price * selectedQty).toLocaleString() + ' EGP';
+}
+
+function cancelSale() {
+  selectedProduct = null;
+  var wrap = document.getElementById('sale-form-wrap');
+  if(wrap) {
+    wrap.style.display = 'none';
+    wrap.style.position = '';
+    wrap.style.bottom = '';
+    wrap.style.left = '';
+    wrap.style.right = '';
+    wrap.style.zIndex = '';
+    wrap.style.background = '';
+    wrap.style.alignItems = '';
+  }
   renderProducts();
 }
-let _saleSending=false;
-async function submitSale(){
-  if(_saleSending||!selectedProduct)return;
-  const total=selectedProduct.price*selectedQty;const ar=currentLang==='ar';
-  _saleSending=true;
-  try{
-    await dbPost('sales',{employee_id:currentUser.id,date:todayStr(),product_name:selectedProduct.name,unit_price:selectedProduct.price,quantity:selectedQty,total_amount:total});
-    notify(ar?'تم تسجيل البيع ✅':'Sale recorded ✅','success');
-    cancelSale();loadTodaySales();loadEmpData();
-  }catch(e){notify((ar?'خطأ: ':'Error: ')+e.message,'error');}
-  finally{_saleSending=false;}
-}
-async function loadTodaySales(){
-  const sales=await dbGet('sales',`?employee_id=eq.${currentUser.id}&date=eq.${todayStr()}&order=created_at.desc&select=*`);
-  const el=document.getElementById('emp-sales-list');let total=0;const ar=currentLang==='ar';
-  if(!sales||sales.length===0){if(el)el.innerHTML=`<div class="empty"><div class="empty-icon">🛒</div>${ar?'لا توجد مبيعات اليوم':'No sales today'}</div>`;}
-  else{
-    sales.forEach(s=>total+=s.total_amount);
-    if(el)el.innerHTML=sales.map(s=>`<div class="history-item"><div class="hist-top"><div class="hist-name">${s.product_name}</div><div class="hist-amount">${s.total_amount.toLocaleString()} EGP</div></div><div style="display:flex;justify-content:space-between"><div class="hist-meta">${ar?'الكمية':'Qty'}: ${s.quantity}</div><div class="hist-meta">${s.unit_price.toLocaleString()} EGP</div></div></div>`).join('');
-  }
-  const tel=document.getElementById('emp-today-total');
-  if(tel)tel.textContent=(ar?'اليوم: ':'Today: ')+'EGP '+total.toLocaleString();
-}
-let _leaveSending=false;
-async function sendLeaveRequest(leaveType){
-  if(_leaveSending)return;
-  if(!leaveType) leaveType='permission';
-  const ar=currentLang==='ar';
-  const reason=(leaveType==='vacation'?document.getElementById('vacation-reason'):document.getElementById('leave-reason'))?.value?.trim()||'';
-  const duration=leaveType==='vacation'?0:parseInt(document.getElementById('leave-duration')?.value||'0');
-  const leaveDate=leaveType==='vacation'?(document.getElementById('vacation-date')?.value||todayStr()):todayStr();
-  if(!reason)return notify(ar?'أدخل السبب':'Enter reason','error');
-  if(leaveType==='vacation'&&!document.getElementById('vacation-date')?.value)return notify(ar?'اختر تاريخ الإجازة':'Select vacation date','error');
-  _leaveSending=true;
-  try{
-    await dbPost('leave_requests',{
-      employee_id:currentUser.id,
-      employee_name:currentUser.name,
-      reason,
-      duration_minutes:duration,
-      leave_type:leaveType,
-      leave_date:leaveDate,
-      status:'pending',
-      date:todayStr()
+
+async function submitSale() {
+  if(_saleSending || !selectedProduct) return;
+  var total = selectedProduct.price * selectedQty;
+  var ar = (currentLang === 'ar');
+  
+  _saleSending = true;
+  try {
+    await dbPost('sales', {
+      employee_id: currentUser.id,
+      date: todayStr(),
+      product_name: selectedProduct.name,
+      unit_price: selectedProduct.price,
+      quantity: selectedQty,
+      total_amount: total
     });
-    notify(ar?'تم إرسال الطلب ✅':'Request sent ✅','success');
-    if(leaveType==='vacation'){
-      const d=document.getElementById('vacation-date');if(d)d.value='';
-      const r=document.getElementById('vacation-reason');if(r)r.value='';
-    } else {
-      const r=document.getElementById('leave-reason');if(r)r.value='';
+    notify(ar ? 'تم تسجيل البيع ✅' : 'Sale recorded ✅', 'success');
+    cancelSale();
+    if(typeof loadTodaySales === 'function') loadTodaySales();
+    if(typeof loadEmpData === 'function') loadEmpData();
+  } catch(e) {
+    notify((ar ? 'خطأ: ' : 'Error: ') + e.message, 'error');
+  } finally {
+    _saleSending = false;
+  }
+}
+
+async function loadTodaySales() {
+  var sales = await dbGet('sales', '?employee_id=eq.' + currentUser.id + '&date=eq.' + todayStr() + '&order=created_at.desc&select=*');
+  var el = document.getElementById('emp-sales-list');
+  var total = 0;
+  var ar = (currentLang === 'ar');
+  
+  if(!sales || sales.length === 0) {
+    if(el) el.innerHTML = '<div class="empty"><div class="empty-icon">🛒</div>' + (ar ? 'لا توجد مبيعات اليوم' : 'No sales today') + '</div>';
+  } else {
+    for(var i = 0; i < sales.length; i++) {
+      total += sales[i].total_amount;
+    }
+    if(el) {
+      var html = '';
+      for(var j = 0; j < sales.length; j++) {
+        var s = sales[j];
+        html += '<div class="history-item">' +
+                '<div class="hist-top">' +
+                '<div class="hist-name">' + s.product_name + '</div>' +
+                '<div class="hist-amount">' + s.total_amount.toLocaleString() + ' EGP</div>' +
+                '</div>' +
+                '<div style="display:flex;justify-content:space-between">' +
+                '<div class="hist-meta">' + (ar ? 'الكمية' : 'Qty') + ': ' + s.quantity + '</div>' +
+                '<div class="hist-meta">' + s.unit_price.toLocaleString() + ' EGP</div>' +
+                '</div>' +
+                '</div>';
+      }
+      el.innerHTML = html;
     }
   }
-  catch(e){notify('Error: '+e.message,'error');}
-  finally{_leaveSending=false;}
+  
+  var tel = document.getElementById('emp-today-total');
+  if(tel) tel.textContent = (ar ? 'اليوم: ' : 'Today: ') + 'EGP ' + total.toLocaleString();
 }
 
-// ── ADMIN DASHBOARD ──
-async function loadAdminDashboard(){
-  // Show loader, hide content
-  const loader=document.getElementById('dash-loader');
-  const dashC=document.getElementById('dash-content');
-  if(loader) loader.style.display='none';
-  if(dashC) dashC.style.display='block';
-  try{
-    const today=todayStr(),pm=getPayrollMonth(),ar=currentLang==='ar';
-    let allEmp=await dbGet('employees','?select=*');allEmployees=allEmp||[];
-    // Filter for team leader: only show their team
-    if(currentUser&&(currentUser.role==='manager'||currentUser.role==='team_leader')){
-      const teamIds=await getManagerTeamIds();
-      if(teamIds&&teamIds.length>0) allEmployees=allEmployees.filter(e=>teamIds.includes(e.id));
-      else allEmployees=[];
-    }
-    const todayAtt=await dbGet('attendance',`?date=eq.${today}&select=*`);
-    const present=todayAtt?todayAtt.length:0;
-    document.getElementById('adm-present').textContent=present;
-    window._todayPresentIds=(todayAtt||[]).map(a=>a.employee_id);
-    document.getElementById('adm-absent').textContent=Math.max(0,allEmployees.length-present);
-    const[todaySales,monthSales]=await Promise.all([dbGet('sales',`?date=eq.${today}&select=total_amount,employee_id`),dbGet('sales',`?date=gte.${pm.start}&date=lte.${pm.end}&select=total_amount,employee_id,product_name`)]);
-    let todayTotal=0,monthTotal=0;
-    (todaySales||[]).forEach(s=>todayTotal+=s.total_amount);(monthSales||[]).forEach(s=>monthTotal+=s.total_amount);
-    document.getElementById('adm-sales-today').textContent='EGP '+fmtEGP(todayTotal);
-    document.getElementById('adm-sales-month').textContent='EGP '+fmtEGP(monthTotal);
-    renderPerformanceRanking(monthSales||[]);
-    // Hide loader, show content
-    applyLang();
-    const el=document.getElementById('adm-emp-today');
-    if(el){
-      if(allEmployees.length===0){el.innerHTML=`<div class="empty"><div class="empty-icon">👥</div>${ar?'لا يوجد موظفون':'No employees'}</div>`;}
-      else{
-        const isViewer=currentUser.role==='viewer';
-        el.innerHTML=allEmployees.map(emp=>{
-          const att=todayAtt&&todayAtt.find(a=>a.employee_id===emp.id);
-          const mapLink=att&&att.location_lat?`https://maps.google.com/?q=${att.location_lat},${att.location_lng}`:null;
-          return`<div class="emp-card">
-            <div class="emp-avatar" style="overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:emp.name[0].toUpperCase()}</div>
-            <div class="emp-info">
-              <div class="emp-name">${emp.name}</div><div class="emp-branch">${emp.branch||'-'}</div>
-              ${att?`<div style="font-size:10px;color:var(--green);margin-top:2px">${ar?'دخول':'In'}: ${att.check_in}${att.late_minutes>0?(ar?' (تأخر '+att.late_minutes+' د)':' ('+att.late_minutes+'m late)'):''} ${att.check_out?(ar?'· خروج: ':'· Out: ')+att.check_out:''}</div>`:''}
-              ${mapLink?`<a href="${mapLink}" target="_blank" style="font-size:10px;color:var(--blue);text-decoration:none">📍 ${ar?'عرض الموقع':'View Location'}</a>`:att?`<div style="font-size:10px;color:var(--muted)">📍 ${ar?'لا يوجد موقع':'No location'}</div>`:''}
-            </div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
-              <span class="badge ${att?(att.check_out?'badge-blue':'badge-green'):'badge-red'}">${att?(att.check_out?(ar?'غادر':'Left'):(ar?'حاضر':'Present')):(ar?'غائب':'Absent')}</span>
-              ${att&&att.selfie_in?`<img src="${att.selfie_in}" class="selfie-preview" onclick="viewSelfie('${emp.name}','${att.selfie_in}','${att.selfie_out||''}','${mapLink||''}')">`:''} 
-              ${!isViewer?`<button class="action-btn warn" onclick="openWarnModal(${emp.id},'${emp.name}')">⚠️</button>`:''}
-            </div></div>`;
-        }).join('');
+// ── ADMIN DASHBOARD (FIXED) ──
+async function loadAdminDashboard() {
+  var loader = document.getElementById('dash-loader');
+  var dashC = document.getElementById('dash-content');
+  
+  if(loader) loader.style.display = 'none';
+  if(dashC) dashC.style.display = 'block';
+  
+  try {
+    var today = todayStr();
+    var pm = getPayrollMonth();
+    var ar = (currentLang === 'ar');
+    
+    var allEmp = await dbGet('employees', '?select=*');
+    allEmployees = allEmp || [];
+    
+    if(currentUser && (currentUser.role === 'manager' || currentUser.role === 'team_leader')) {
+      var teamIds = await getManagerTeamIds();
+      if(teamIds && teamIds.length > 0) {
+        var filtered = [];
+        for(var i = 0; i < allEmployees.length; i++) {
+          if(teamIds.includes(allEmployees[i].id)) {
+            filtered.push(allEmployees[i]);
+          }
+        }
+        allEmployees = filtered;
+      } else {
+        allEmployees = [];
       }
     }
-    const leaves=await dbGet('leave_requests','?status=eq.pending&select=*');
-    const lel=document.getElementById('adm-leave-requests');
-    if(lel){
-      if(!leaves||leaves.length===0){lel.innerHTML=`<div style="color:var(--muted);font-size:12px;padding:8px">${ar?'لا توجد طلبات معلقة':'No pending requests'}</div>`;}
-      else{
-        const isViewer=currentUser.role==='viewer';
-        lel.innerHTML=leaves.map(l=>`<div class="perm-card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <div style="font-size:13px;font-weight:700">${l.employee_name}</div>
-            <span class="badge ${l.leave_type==='vacation'?'badge-blue':'badge-yellow'}">${l.leave_type==='vacation'?(ar?'إجازة':'Vacation'):(ar?'إذن':'Permission')}</span>
-          </div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${l.reason}</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${l.leave_type==='vacation'?(ar?'تاريخ: ':'Date: ')+(l.leave_date||''):(ar?'المدة: ':'Duration: ')+l.duration_minutes+(ar?' د':' min')}</div>
-          ${!isViewer?`<div style="display:flex;gap:8px"><button class="perm-btn approve" onclick="respondLeave(${l.id},'approved')">✅ ${ar?'موافقة':'Approve'}</button><button class="perm-btn reject" onclick="respondLeave(${l.id},'rejected')">❌ ${ar?'رفض':'Reject'}</button></div>`:''}
-          </div>`).join('');
+    
+    var todayAtt = await dbGet('attendance', '?date=eq.' + today + '&select=*');
+    var present = todayAtt ? todayAtt.length : 0;
+    var presentEl = document.getElementById('adm-present');
+    if(presentEl) presentEl.textContent = present;
+    
+    window._todayPresentIds = [];
+    if(todayAtt) {
+      for(var k = 0; k < todayAtt.length; k++) {
+        window._todayPresentIds.push(todayAtt[k].employee_id);
       }
     }
-  }catch(e){console.error(e)}
+    
+    var absentEl = document.getElementById('adm-absent');
+    if(absentEl) absentEl.textContent = Math.max(0, allEmployees.length - present);
+    
+    var todaySales = await dbGet('sales', '?date=eq.' + today + '&select=total_amount,employee_id');
+    var monthSales = await dbGet('sales', '?date=gte.' + pm.start + '&date=lte.' + pm.end + '&select=total_amount,employee_id,product_name');
+    
+    var todayTotal = 0;
+    var monthTotal = 0;
+    
+    if(todaySales) {
+      for(var t = 0; t < todaySales.length; t++) {
+        todayTotal += todaySales[t].total_amount;
+      }
+    }
+    if(monthSales) {
+      for(var m = 0; m < monthSales.length; m++) {
+        monthTotal += monthSales[m].total_amount;
+      }
+    }
+    
+    var salesTodayEl = document.getElementById('adm-sales-today');
+    if(salesTodayEl) salesTodayEl.textContent = 'EGP ' + fmtEGP(todayTotal);
+    
+    var salesMonthEl = document.getElementById('adm-sales-month');
+    if(salesMonthEl) salesMonthEl.textContent = 'EGP ' + fmtEGP(monthTotal);
+    
+    if(typeof renderPerformanceRanking === 'function') renderPerformanceRanking(monthSales || []);
+    if(typeof applyLang === 'function') applyLang();
+    
+    var empTodayEl = document.getElementById('adm-emp-today');
+    if(empTodayEl) {
+      if(allEmployees.length === 0) {
+        empTodayEl.innerHTML = '<div class="empty"><div class="empty-icon">👥</div>' + (ar ? 'لا يوجد موظفون' : 'No employees') + '</div>';
+      } else {
+        var isViewer = (currentUser.role === 'viewer');
+        var empHtml = '';
+        for(var e = 0; e < allEmployees.length; e++) {
+          var emp = allEmployees[e];
+          var att = null;
+          if(todayAtt) {
+            for(var a = 0; a < todayAtt.length; a++) {
+              if(todayAtt[a].employee_id === emp.id) {
+                att = todayAtt[a];
+                break;
+              }
+            }
+          }
+          var mapLink = (att && att.location_lat) ? 'https://maps.google.com/?q=' + att.location_lat + ',' + att.location_lng : null;
+          var statusClass = 'badge-red';
+          var statusText = ar ? 'غائب' : 'Absent';
+          if(att) {
+            if(att.check_out) {
+              statusClass = 'badge-blue';
+              statusText = ar ? 'غادر' : 'Left';
+            } else {
+              statusClass = 'badge-green';
+              statusText = ar ? 'حاضر' : 'Present';
+            }
+          }
+          
+          empHtml += '<div class="emp-card">' +
+            '<div class="emp-avatar" style="overflow:hidden">' + (emp.profile_photo ? '<img src="' + emp.profile_photo + '" style="width:100%;height:100%;object-fit:cover">' : emp.name[0].toUpperCase()) + '</div>' +
+            '<div class="emp-info">' +
+            '<div class="emp-name">' + emp.name + '</div>' +
+            '<div class="emp-branch">' + (emp.branch || '-') + '</div>';
+          if(att) {
+            empHtml += '<div style="font-size:10px;color:var(--green);margin-top:2px">' + (ar ? 'دخول' : 'In') + ': ' + att.check_in;
+            if(att.late_minutes > 0) empHtml += (ar ? ' (تأخر ' + att.late_minutes + ' د)' : ' (' + att.late_minutes + 'm late)');
+            if(att.check_out) empHtml += (ar ? ' · خروج: ' : ' · Out: ') + att.check_out;
+            empHtml += '</div>';
+          }
+          if(mapLink) {
+            empHtml += '<a href="' + mapLink + '" target="_blank" style="font-size:10px;color:var(--blue);text-decoration:none">📍 ' + (ar ? 'عرض الموقع' : 'View Location') + '</a>';
+          } else if(att) {
+            empHtml += '<div style="font-size:10px;color:var(--muted)">📍 ' + (ar ? 'لا يوجد موقع' : 'No location') + '</div>';
+          }
+          empHtml += '</div>' +
+            '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">' +
+            '<span class="badge ' + statusClass + '">' + statusText + '</span>';
+          if(att && att.selfie_in) {
+            empHtml += '<img src="' + att.selfie_in + '" class="selfie-preview" onclick="viewSelfie(\'' + emp.name + '\',\'' + att.selfie_in + '\',\'' + (att.selfie_out || '') + '\',\'' + (mapLink || '') + '\')">';
+          }
+          if(!isViewer) {
+            empHtml += '<button class="action-btn warn" onclick="openWarnModal(' + emp.id + ',\'' + emp.name + '\')">⚠️</button>';
+          }
+          empHtml += '</div></div>';
+        }
+        empTodayEl.innerHTML = empHtml;
+      }
+    }
+    
+    var leaves = await dbGet('leave_requests', '?status=eq.pending&select=*');
+    var lel = document.getElementById('adm-leave-requests');
+    if(lel) {
+      if(!leaves || leaves.length === 0) {
+        lel.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px">' + (ar ? 'لا توجد طلبات معلقة' : 'No pending requests') + '</div>';
+      } else {
+        var isViewer = (currentUser.role === 'viewer');
+        var leavesHtml = '';
+        for(var l = 0; l < leaves.length; l++) {
+          var lv = leaves[l];
+          leavesHtml += '<div class="perm-card">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+            '<div style="font-size:13px;font-weight:700">' + lv.employee_name + '</div>' +
+            '<span class="badge ' + (lv.leave_type === 'vacation' ? 'badge-blue' : 'badge-yellow') + '">' + (lv.leave_type === 'vacation' ? (ar ? 'إجازة' : 'Vacation') : (ar ? 'إذن' : 'Permission')) + '</span>' +
+            '</div>' +
+            '<div style="font-size:12px;color:var(--muted);margin-bottom:4px">' + lv.reason + '</div>' +
+            '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">' + (lv.leave_type === 'vacation' ? (ar ? 'تاريخ: ' : 'Date: ') + (lv.leave_date || '') : (ar ? 'المدة: ' : 'Duration: ') + lv.duration_minutes + (ar ? ' د' : ' min')) + '</div>';
+          if(!isViewer) {
+            leavesHtml += '<div style="display:flex;gap:8px"><button class="perm-btn approve" onclick="respondLeave(' + lv.id + ',\'approved\')">✅ ' + (ar ? 'موافقة' : 'Approve') + '</button><button class="perm-btn reject" onclick="respondLeave(' + lv.id + ',\'rejected\')">❌ ' + (ar ? 'رفض' : 'Reject') + '</button></div>';
+          }
+          leavesHtml += '</div>';
+        }
+        lel.innerHTML = leavesHtml;
+      }
+    }
+  } catch(e) {
+    console.error('loadAdminDashboard error:', e);
+  }
 }
 
-async function renderPerformanceRanking(monthSales){
-  const el=document.getElementById('adm-performance-list');const ar=currentLang==='ar';
-  if(!el||allEmployees.length===0){if(el)el.innerHTML=`<div class="empty"><div class="empty-icon">📊</div>${ar?'لا توجد بيانات':'No data'}</div>`;return}
-  const salesByEmp={};monthSales.forEach(s=>{salesByEmp[s.employee_id]=(salesByEmp[s.employee_id]||0)+s.total_amount});
-  // Filter out team leaders from performance ranking
-  const empsOnly=allEmployees.filter(e=>e.role!=='team_leader');
-  const ranked=empsOnly.map(e=>({...e,sales:salesByEmp[e.id]||0})).sort((a,b)=>b.sales-a.sales);
-  const maxSales=ranked[0]?.sales||1;const medals=['🥇','🥈','🥉'];
-  el.innerHTML=ranked.map((e,i)=>`<div class="perf-bar-wrap">
-    <div class="perf-rank">${medals[i]||'#'+(i+1)}</div>
-    <div class="perf-name">${e.name}</div>
-    <div class="perf-bar-bg"><div class="perf-bar-fill" style="width:${e.sales>0?Math.max(4,Math.round(e.sales/maxSales*100)):0}%;background:${i===0?'var(--gold)':i===1?'var(--silver)':i===2?'var(--bronze)':'var(--green)'}"></div></div>
-    <div class="perf-val">EGP ${fmtEGP(e.sales)}</div></div>`).join('');
+async function respondLeave(id, status) {
+  try {
+    await dbPatch('leave_requests', { status: status }, '?id=eq.' + id);
+    notify(status === 'approved' ? (currentLang === 'ar' ? 'تمت الموافقة ✅' : 'Approved ✅') : (currentLang === 'ar' ? 'تم الرفض' : 'Rejected'), 'success');
+    loadAdminDashboard();
+  } catch(e) {}
 }
-async function respondLeave(id,status){try{await dbPatch('leave_requests',{status},`?id=eq.${id}`);notify(status==='approved'?(currentLang==='ar'?'تمت الموافقة ✅':'Approved ✅'):(currentLang==='ar'?'تم الرفض':'Rejected'),'success');loadAdminDashboard()}catch(e){}}
 
-function viewSelfie(name,selfieIn,selfieOut,mapLink){
-  const ar=currentLang==='ar';
-  document.getElementById('selfie-view-title').textContent=name;
-  document.getElementById('selfie-view-content').innerHTML=`<div style="text-align:center">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">${ar?'صورة تسجيل الدخول':'Check-in photo'}</div>
-    <img src="${selfieIn}" style="width:180px;height:180px;border-radius:14px;object-fit:cover;border:2px solid var(--green);cursor:pointer" onclick="fullSelfie('${selfieIn}')">
-    ${selfieOut?`<div style="font-size:12px;color:var(--muted);margin:10px 0 8px">${ar?'صورة تسجيل الخروج':'Check-out photo'}</div><img src="${selfieOut}" style="width:180px;height:180px;border-radius:14px;object-fit:cover;border:2px solid var(--blue);cursor:pointer" onclick="fullSelfie('${selfieOut}')">`:'' }
-    ${mapLink?`<div style="margin-top:14px"><a href="${mapLink}" target="_blank" style="color:var(--green);font-size:13px;text-decoration:none;font-weight:700">📍 ${ar?'فتح في خرائط جوجل':'Open in Google Maps'}</a></div>`:`<div style="color:var(--muted);font-size:12px;margin-top:12px">📍 ${ar?'لم يتم تسجيل الموقع':'No location recorded'}</div>`}
-    </div>`;
+function viewSelfie(name, selfieIn, selfieOut, mapLink) {
+  var ar = (currentLang === 'ar');
+  var titleEl = document.getElementById('selfie-view-title');
+  if(titleEl) titleEl.textContent = name;
+  
+  var contentEl = document.getElementById('selfie-view-content');
+  if(contentEl) {
+    var html = '<div style="text-align:center">' +
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">' + (ar ? 'صورة تسجيل الدخول' : 'Check-in photo') + '</div>' +
+      '<img src="' + selfieIn + '" style="width:180px;height:180px;border-radius:14px;object-fit:cover;border:2px solid var(--green);cursor:pointer" onclick="fullSelfie(\'' + selfieIn + '\')">';
+    if(selfieOut) {
+      html += '<div style="font-size:12px;color:var(--muted);margin:10px 0 8px">' + (ar ? 'صورة تسجيل الخروج' : 'Check-out photo') + '</div>' +
+        '<img src="' + selfieOut + '" style="width:180px;height:180px;border-radius:14px;object-fit:cover;border:2px solid var(--blue);cursor:pointer" onclick="fullSelfie(\'' + selfieOut + '\')">';
+    }
+    if(mapLink) {
+      html += '<div style="margin-top:14px"><a href="' + mapLink + '" target="_blank" style="color:var(--green);font-size:13px;text-decoration:none;font-weight:700">📍 ' + (ar ? 'فتح في خرائط جوجل' : 'Open in Google Maps') + '</a></div>';
+    } else {
+      html += '<div style="color:var(--muted);font-size:12px;margin-top:12px">📍 ' + (ar ? 'لم يتم تسجيل الموقع' : 'No location recorded') + '</div>';
+    }
+    html += '</div>';
+    contentEl.innerHTML = html;
+  }
   openModal('selfie-view-modal');
 }
-function fullSelfie(src){document.getElementById('selfie-fs-img').src=src;document.getElementById('selfie-fullscreen').classList.add('open')}
 
-// ── BRANCH DASHBOARD (revenue-based) ──
-function initBranchDashboard(){
-  const sTier=BRANCH_DATA.filter(b=>b.tier==='S');
-  const aTier=BRANCH_DATA.filter(b=>b.tier==='A');
-  const bTier=BRANCH_DATA.filter(b=>b.tier==='B');
-  const noSales=BRANCH_DATA.filter(b=>b.tier==='NO_SALES');
-  const ar=currentLang==='ar';
-
-  document.getElementById('kpi-s-count').textContent=sTier.length;
-  document.getElementById('kpi-a-count').textContent=aTier.length;
-  document.getElementById('kpi-b-count').textContent=bTier.length;
-
-  const totalCurr=BRANCH_DATA.reduce((s,b)=>s+b.revenue,0);
-  const totalPrev=BRANCH_DATA.reduce((s,b)=>s+b.prev_revenue,0);
-  const totalChange=totalPrev>0?((totalCurr-totalPrev)/totalPrev*100):0;
-  document.getElementById('kpi-curr-rev').textContent='EGP '+fmtEGP(totalCurr);
-  document.getElementById('kpi-prev-rev').textContent='EGP '+fmtEGP(totalPrev);
-  const chEl=document.getElementById('kpi-change');
-  chEl.textContent=(totalChange>=0?'+':'')+totalChange.toFixed(1)+'%';
-  chEl.style.color=totalChange>=0?'var(--green)':'var(--red)';
-
-  // Top 10 overview
-  const top10=BRANCH_DATA.filter(b=>b.revenue>0).slice(0,10);
-  const maxR=top10[0]?.revenue||1;
-  document.getElementById('branch-top-list').innerHTML=top10.map((b,i)=>{
-    const chg=b.prev_revenue>0?((b.revenue-b.prev_revenue)/b.prev_revenue*100):null;
-    const tierBadge=b.tier==='S'?'<span class="tier-s">S 🥇</span>':b.tier==='A'?'<span class="tier-a">A 🥈</span>':'<span class="tier-b">B 🥉</span>';
-    const pct=Math.max(4,Math.round(b.revenue/maxR*100));
-    const medals=['🥇','🥈','🥉'];
-    return`<div class="branch-card branch-card.tier-${b.tier.toLowerCase()}-card">
-      <div style="display:flex;align-items:center;margin-bottom:8px">
-        <span style="font-size:16px;margin-left:6px">${medals[i]||'#'+(i+1)}</span>
-        <div class="branch-name">${b.name}</div>
-        ${tierBadge}
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px">
-        <span style="color:var(--green);font-weight:800">EGP ${fmtEGP(b.revenue)}</span>
-        ${chg!==null?`<span class="${chg>=0?'change-up':'change-down'}">${chg>=0?'+':''}${chg.toFixed(0)}%</span>`:''}
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px">
-        <span>${ar?'سابقاً:':'Prev:'} EGP ${fmtEGP(b.prev_revenue)}</span>
-        <span>${ar?'كمية:':'Qty:'} ${b.qty}</span>
-      </div>
-      <div class="target-bar"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--green),#00e676);border-radius:4px;transition:width .6s"></div></div>
-    </div>`;
-  }).join('');
-
-  // Tier subtitle info
-  document.getElementById('s-tier-subtitle').textContent=ar?`${sTier.length} فرع · EGP ${fmtEGP(sTier[0]?.revenue||0)} → EGP ${fmtEGP(sTier[sTier.length-1]?.revenue||0)}`:`${sTier.length} branches · EGP ${fmtEGP(sTier[0]?.revenue||0)} → EGP ${fmtEGP(sTier[sTier.length-1]?.revenue||0)}`;
-  document.getElementById('a-tier-subtitle').textContent=ar?`${aTier.length} فرع · EGP ${fmtEGP(aTier[0]?.revenue||0)} → EGP ${fmtEGP(aTier[aTier.length-1]?.revenue||0)}`:`${aTier.length} branches`;
-  document.getElementById('b-tier-subtitle').textContent=ar?`${bTier.length} فرع · EGP ${fmtEGP(bTier[0]?.revenue||0)} → EGP ${fmtEGP(bTier[bTier.length-1]?.revenue||0)}`:`${bTier.length} branches`;
-
-  renderTierList('s-tier-list',sTier,'S');
-  renderTierList('a-tier-list',aTier,'A');
-  renderTierList('b-tier-list',bTier,'B');
-  renderNoSalesList(noSales);
-  renderUploadHistory();
+function fullSelfie(src) {
+  var fsImg = document.getElementById('selfie-fs-img');
+  if(fsImg) fsImg.src = src;
+  var fs = document.getElementById('selfie-fullscreen');
+  if(fs) fs.classList.add('open');
 }
 
-function renderTierList(elId,branches,tier){
-  const el=document.getElementById(elId);if(!el)return;
-  const ar=currentLang==='ar';
-  const tierColor=tier==='S'?'var(--gold)':tier==='A'?'var(--silver)':'var(--bronze)';
-  const maxR=branches[0]?.revenue||1;
-  el.innerHTML=branches.map((b,i)=>{
-    const chg=b.prev_revenue>0?((b.revenue-b.prev_revenue)/b.prev_revenue*100):null;
-    const pct=Math.max(3,Math.round(b.revenue/maxR*100));
-    return`<div class="history-item">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
-        <div style="font-size:12px;font-weight:700;flex:1">${i+1}. ${b.name}</div>
-        <div style="text-align:left;margin-right:6px">
-          <div style="font-size:13px;font-weight:800;color:${tierColor}">EGP ${fmtEGP(b.revenue)}</div>
-          ${chg!==null?`<div style="font-size:10px;font-weight:700;color:${chg>=0?'var(--green)':'var(--red)'};text-align:left">${chg>=0?'▲':'▼'} ${Math.abs(chg).toFixed(0)}%</div>`:''}
-        </div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:5px">
-        <span>${ar?'سابقاً:':'Prev:'} EGP ${fmtEGP(b.prev_revenue)}</span>
-        <span>${ar?'كمية الشهر:':'Qty:'} ${b.qty} / ${ar?'سابق:':'prev:'} ${b.prev_qty}</span>
-      </div>
-      <div class="target-bar"><div style="height:100%;width:${pct}%;background:${tierColor};border-radius:4px;opacity:.85;transition:width .6s"></div></div>
-    </div>`;
-  }).join('');
-}
-
-function renderNoSalesList(branches){
-  const el=document.getElementById('ns-tier-list');if(!el)return;
-  const ar=currentLang==='ar';
-  el.innerHTML=branches.map(b=>`<div class="history-item" style="border-color:var(--border)">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="font-size:12px;font-weight:700">🏪 ${b.name}</div>
-      <span class="tier-ns">${ar?'بدون مبيعات':'No Sales'}</span>
-    </div>
-    <div style="font-size:10px;color:var(--muted);margin-top:4px">${ar?'سابقاً:':'Prev:'} EGP ${fmtEGP(b.prev_revenue)} · ${ar?'مخزون:':'Stock:'} ${b.stock}</div>
-  </div>`).join('');
-}
-
-function branchDashTab(tab,el){
-  ['overview','s-tier','a-tier','b-tier','no-sales','upload'].forEach(t=>{
-    const d=document.getElementById('branch-'+t);if(d)d.style.display=t===tab?'block':'none';
-  });
-  document.querySelectorAll('#branch-dash-tabs .tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-}
-
-function handleBranchUpload(event){
-  const file=event.target.files[0];if(!file)return;
-  const resultEl=document.getElementById('upload-result');const ar=currentLang==='ar';
-  resultEl.innerHTML='<div class="full-loader"><div class="loader"></div></div>';
-  const reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      const text=e.target.result,lines=text.split(/\r?\n/).filter(l=>l.trim());
-      if(lines.length<2){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px;padding:8px">${ar?'الملف فارغ':'Empty file'}</div>`;return}
-      const parsed=[];
-      for(let i=1;i<lines.length;i++){const cols=lines[i].split(',');if(cols.length>=2&&cols[0].trim()&&!isNaN(cols[1]))parsed.push({name:cols[0].trim(),sales:parseInt(cols[1])||0});}
-      if(parsed.length===0){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px;padding:8px">${ar?'لم يتم التعرف على أي بيانات':'No data recognized'}</div>`;return}
-      const record={date:new Date().toLocaleDateString('en-GB'),file:file.name,count:parsed.length,data:parsed};
-      uploadHistory.unshift(record);if(uploadHistory.length>10)uploadHistory=uploadHistory.slice(0,10);
-      localStorage.setItem('oraimo_upload_history',JSON.stringify(uploadHistory));
-      resultEl.innerHTML=`<div class="card" style="border-color:var(--green);margin-top:8px">
-        <div style="color:var(--green);font-weight:700;margin-bottom:6px">✅ ${ar?'تم رفع الملف':'File uploaded'}</div>
-        <div style="font-size:12px;color:var(--muted)">${parsed.length} ${ar?'فرع':'branches'}</div>
-        ${parsed.slice(0,5).map(p=>`<div style="font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)">${p.name}: ${p.sales}</div>`).join('')}
-      </div>`;
-      renderUploadHistory();notify(`✅ ${parsed.length} ${ar?'فرع':'branches'}`,'success');
-    }catch(err){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px;padding:8px">${ar?'خطأ في قراءة الملف':'File read error'}: ${err.message}</div>`}
-  };
-  reader.readAsText(file,'UTF-8');event.target.value='';
-}
-function renderUploadHistory(){
-  const el=document.getElementById('upload-history-list');if(!el)return;const ar=currentLang==='ar';
-  if(!uploadHistory||uploadHistory.length===0){el.innerHTML=`<div style="color:var(--muted);font-size:12px">${ar?'لا يوجد سجل بعد':'No history yet'}</div>`;return}
-  el.innerHTML=uploadHistory.map(r=>`<div class="history-item" style="margin-bottom:6px">
-    <div class="hist-top"><div class="hist-name">${r.file}</div><span class="badge badge-green">${r.count} ${ar?'فرع':'br'}</span></div>
-    <div class="hist-meta">${r.date}</div></div>`).join('');
-}
-
-// ── REPORTS ──
-function reportTab(tab,el){
-  currentReportTab=tab;
-  ['employee','products','branch','q1','visits','display'].forEach(t=>{
-    const el2=document.getElementById('report-'+t);
-    if(el2)el2.style.display=t===tab?'block':'none';
-  });
-  document.querySelectorAll('#report-tabs .tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-  applyLang();
-  if(tab==='products')loadProductsReport();
-  if(tab==='branch')loadBranchReport();
-  if(tab==='q1')loadQ1Analytics();
-  if(tab==='visits'){populateVisitReportEmps().then(()=>initVisitReportMonth());}
-  if(tab==='display'){populateDisplayReportEmps();loadDisplayReport();}
-}
-
-async function loadEmpReport(){
-  const empId=document.getElementById('report-emp-select').value;if(!empId)return;
-  const el=document.getElementById('report-content');const ar=currentLang==='ar';
-  el.innerHTML='<div class="full-loader"><div class="loader"></div></div>';
-  const pm=getPayrollMonth();
-  const[att,sales,targetRes,teamRes]=await Promise.all([
-    dbGet('attendance',`?employee_id=eq.${empId}&date=gte.${pm.start}&date=lte.${pm.end}&select=*&order=date.desc`),
-    dbGet('sales',`?employee_id=eq.${empId}&date=gte.${pm.start}&date=lte.${pm.end}&select=*&order=date.desc`),
-    dbGet('targets',`?employee_id=eq.${empId}&month=eq.${pm.start.substring(0,7)}&select=*`),
-    dbGet('manager_teams',`?employee_id=eq.${empId}&select=manager_id`).catch(()=>[])
-  ]);
-  const emp=allEmployees.find(e=>e.id==empId);
-  // find team leader name
-  let tlName='—';
-  if(teamRes&&teamRes.length>0){
-    const tlId=teamRes[0].manager_id;
-    // check admins and employees tables
-    const tlAdm=await dbGet('admins',`?id=eq.${tlId}&select=name`).catch(()=>[]);
-    if(tlAdm&&tlAdm.length>0) tlName=tlAdm[0].name;
-    else {
-      const tlEmp=allEmployees.find(e=>e.id===tlId);
-      if(tlEmp) tlName=tlEmp.name;
+// ── PERFORMANCE RANKING ──
+async function renderPerformanceRanking(monthSales) {
+  var el = document.getElementById('adm-performance-list');
+  var ar = (currentLang === 'ar');
+  
+  if(!el || allEmployees.length === 0) {
+    if(el) el.innerHTML = '<div class="empty"><div class="empty-icon">📊</div>' + (ar ? 'لا توجد بيانات' : 'No data') + '</div>';
+    return;
+  }
+  
+  var salesByEmp = {};
+  if(monthSales) {
+    for(var i = 0; i < monthSales.length; i++) {
+      var empId = monthSales[i].employee_id;
+      salesByEmp[empId] = (salesByEmp[empId] || 0) + monthSales[i].total_amount;
     }
   }
-  let salesTotal=0;(sales||[]).forEach(s=>salesTotal+=s.total_amount);
-  let lateTotal=0;(att||[]).forEach(a=>lateTotal+=(a.late_minutes||0));
-  const target=targetRes&&targetRes.length>0?targetRes[0].amount:0;
-  const kmodel=targetRes&&targetRes.length>0?(targetRes[0].kmodel_amount||0):0;
-  const pct=target>0?Math.min(100,Math.round(salesTotal/target*100)):0;
-  const kpct=kmodel>0?Math.min(100,Math.round(salesTotal/kmodel*100)):0;
-  const salesByDate={};(sales||[]).forEach(s=>{salesByDate[s.date]=(salesByDate[s.date]||0)+s.total_amount});
-  const chartDays=[];const sd=new Date(pm.start),ed=new Date(pm.end),today=new Date();
-  for(let d=new Date(sd);d<=ed&&d<=today;d.setDate(d.getDate()+1))chartDays.push({ds:fmtDate(new Date(d)),day:d.getDate()});
-  const vals=chartDays.map(d=>salesByDate[d.ds]||0);const maxV=Math.max(...vals,1);
-  el.innerHTML=`<div class="card card-glow">
-    <div style="font-size:15px;font-weight:800;margin-bottom:2px">${emp?.name||''}</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${pm.label}</div>
-    <div style="font-size:11px;margin-bottom:12px">👥 ${ar?'التيم ليدر':'Team Leader'}: <span style="color:var(--green);font-weight:700">${tlName}</span></div>
-    <div class="stats-grid" style="margin-bottom:10px">
-      <div class="stat-card"><div class="stat-label">${ar?'أيام الحضور':'Attendance'}</div><div class="stat-val" style="color:var(--green)">${(att||[]).length}</div></div>
-      <div class="stat-card"><div class="stat-label">${ar?'إجمالي التأخير':'Late Total'}</div><div class="stat-val" style="color:var(--yellow)">${lateTotal}${ar?'د':'m'}</div></div>
-      <div class="stat-card"><div class="stat-label">${ar?'إجمالي المبيعات':'Total Sales'}</div><div class="stat-val" style="color:var(--green);font-size:15px">EGP ${fmtEGP(salesTotal)}</div></div>
-      <div class="stat-card"><div class="stat-label">${ar?'التارجت':'Target'}</div><div class="stat-val" style="font-size:15px">EGP ${fmtEGP(target)}</div></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span>${ar?'التقدم':'Progress'}</span><span style="color:var(--green);font-weight:700">${pct}%</span></div>
-    <div class="target-bar"><div class="target-fill" style="width:${pct}%"></div></div>
-    ${kmodel>0?`<div style="display:flex;justify-content:space-between;font-size:11px;margin:8px 0 4px"><span style="color:var(--purple)">K Model — EGP ${fmtEGP(kmodel)}</span><span style="color:var(--purple);font-weight:700">${kpct}%</span></div><div class="target-bar"><div style="height:100%;width:${kpct}%;background:var(--purple);border-radius:4px;transition:width .6s"></div></div>`:''}
-  </div>
-  <div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:10px">📈 ${ar?'مخطط المبيعات اليومي':'Daily Sales Chart'}</div>
-    <div class="chart-wrap">${chartDays.slice(-14).map(d=>{const v=salesByDate[d.ds]||0;const h=Math.max(3,Math.round((v/maxV)*120));return`<div class="chart-bar-wrap"><div class="chart-bar" style="height:${h}px;background:${v>0?'var(--green)':'var(--border)'}"></div><div class="chart-label">${d.day}</div></div>`}).join('')}</div>
-  </div>
-  <div style="font-size:13px;font-weight:700;margin:14px 0 8px">${ar?'سجل المبيعات':'Sales Records'}</div>
-  ${(sales||[]).length===0?`<div class="empty"><div class="empty-icon">🛒</div>${ar?'لا توجد مبيعات':'No sales'}</div>`:(sales||[]).map(s=>`<div class="history-item"><div class="hist-top"><div class="hist-name">${s.product_name}</div><div class="hist-amount">${s.total_amount.toLocaleString()} EGP</div></div><div style="display:flex;justify-content:space-between"><div class="hist-meta">${s.date}</div><div class="hist-meta">${ar?'كمية':'Qty'}: ${s.quantity} × ${s.unit_price.toLocaleString()}</div></div></div>`).join('')}
-  <div style="font-size:13px;font-weight:700;margin:14px 0 8px">${ar?'سجل الحضور':'Attendance Log'}</div>
-  <div class="table-wrap"><table>
-    <tr><th>${ar?'التاريخ':'Date'}</th><th>${ar?'دخول':'In'}</th><th>${ar?'خروج':'Out'}</th><th>${ar?'تأخير':'Late'}</th><th>📷</th></tr>
-    ${(att||[]).map(a=>`<tr><td>${a.date}</td><td>${a.check_in||'-'}</td><td>${a.check_out||'-'}</td><td>${a.late_minutes>0?`<span class="badge badge-yellow">${a.late_minutes}${ar?'د':'m'}</span>`:'<span class="badge badge-green">✓</span>'}</td><td>${a.selfie_in?`<img src="${a.selfie_in}" style="width:28px;height:28px;border-radius:5px;object-fit:cover;cursor:pointer" onclick="fullSelfie('${a.selfie_in}')">`:'-'}</td></tr>`).join('')}
-  </table></div>`;
+  
+  var empsOnly = [];
+  for(var j = 0; j < allEmployees.length; j++) {
+    if(allEmployees[j].role !== 'team_leader') {
+      empsOnly.push(allEmployees[j]);
+    }
+  }
+  
+  var ranked = [];
+  for(var k = 0; k < empsOnly.length; k++) {
+    ranked.push({
+      id: empsOnly[k].id,
+      name: empsOnly[k].name,
+      sales: salesByEmp[empsOnly[k].id] || 0
+    });
+  }
+  ranked.sort(function(a, b) { return b.sales - a.sales; });
+  
+  var maxSales = (ranked[0] && ranked[0].sales > 0) ? ranked[0].sales : 1;
+  var medals = ['🥇', '🥈', '🥉'];
+  var html = '';
+  
+  for(var r = 0; r < ranked.length; r++) {
+    var e = ranked[r];
+    var pct = (e.sales > 0) ? Math.max(4, Math.round(e.sales / maxSales * 100)) : 0;
+    var medal = (r < 3) ? medals[r] : '#' + (r + 1);
+    var bgColor = 'var(--green)';
+    if(r === 0) bgColor = 'var(--gold)';
+    else if(r === 1) bgColor = 'var(--silver)';
+    else if(r === 2) bgColor = 'var(--bronze)';
+    
+    html += '<div class="perf-bar-wrap">' +
+      '<div class="perf-rank">' + medal + '</div>' +
+      '<div class="perf-name">' + e.name + '</div>' +
+      '<div class="perf-bar-bg"><div class="perf-bar-fill" style="width:' + pct + '%;background:' + bgColor + '"></div></div>' +
+      '<div class="perf-val">EGP ' + fmtEGP(e.sales) + '</div>' +
+      '</div>';
+  }
+  el.innerHTML = html;
 }
 
-async function loadProductsReport(){
-  const el=document.getElementById('products-report-content');const ar=currentLang==='ar';
-  el.innerHTML='<div class="full-loader"><div class="loader"></div></div>';
-  const pm=getPayrollMonth();
-  const sales=await dbGet('sales',`?date=gte.${pm.start}&date=lte.${pm.end}&select=product_name,quantity,total_amount`);
-  const byProduct={};
-  (sales||[]).forEach(s=>{if(!byProduct[s.product_name])byProduct[s.product_name]={qty:0,revenue:0};byProduct[s.product_name].qty+=s.quantity;byProduct[s.product_name].revenue+=s.total_amount;});
-  const sorted=Object.entries(byProduct).sort((a,b)=>b[1].revenue-a[1].revenue);
-  if(sorted.length===0){el.innerHTML=`<div class="empty"><div class="empty-icon">📦</div>${ar?'لا توجد مبيعات':'No sales'}</div>`;return}
-  const maxRev=sorted[0][1].revenue;
-  el.innerHTML=`<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:12px">📦 ${ar?'أكثر المنتجات مبيعاً':'Top Products'}</div>
-    ${sorted.slice(0,20).map(([name,d],i)=>`<div style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
-        <span style="font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr">${name}</span>
-        <span style="color:var(--green);font-weight:700;margin-right:8px">EGP ${fmtEGP(d.revenue)}</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="perf-bar-bg" style="flex:1"><div class="perf-bar-fill" style="width:${Math.max(3,Math.round(d.revenue/maxRev*100))}%;background:var(--green)"></div></div>
-        <span style="font-size:10px;color:var(--muted);min-width:40px">${d.qty} ${ar?'قطعة':'pcs'}</span>
-      </div></div>`).join('')}
-  </div>`;
+// ── LOAD ALL EMPLOYEES ──
+async function loadAllEmployees() {
+  try {
+    allEmployees = await dbGet('employees', '?select=*&order=name') || [];
+    renderEmployeesList();
+  } catch(e) {}
 }
 
-async function loadBranchReport(){
-  const el=document.getElementById('branch-report-content');const ar=currentLang==='ar';
-  el.innerHTML='<div class="full-loader"><div class="loader"></div></div>';
-  const pm=getPayrollMonth();
-  const[sales,allEmp]=await Promise.all([dbGet('sales',`?date=gte.${pm.start}&date=lte.${pm.end}&select=total_amount,employee_id`),dbGet('employees','?select=*')]);
-  const byBranch={};
-  (sales||[]).forEach(s=>{const emp=(allEmp||[]).find(e=>e.id===s.employee_id);const branch=emp?.branch||(ar?'غير محدد':'Unknown');byBranch[branch]=(byBranch[branch]||0)+s.total_amount;});
-  const sorted=Object.entries(byBranch).sort((a,b)=>b[1]-a[1]);
-  if(sorted.length===0){el.innerHTML=`<div class="empty"><div class="empty-icon">🏪</div>${ar?'لا توجد مبيعات':'No sales'}</div>`;return}
-  const maxB=sorted[0][1];
-  el.innerHTML=`<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:12px">🏪 ${ar?'تقرير الفروع':'Branch Report'}</div>
-    ${sorted.map(([branch,rev],i)=>`<div style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="font-weight:700">${branch}</span><span style="color:var(--green);font-weight:700">EGP ${fmtEGP(rev)}</span></div>
-      <div class="perf-bar-bg"><div class="perf-bar-fill" style="width:${Math.max(3,Math.round(rev/maxB*100))}%;background:${i===0?'var(--gold)':i===1?'var(--silver)':i===2?'var(--bronze)':'var(--green)'}"></div></div>
-    </div>`).join('')}
-  </div>`;
+function renderEmployeesList() {
+  var el = document.getElementById('adm-emp-list');
+  if(!el) return;
+  var ar = (currentLang === 'ar');
+  
+  if(allEmployees.length === 0) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">👥</div>' + (ar ? 'لا يوجد موظفون بعد' : 'No employees yet') + '</div>';
+    return;
+  }
+  
+  var isViewer = (currentUser && currentUser.role === 'viewer');
+  var html = '';
+  
+  for(var i = 0; i < allEmployees.length; i++) {
+    var emp = allEmployees[i];
+    var avatarStyle = (emp.role === 'team_leader') ? 'background:linear-gradient(135deg,#9c27b0,#6a0080)' : '';
+    var avatarContent = emp.profile_photo ? '<img src="' + emp.profile_photo + '" style="width:100%;height:100%;object-fit:cover">' : emp.name[0].toUpperCase();
+    
+    html += '<div class="emp-card">' +
+      '<div class="emp-avatar" style="' + avatarStyle + ';overflow:hidden">' + avatarContent + '</div>' +
+      '<div class="emp-info">' +
+      '<div class="emp-name">' + emp.name + (emp.role === 'team_leader' ? '<span class="badge badge-purple" style="font-size:9px">Team Leader</span>' : '') + '</div>' +
+      '<div class="emp-branch">' + (emp.branch || '-') + ' · ' + (ar ? 'إجازة:' : 'Off:') + ' ' + (ar ? DAYS_AR[emp.day_off] : DAYS_EN[emp.day_off]) + '</div>' +
+      '</div>';
+    
+    if(!isViewer) {
+      html += '<div class="emp-actions">';
+      if(emp.role === 'team_leader') {
+        html += '<button class="action-btn view" onclick="openManagerTeam(' + emp.id + ',\'' + emp.name + '\')">👥 فريق</button>';
+      }
+      html += '<button class="action-btn edit" onclick="openEditEmp(' + emp.id + ')">✏️</button>' +
+        '<button class="action-btn del" onclick="deleteEmp(' + emp.id + ')">🗑️</button>' +
+        '<button class="action-btn warn" onclick="openWarnModal(' + emp.id + ',\'' + emp.name + '\')">⚠️</button>' +
+        '</div>';
+    }
+    html += '</div>';
+  }
+  el.innerHTML = html;
 }
-
-// ── ALL EMPLOYEES ──
-async function loadAllEmployees(){
-  try{
-    allEmployees=await dbGet('employees','?select=*&order=name')||[];
-    renderEmployeesList();populateReportSelect();
-    if(currentUser&&(currentUser.role==='manager'||currentUser.role==='team_leader')) await filterEmployeesForManager();
-  }catch(e){}
-}
-function renderEmployeesList(){
-  const el=document.getElementById('adm-emp-list');if(!el)return;const ar=currentLang==='ar';
-  if(allEmployees.length===0){el.innerHTML=`<div class="empty"><div class="empty-icon">👥</div>${ar?'لا يوجد موظفون بعد':'No employees yet'}</div>`;return}
-  const isViewer=currentUser?.role==='viewer';
-  el.innerHTML=allEmployees.map(emp=>`<div class="emp-card">
-    <div class="emp-avatar" style="${emp.role==='team_leader'?'background:linear-gradient(135deg,#9c27b0,#6a0080)':''};overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:emp.name[0].toUpperCase()}</div>
-    <div class="emp-info"><div class="emp-name">${emp.name} ${emp.role==='team_leader'?'<span class="badge badge-purple" style="font-size:9px">Team Leader</span>':''}</div><div class="emp-branch">${emp.branch||'-'} · ${ar?'إجازة:':'Off:'} ${ar?DAYS_AR[emp.day_off]:DAYS_EN[emp.day_off]||'-'}</div></div>
-    ${!isViewer?`<div class="emp-actions">${emp.role==='team_leader'?`<button class="action-btn view" onclick="openManagerTeam(${emp.id},'${emp.name}')">👥 فريق</button>`:''}<button class="action-btn edit" onclick="openEditEmp(${emp.id})">✏️</button><button class="action-btn del" onclick="deleteEmp(${emp.id})">🗑️</button><button class="action-btn warn" onclick="openWarnModal(${emp.id},'${emp.name}')">⚠️</button></div>`:''}
-  </div>`).join('');
-}
-function populateReportSelect(){const sel=document.getElementById('report-emp-select');if(!sel)return;sel.innerHTML=`<option value="">${currentLang==='ar'?'-- اختر موظف --':'-- Select Employee --'}</option>`+allEmployees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}
-function populateTargetSelect(){const sel=document.getElementById('target-emp-select');if(!sel)return;sel.innerHTML=allEmployees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}
-function openAddEmp(){
-  document.getElementById('emp-modal-title').textContent=currentLang==='ar'?'إضافة موظف':'Add Employee';
-  document.getElementById('edit-emp-id').value='';document.getElementById('emp-form-name').value='';
-  document.getElementById('emp-form-username').value='';document.getElementById('emp-form-pass').value='';
-  document.getElementById('emp-pass-group').style.display='block';
-  const roleEl=document.getElementById('emp-form-role');if(roleEl)roleEl.value='employee';
-  toggleEmpBranchField();
-  selectedDayOff=-1;document.querySelectorAll('.day-chip').forEach(c=>c.classList.remove('selected'));
-  populateBranchSelects();openModal('add-emp-modal');
-}
-function openEditEmp(id){
-  const emp=allEmployees.find(e=>e.id===id);if(!emp)return;
-  document.getElementById('emp-modal-title').textContent=currentLang==='ar'?'تعديل الموظف':'Edit Employee';
-  document.getElementById('edit-emp-id').value=id;document.getElementById('emp-form-name').value=emp.name;
-  document.getElementById('emp-form-username').value=emp.username;document.getElementById('emp-pass-group').style.display='none';
-  const roleEl=document.getElementById('emp-form-role');if(roleEl)roleEl.value=emp.role||'employee';
-  toggleEmpBranchField();
-  selectedDayOff=emp.day_off;populateBranchSelects();
-  if(emp.branch)document.getElementById('emp-form-branch').value=emp.branch;
-  document.querySelectorAll('.day-chip').forEach(c=>c.classList.toggle('selected',parseInt(c.dataset.day)===emp.day_off));
-  openModal('add-emp-modal');
-}
-function selectDay(day){selectedDayOff=day;document.querySelectorAll('.day-chip').forEach(c=>c.classList.toggle('selected',parseInt(c.dataset.day)===day))}
-function toggleEmpBranchField(){
-  const role=document.getElementById('emp-form-role')?.value;
-  const branchGrp=document.getElementById('emp-branch-group');
-  // team leader doesn't need a branch
-  if(branchGrp) branchGrp.style.display=role==='team_leader'?'none':'block';
-}
-
-async function saveEmployee(){
-  const id=document.getElementById('edit-emp-id').value;
-  const name=document.getElementById('emp-form-name').value.trim();
-  const username=document.getElementById('emp-form-username').value.trim();
-  const pass=document.getElementById('emp-form-pass').value.trim();
-  const branch=document.getElementById('emp-form-branch')?.value||'';
-  const role=document.getElementById('emp-form-role')?.value||'employee';
-  const ar=currentLang==='ar';
-  if(!name||!username)return notify(ar?'أدخل الاسم واسم المستخدم':'Enter name and username','error');
-  if(!id&&!pass)return notify(ar?'أدخل كلمة المرور':'Enter password','error');
-  if(selectedDayOff<0)return notify(ar?'اختر يوم الإجازة':'Select day off','error');
-  try{
-    const data={name,username,day_off:selectedDayOff,role};
-    if(role==='employee') data.branch=branch;
-    if(id) await dbPatch('employees',data,`?id=eq.${id}`);
-    else await dbPost('employees',{...data,...(!id&&{password:pass})});
-    notify(ar?'تم الحفظ ✅':'Saved ✅','success');closeModal('add-emp-modal');loadAllEmployees();
-  }catch(e){notify((ar?'خطأ: ':'Error: ')+e.message,'error')}
-}
-async function deleteEmp(id){const ar=currentLang==='ar';if(!confirm(ar?'حذف الموظف؟ سيتم حذف جميع البيانات!':'Delete employee? All data will be removed!'))return;await dbDelete('employees',`?id=eq.${id}`);loadAllEmployees()}
-
-// ── ADMINS ──
-async function loadAdminsList(){try{allAdmins=await dbGet('admins','?select=*&order=name').catch(()=>[])||[];renderAdminsList()}catch(e){}}
-function renderAdminsList(){
-  const el=document.getElementById('admins-list');if(!el)return;
-  if(allAdmins.length===0){el.innerHTML=`<div style="color:var(--muted);font-size:12px">${currentLang==='ar'?'لا يوجد مسؤولون':'No admins'}</div>`;return}
-  el.innerHTML=allAdmins.map(a=>`<div class="emp-card"><div class="emp-avatar" style="background:var(--blue)">👑</div><div class="emp-info"><div class="emp-name">${a.name}</div><div class="emp-branch">${a.username}</div></div><span class="badge ${a.role==='admin'?'badge-blue':a.role==='manager'?'badge-purple':'badge-yellow'}">${a.role==='manager'?'Team Leader':a.role}</span><div class="emp-actions">${a.role==='manager'?`<button class="action-btn view" onclick="openManagerTeam(${a.id},'${a.name}')">👥 فريق</button>`:''}<button class="action-btn del" onclick="deleteAdmin(${a.id})">🗑️</button></div></div>`).join('');
-}
-function openAddAdmin(){document.getElementById('admin-modal-title').textContent=currentLang==='ar'?'إضافة مسؤول':'Add Admin';document.getElementById('edit-admin-id').value='';document.getElementById('admin-form-name').value='';document.getElementById('admin-form-username').value='';document.getElementById('admin-form-pass').value='';document.getElementById('admin-pass-group').style.display='block';openModal('add-admin-modal')}
-async function saveAdmin(){const name=document.getElementById('admin-form-name').value.trim(),username=document.getElementById('admin-form-username').value.trim(),pass=document.getElementById('admin-form-pass').value.trim(),role=document.getElementById('admin-form-role').value;const ar=currentLang==='ar';if(!name||!username||!pass)return notify(ar?'أكمل جميع الحقول':'Fill all fields','error');try{await dbPost('admins',{name,username,password:pass,role});notify(ar?'تمت الإضافة ✅':'Added ✅','success');closeModal('add-admin-modal');loadAdminsList()}catch(e){notify('Error','error')}}
-async function deleteAdmin(id){
-  const ar=currentLang==='ar';
-  // Prevent deleting the hardcoded superadmin
-  if(String(id)==='superadmin'||!id){notify(ar?'لا يمكن حذف المسؤول الرئيسي':'Cannot delete main admin','error');return;}
-  if(!confirm(ar?'حذف المسؤول؟':'Delete admin?'))return;
-  try{await dbDelete('admins',`?id=eq.${id}`);notify(ar?'تم الحذف':'Deleted','success');loadAdminsList();}
-  catch(e){notify('Error: '+e.message,'error');}
-}
-
-// ── WARNINGS ──
-function openWarnModal(empId,empName){document.getElementById('warn-emp-select').innerHTML=allEmployees.map(e=>`<option value="${e.id}" ${e.id==empId?'selected':''}>${e.name}</option>`).join('');document.getElementById('warn-text').value='';openModal('warning-modal')}
-function setWarnTemplate(n){const t={1:(currentLang==='ar'?'⚠️ تحذير: تأخرت اليوم. يرجى الالتزام بمواعيد العمل الرسمية.':'⚠️ Warning: You were late today. Please commit to work hours.'),2:(currentLang==='ar'?'🔴 تحذير رسمي: تكرار التأخير. يرجى مراجعة الإدارة فوراً.':'🔴 Official Warning: Repeated lateness. Contact management.'),3:(currentLang==='ar'?'📋 تذكير: الالتزام بالمواعيد أو سيتم احتساب غياب.':'📋 Reminder: Commit to work hours or absence will be recorded.')};document.getElementById('warn-text').value=t[n]}
-async function sendWarning(){const empId=document.getElementById('warn-emp-select').value,msg=document.getElementById('warn-text').value.trim();const ar=currentLang==='ar';if(!msg)return notify(ar?'أدخل نص التحذير':'Enter warning message','error');try{await dbPost('warnings',{employee_id:parseInt(empId),message:msg,sent_by:currentUser.name||'Management'});notify(ar?'تم إرسال التحذير ✅':'Warning sent ✅','success');closeModal('warning-modal')}catch(e){}}
 
 // ── BRANCHES ──
-async function loadBranches(){try{allBranches=await dbGet('branches','?select=*&order=name')||[];renderBranches();populateBranchSelects()}catch(e){}}
-function renderBranches(){
-  const el=document.getElementById('branches-list');if(!el)return;
-  el.innerHTML=allBranches.map(b=>`<div class="emp-card"><div class="emp-info"><div class="emp-name">🏪 ${b.name}</div></div><div class="emp-actions"><button class="action-btn edit" onclick="openEditBranch(${b.id},'${b.name}')">✏️</button><button class="action-btn del" onclick="deleteBranch(${b.id})">🗑️</button></div></div>`).join('')||`<div style="color:var(--muted);font-size:12px">${currentLang==='ar'?'لا توجد فروع':'No branches'}</div>`;
-}
-function populateBranchSelects(){const sel=document.getElementById('emp-form-branch');if(sel)sel.innerHTML=allBranches.map(b=>`<option value="${b.name}">${b.name}</option>`).join('')}
-function openAddBranch(){document.getElementById('branch-modal-title').textContent=currentLang==='ar'?'إضافة فرع':'Add Branch';document.getElementById('branch-form-name').value='';document.getElementById('edit-branch-id').value='';openModal('add-branch-modal')}
-function openEditBranch(id,name){document.getElementById('branch-modal-title').textContent=currentLang==='ar'?'تعديل الفرع':'Edit Branch';document.getElementById('branch-form-name').value=name;document.getElementById('edit-branch-id').value=id;openModal('add-branch-modal')}
-async function saveBranch(){const name=document.getElementById('branch-form-name').value.trim(),id=document.getElementById('edit-branch-id').value;const ar=currentLang==='ar';if(!name)return notify(ar?'أدخل اسم الفرع':'Enter branch name','error');try{if(id)await dbPatch('branches',{name},`?id=eq.${id}`);else await dbPost('branches',{name});notify(ar?'تم الحفظ ✅':'Saved ✅','success');closeModal('add-branch-modal');loadBranches()}catch(e){notify('Error','error')}}
-async function deleteBranch(id){if(!confirm(currentLang==='ar'?'حذف الفرع؟':'Delete branch?'))return;await dbDelete('branches',`?id=eq.${id}`);loadBranches()}
-
-// ── TARGETS ──
-async function loadTargetsList(){
-  const el=document.getElementById('targets-list');if(!el)return;const ar=currentLang==='ar';
-  const pm=getPayrollMonth(),mon=pm.start.substring(0,7);
-  const targets=await dbGet('targets',`?month=eq.${mon}&select=*`)||[];
-  if(targets.length===0){el.innerHTML=`<div style="color:var(--muted);font-size:12px">${ar?'لا توجد تارجتات لهذه الفترة':'No targets set'}</div>`;return}
-  el.innerHTML=targets.map(t=>{
-    const emp=allEmployees.find(e=>e.id===t.employee_id);
-    const models=t.model_targets||[];
-    const modelsHtml=models.length>0?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${models.map(m=>`<span style="background:rgba(0,200,83,.1);color:var(--green);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700">${m.name.split(' ').slice(-1)[0]}: ${m.qty} قطعة</span>`).join('')}</div>`:'';
-    return`<div class="history-item">
-      <div class="hist-top"><div class="hist-name">${emp?emp.name:(ar?'موظف':'Employee')}</div><div class="hist-amount">EGP ${(t.amount||0).toLocaleString()}</div></div>
-      ${modelsHtml}
-      <div style="display:flex;justify-content:space-between;margin-top:4px">
-        <div class="hist-meta">${t.month}</div>
-        <button class="action-btn edit" onclick="openEditTarget(${t.employee_id})" style="font-size:10px;padding:3px 8px">✏️ تعديل</button>
-      </div>
-    </div>`;
-  }).join('');
+async function loadBranches() {
+  try {
+    allBranches = await dbGet('branches', '?select=*&order=name') || [];
+    renderBranches();
+  } catch(e) {}
 }
 
-async function openEditTarget(empId){
-  populateTargetSelect();
-  const pm=getPayrollMonth(),mon=pm.start.substring(0,7);
-  document.getElementById('target-month').value=mon;
-  document.getElementById('model-targets-list').innerHTML='';
-  // pre-fill select
-  document.getElementById('target-emp-select').value=empId;
-  // load existing
-  const existing=await dbGet('targets',`?employee_id=eq.${empId}&month=eq.${mon}&select=*`);
-  if(existing&&existing.length>0){
-    document.getElementById('target-amount').value=existing[0].amount||'';
-    const models=existing[0].model_targets||[];
-    models.forEach(m=>addModelTargetRow(m.name,m.qty));
+function renderBranches() {
+  var el = document.getElementById('branches-list');
+  if(!el) return;
+  
+  if(allBranches.length === 0) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:12px">' + (currentLang === 'ar' ? 'لا توجد فروع' : 'No branches') + '</div>';
+    return;
   }
-  openModal('target-modal');
-}
-function addModelTargetRow(productName='',qty=0){
-  const list=document.getElementById('model-targets-list');
-  const row=document.createElement('div');
-  row.style.cssText='display:flex;gap:6px;align-items:center';
-  row.innerHTML=`<select style="flex:2;padding:7px;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Cairo,sans-serif;font-size:11px" class="model-target-select">
-    <option value="">-- اختر موديل --</option>
-    ${PRODUCTS.map(p=>`<option value="${p.name}" ${p.name===productName?'selected':''}>${p.name}</option>`).join('')}
-  </select>
-  <input type="number" placeholder="كمية" value="${qty||''}" min="1" class="model-target-qty" style="width:65px;padding:7px;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Cairo,sans-serif;font-size:12px;text-align:center">
-  <button onclick="this.parentElement.remove()" style="background:rgba(255,59,59,.13);color:var(--red);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:14px">✕</button>`;
-  list.appendChild(row);
-}
-
-function openTargetModal(){
-  populateTargetSelect();
-  document.getElementById('target-month').value=getPayrollMonth().start.substring(0,7);
-  document.getElementById('target-amount').value='';
-  document.getElementById('model-targets-list').innerHTML='';
-  openModal('target-modal');
-}
-
-async function saveTarget(){
-  const empId=parseInt(document.getElementById('target-emp-select').value);
-  const month=document.getElementById('target-month').value;
-  const amount=parseInt(document.getElementById('target-amount').value);
-  const ar=currentLang==='ar';
-  if(!empId||!month||!amount)return notify(ar?'أكمل جميع الحقول':'Fill all fields','error');
-  const modelTargets=[];
-  document.querySelectorAll('#model-targets-list > div').forEach(row=>{
-    const sel=row.querySelector('.model-target-select');
-    const inp=row.querySelector('.model-target-qty');
-    if(!sel||!inp)return;
-    const name=sel.value;
-    const qty=parseInt(inp.value)||0;
-    if(name&&qty>0)modelTargets.push({name,qty});
-  });
-  try{
-    const existing=await dbGet('targets',`?employee_id=eq.${empId}&month=eq.${month}&select=id`).catch(()=>[]);
-    if(existing&&existing.length>0){
-      await dbPatch('targets',{amount,model_targets:modelTargets},`?employee_id=eq.${empId}&month=eq.${month}`);
-    }else{
-      await dbPost('targets',{employee_id:empId,month,amount,model_targets:modelTargets});
-    }
-    notify(ar?'تم حفظ التارجت ✅':'Target saved ✅','success');
-    closeModal('target-modal');
-    loadTargetsList();
-  }catch(e){
-    console.error('saveTarget error:',e);
-    notify((ar?'خطأ: ':'Error: ')+(e.message||'unknown'),'error');
+  
+  var html = '';
+  for(var i = 0; i < allBranches.length; i++) {
+    var b = allBranches[i];
+    html += '<div class="emp-card">' +
+      '<div class="emp-info"><div class="emp-name">🏪 ' + b.name + '</div></div>' +
+      '<div class="emp-actions">' +
+      '<button class="action-btn edit" onclick="openEditBranch(' + b.id + ',\'' + b.name + '\')">✏️</button>' +
+      '<button class="action-btn del" onclick="deleteBranch(' + b.id + ')">🗑️</button>' +
+      '</div></div>';
   }
+  el.innerHTML = html;
 }
 
-// ── SETTINGS ──
-async function saveWorkTime(){
-  const start=document.getElementById('work-start').value,end=document.getElementById('work-end').value;const ar=currentLang==='ar';
-  try{const existing=await dbGet('settings','?select=*');if(existing&&existing.length>0)await dbPatch('settings',{work_start:start,work_end:end},'?id=gte.0');else await dbPost('settings',{work_start:start,work_end:end});workSettings={start,end};notify(ar?'تم الحفظ ✅':'Saved ✅','success');}catch(e){notify('Error','error')}
+function openAddBranch() {
+  var titleEl = document.getElementById('branch-modal-title');
+  if(titleEl) titleEl.textContent = (currentLang === 'ar') ? 'إضافة فرع' : 'Add Branch';
+  
+  var nameEl = document.getElementById('branch-form-name');
+  if(nameEl) nameEl.value = '';
+  
+  var idEl = document.getElementById('edit-branch-id');
+  if(idEl) idEl.value = '';
+  
+  openModal('add-branch-modal');
 }
-async function loadProductsSettings(){
-  const el=document.getElementById('products-settings-list');if(!el)return;
-  const custom=await dbGet('product_prices','?select=*').catch(()=>[])||[];
-  el.innerHTML=PRODUCTS.map(p=>{const cp=custom.find(c=>c.name===p.name),price=cp?cp.price:p.price;const inputId='price-'+p.name.replace(/\s/g,'_').replace(/[^a-zA-Z0-9_]/g,'');return`<div class="history-item"><div class="hist-name" style="font-size:11px;margin-bottom:6px;direction:ltr">${p.name}</div><div style="display:flex;gap:7px;align-items:center"><input type="number" value="${price}" id="${inputId}" style="flex:1;padding:6px;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px"><button class="action-btn edit" onclick="saveProductPrice('${p.name.replace(/'/g,"\'")}','${inputId}')">${currentLang==='ar'?'حفظ':'Save'}</button></div></div>`;}).join('');
+
+function openEditBranch(id, name) {
+  var titleEl = document.getElementById('branch-modal-title');
+  if(titleEl) titleEl.textContent = (currentLang === 'ar') ? 'تعديل الفرع' : 'Edit Branch';
+  
+  var nameEl = document.getElementById('branch-form-name');
+  if(nameEl) nameEl.value = name;
+  
+  var idEl = document.getElementById('edit-branch-id');
+  if(idEl) idEl.value = id;
+  
+  openModal('add-branch-modal');
 }
-async function saveProductPrice(name,inputId){const val=parseInt(document.getElementById(inputId).value);const ar=currentLang==='ar';if(!val)return notify(ar?'أدخل سعراً صحيحاً':'Enter valid price','error');try{const existing=await dbGet('product_prices',`?name=eq.${encodeURIComponent(name)}&select=*`);if(existing&&existing.length>0)await dbPatch('product_prices',{price:val},`?name=eq.${encodeURIComponent(name)}`);else await dbPost('product_prices',{name,price:val});notify(ar?'تم حفظ السعر ✅':'Price saved ✅','success');}catch(e){notify('Error','error')}}
-async function clearOldPhotos(){const ar=currentLang==='ar';if(!confirm(ar?'حذف صور الأقدم من 30 يوماً؟':'Remove photos older than 30 days?'))return;try{const cutoff=fmtDate(new Date(Date.now()-30*24*60*60*1000));const old=await dbGet('attendance',`?date=lt.${cutoff}&select=id,selfie_in,selfie_out`).catch(()=>[])||[];const withPhotos=old.filter(r=>r.selfie_in||r.selfie_out);if(withPhotos.length===0){notify(ar?'لا توجد صور قديمة':'No old photos','success');return}for(const r of withPhotos){await dbPatch('attendance',{selfie_in:null,selfie_out:null},`?id=eq.${r.id}`)}notify(`${ar?'تم حذف':'Cleared'} ${withPhotos.length} ${ar?'صورة':'photos'} ✅`,'success');}catch(e){notify('Error','error')}}
 
-
-// ── MODEL TARGET ALERT ──
-async function loadModelTargetAlert(){
-  const el=document.getElementById('model-target-alert');if(!el)return;
-  const ar=currentLang==='ar';
-  const pm=getPayrollMonth(),mon=pm.start.substring(0,7);
-  const [targetRes,sales]=await Promise.all([
-    dbGet('targets',`?employee_id=eq.${currentUser.id}&month=eq.${mon}&select=*`),
-    dbGet('sales',`?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=product_name,quantity`)
-  ]);
-  if(!targetRes||!targetRes.length){el.innerHTML='';return}
-  const models=(targetRes[0].model_targets)||[];
-  if(!models.length){el.innerHTML='';return}
-  // count sales per product
-  const soldQty={};
-  (sales||[]).forEach(s=>{soldQty[s.product_name]=(soldQty[s.product_name]||0)+s.quantity});
-  // calc days left
-  const today=new Date(),endDate=new Date(pm.end);
-  const daysLeft=Math.max(0,Math.ceil((endDate-today)/(1000*60*60*24)));
-  const totalDays=new Date(pm.end).getDate();
-  const daysPassed=totalDays-daysLeft;
-  const behindModels=models.filter(m=>{
-    const done=soldQty[m.name]||0;
-    const expectedByNow=daysPassed>0?Math.round(m.qty/totalDays*daysPassed):0;
-    return done<expectedByNow;
-  });
-  const allOnTrack=behindModels.length===0;
-  // show alert if behind
-  const lastAlert=parseInt(localStorage.getItem('oraimo_last_model_alert')||'0');
-  const now=Date.now();
-  const alertEvery=3*24*60*60*1000; // 3 days
-  if(!allOnTrack&&(now-lastAlert)>alertEvery){
-    localStorage.setItem('oraimo_last_model_alert',now);
-    // show alert banner
-    setTimeout(()=>showModelAlertBanner(behindModels,soldQty,daysLeft),1000);
+async function saveBranch() {
+  var name = document.getElementById('branch-form-name').value.trim();
+  var id = document.getElementById('edit-branch-id').value;
+  var ar = (currentLang === 'ar');
+  
+  if(!name) {
+    notify(ar ? 'أدخل اسم الفرع' : 'Enter branch name', 'error');
+    return;
   }
-  el.innerHTML=`<div class="model-alert-card ${allOnTrack?'on-track':''}">
-    <div class="model-alert-title">${allOnTrack?'✅':'⚠️'} ${ar?(allOnTrack?'تارجت الموديلات — على المسار':'تارجت الموديلات — يحتاج اهتمام'):(allOnTrack?'Model Targets — On Track':'Model Targets — Needs Attention')}
-      <span style="font-size:10px;color:var(--muted);font-weight:500;margin-right:auto">${daysLeft} ${ar?'يوم متبقي':'days left'}</span>
-    </div>
-    ${models.map(m=>{
-      const done=soldQty[m.name]||0;
-      const pct=Math.min(100,Math.round(done/m.qty*100));
-      const color=pct>=80?'var(--green)':pct>=50?'var(--yellow)':'var(--red)';
-      return`<div class="model-row">
-        <div class="model-name-sm">${m.name.split(' ').slice(-2).join(' ')}</div>
-        <div class="model-progress">
-          <div style="width:70px;height:5px;background:var(--border);border-radius:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${color};border-radius:3px;transition:.4s"></div></div>
-          <div class="model-pct" style="color:${color}">${done}/${m.qty}</div>
-        </div>
-      </div>`;
-    }).join('')}
-  </div>`;
-}
-
-function showModelAlertBanner(behindModels,soldQty,daysLeft){
-  const ar=currentLang==='ar';
-  const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
-  overlay.innerHTML=`<div style="background:var(--card);border-radius:22px 22px 0 0;padding:22px 18px;width:100%;border-top:2px solid var(--red)">
-    <div style="font-size:16px;font-weight:800;color:var(--red);margin-bottom:4px">⚠️ ${ar?'تنبيه: تارجت الموديلات':'Alert: Model Target'}</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">${ar?`متبقي ${daysLeft} يوم على نهاية الشهر`:`${daysLeft} days left this month`}</div>
-    ${behindModels.map(m=>{const done=soldQty[m.name]||0;const remaining=m.qty-done;return`<div style="background:var(--card2);border-radius:10px;padding:10px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center">
-      <div>
-        <div style="font-size:11px;font-weight:700;direction:ltr">${m.name.split(' ').slice(-2).join(' ')}</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px">${ar?`مباع: ${done} من ${m.qty}`:`Sold: ${done} of ${m.qty}`}</div>
-      </div>
-      <div style="font-size:14px;font-weight:800;color:var(--red)">-${remaining} ${ar?'قطعة':'pcs'}</div>
-    </div>`}).join('')}
-    <button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;padding:13px;background:linear-gradient(135deg,var(--green),var(--green-dark));border:none;border-radius:12px;color:#000;font-family:Cairo,sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px">${ar?'حسناً، سأعمل على ذلك':'Got it, I will work on it'}</button>
-  </div>`;
-  document.body.appendChild(overlay);
-}
-
-// ── NAVIGATION ──
-function empTab(tab,el){
-  ['home','sales','visits','display','profile','chat'].forEach(t=>{const d=document.getElementById('emp-'+t);if(d)d.style.display=t===tab?'block':'none';});
-  document.querySelectorAll('#emp-app .nav-item').forEach(n=>n.classList.remove('active'));
-  if(el) el.classList.add('active');
-  if(tab==='sales'){renderProducts();loadTodaySales()}
-  if(tab==='profile'){
-    // Load profile data
-    const nameEl=document.getElementById('profile-name');
-    const branchEl=document.getElementById('profile-branch');
-    if(nameEl) nameEl.textContent=currentUser?.name||'-';
-    if(branchEl) branchEl.textContent=currentUser?.branch||'-';
-    loadEmpMonthlyReport();
-    loadEmpDailyLog();
-    loadProfilePhoto();
-  }
-  if(tab==='home'){loadModelTargetAlert()}
-  if(tab==='visits'){loadVisitsTab()}
-  if(tab==='display'){loadDisplayTab()}
-}
-function adminTab(tab,el){
-  ['dashboard','employees','branches','reports','settings','visits','chat'].forEach(t=>{const d=document.getElementById('admin-'+t);if(d)d.style.display=t===tab?'block':'none';});
-  document.querySelectorAll('#admin-app .nav-item').forEach(n=>n.classList.remove('active'));el.classList.add('active');
-  if(tab==='dashboard')loadAdminDashboard();
-  if(tab==='employees')loadAllEmployees();
-  if(tab==='branches')initBranchDashboard();
-  if(tab==='visits')loadTLVisitsTab();
-  if(tab==='chat'){loadAdminChatList();}
-  if(tab==='settings'){/* lazy loaded via accordion */}
-  applyLang();
-  if(tab==='reports'){
-    loadAllEmployees();
-    if(currentUser&&currentUser.role==='team_leader'){
-      // Team Leader: show only visits tab in reports
-      setTimeout(()=>{
-        document.querySelectorAll('#report-tabs .tab').forEach(t=>{
-          const oc=t.getAttribute('onclick')||'';
-          t.style.display=(oc.includes('visits'))?'':'none';
-        });
-        const visTab=document.querySelector('#report-tabs .tab[onclick*="visits"]');
-        if(visTab) visTab.click();
-      },100);
+  
+  try {
+    if(id) {
+      await dbPatch('branches', { name: name }, '?id=eq.' + id);
     } else {
-      document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
+      await dbPost('branches', { name: name });
+    }
+    notify(ar ? 'تم الحفظ ✅' : 'Saved ✅', 'success');
+    closeModal('add-branch-modal');
+    loadBranches();
+  } catch(e) {
+    notify('Error', 'error');
+  }
+}
+
+async function deleteBranch(id) {
+  var ar = (currentLang === 'ar');
+  if(!confirm(ar ? 'حذف الفرع؟' : 'Delete branch?')) return;
+  await dbDelete('branches', '?id=eq.' + id);
+  loadBranches();
+}
+
+// ── OPEN EDIT EMP ──
+function openEditEmp(id) {
+  var emp = null;
+  for(var i = 0; i < allEmployees.length; i++) {
+    if(allEmployees[i].id === id) {
+      emp = allEmployees[i];
+      break;
+    }
+  }
+  if(!emp) return;
+  
+  var titleEl = document.getElementById('emp-modal-title');
+  if(titleEl) titleEl.textContent = (currentLang === 'ar') ? 'تعديل الموظف' : 'Edit Employee';
+  
+  var idEl = document.getElementById('edit-emp-id');
+  if(idEl) idEl.value = id;
+  
+  var nameEl = document.getElementById('emp-form-name');
+  if(nameEl) nameEl.value = emp.name;
+  
+  var usernameEl = document.getElementById('emp-form-username');
+  if(usernameEl) usernameEl.value = emp.username;
+  
+  var passGroup = document.getElementById('emp-pass-group');
+  if(passGroup) passGroup.style.display = 'none';
+  
+  var roleEl = document.getElementById('emp-form-role');
+  if(roleEl) roleEl.value = emp.role || 'employee';
+  
+  toggleEmpBranchField();
+  selectedDayOff = emp.day_off;
+  
+  var branchEl = document.getElementById('emp-form-branch');
+  if(branchEl && emp.branch) branchEl.value = emp.branch;
+  
+  var chips = document.querySelectorAll('.day-chip');
+  for(var j = 0; j < chips.length; j++) {
+    var chip = chips[j];
+    var dayVal = parseInt(chip.dataset.day);
+    if(dayVal === emp.day_off) {
+      chip.classList.add('selected');
+    } else {
+      chip.classList.remove('selected');
+    }
+  }
+  
+  openModal('add-emp-modal');
+}
+
+function toggleEmpBranchField() {
+  var roleEl = document.getElementById('emp-form-role');
+  var role = roleEl ? roleEl.value : 'employee';
+  var branchGrp = document.getElementById('emp-branch-group');
+  if(branchGrp) {
+    branchGrp.style.display = (role === 'team_leader') ? 'none' : 'block';
+  }
+}
+
+function selectDay(day) {
+  selectedDayOff = day;
+  var chips = document.querySelectorAll('.day-chip');
+  for(var i = 0; i < chips.length; i++) {
+    var chip = chips[i];
+    var chipDay = parseInt(chip.dataset.day);
+    if(chipDay === day) {
+      chip.classList.add('selected');
+    } else {
+      chip.classList.remove('selected');
     }
   }
 }
 
-// ── HELPERS ──
-function showErr(id,msg){const el=document.getElementById(id);if(el){el.textContent=msg;setTimeout(()=>el.textContent='',3000)}}
-function notify(msg,type='success'){const el=document.createElement('div');el.className=`notif ${type}`;el.textContent=msg;document.body.appendChild(el);setTimeout(()=>el.remove(),3000)}
-function openModal(id){document.getElementById(id).classList.add('open')}
-function closeModal(id){document.getElementById(id).classList.remove('open')}
-document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
-let lastTap=0;
-document.addEventListener('touchend',e=>{const now=Date.now();if(now-lastTap<300)e.preventDefault();lastTap=now},{passive:false});
-
-// iPhone: fix chat keyboard push layout
-(function(){
-  const chatInput=document.getElementById('chat-input');
-  if(!chatInput)return;
-  chatInput.addEventListener('focus',()=>{
-    if(/iPhone|iPad/.test(navigator.userAgent)){
-      setTimeout(()=>{
-        const el=document.getElementById('chat-messages');
-        if(el)el.scrollTop=el.scrollHeight;
-      },400);
-    }
-  });
-})();
-
-// Safe area padding fix for iOS PWA
-(function(){
-  const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)&&!window.MSStream;
-  if(isIOS){
-    document.documentElement.style.setProperty('--safe-bottom','env(safe-area-inset-bottom,0px)');
-    const navs=document.querySelectorAll('.bottom-nav');
-    navs.forEach(n=>{n.style.paddingBottom='calc(10px + env(safe-area-inset-bottom,0px))';});
+async function saveEmployee() {
+  var id = document.getElementById('edit-emp-id').value;
+  var name = document.getElementById('emp-form-name').value.trim();
+  var username = document.getElementById('emp-form-username').value.trim();
+  var pass = document.getElementById('emp-form-pass').value.trim();
+  var branch = document.getElementById('emp-form-branch') ? document.getElementById('emp-form-branch').value : '';
+  var roleEl = document.getElementById('emp-form-role');
+  var role = roleEl ? roleEl.value : 'employee';
+  var ar = (currentLang === 'ar');
+  
+  if(!name || !username) {
+    notify(ar ? 'أدخل الاسم واسم المستخدم' : 'Enter name and username', 'error');
+    return;
   }
-})();
-
-
-const Q1_STORES = [{"store": "B.ONLINE", "jan": 197623, "feb": 113359, "mar_actual": 227006, "mar_projected": 639745, "mar_daily": 20637, "qty_jan": 306, "qty_feb": 146, "qty_mar": 281}, {"store": "NEW IMBABA", "jan": 123144, "feb": 73558, "mar_actual": 112671, "mar_projected": 317528, "mar_daily": 10243, "qty_jan": 142, "qty_feb": 81, "qty_mar": 133}, {"store": "Banha_Mega_Store", "jan": 172436, "feb": 135398, "mar_actual": 109798, "mar_projected": 309432, "mar_daily": 9982, "qty_jan": 217, "qty_feb": 145, "qty_mar": 122}, {"store": "El kanater", "jan": 99488, "feb": 64523, "mar_actual": 109656, "mar_projected": 309031, "mar_daily": 9969, "qty_jan": 114, "qty_feb": 76, "qty_mar": 137}, {"store": "Qena", "jan": 75329, "feb": 51108, "mar_actual": 95089, "mar_projected": 267977, "mar_daily": 8644, "qty_jan": 102, "qty_feb": 69, "qty_mar": 104}, {"store": "Shobra", "jan": 115590, "feb": 95317, "mar_actual": 84942, "mar_projected": 239383, "mar_daily": 7722, "qty_jan": 135, "qty_feb": 102, "qty_mar": 102}, {"store": "26th July", "jan": 55830, "feb": 56664, "mar_actual": 83476, "mar_projected": 235249, "mar_daily": 7589, "qty_jan": 81, "qty_feb": 68, "qty_mar": 94}, {"store": "V_Badr", "jan": 87611, "feb": 63850, "mar_actual": 81337, "mar_projected": 229222, "mar_daily": 7394, "qty_jan": 120, "qty_feb": 87, "qty_mar": 91}, {"store": "Oraby", "jan": 91147, "feb": 80183, "mar_actual": 73120, "mar_projected": 206066, "mar_daily": 6647, "qty_jan": 120, "qty_feb": 100, "qty_mar": 89}, {"store": "El Zaher", "jan": 95449, "feb": 72912, "mar_actual": 67176, "mar_projected": 189315, "mar_daily": 6107, "qty_jan": 124, "qty_feb": 81, "qty_mar": 75}, {"store": "Dar El Salam", "jan": 75694, "feb": 49383, "mar_actual": 64733, "mar_projected": 182430, "mar_daily": 5885, "qty_jan": 106, "qty_feb": 63, "qty_mar": 73}, {"store": "ElSoudan Street", "jan": 98822, "feb": 73439, "mar_actual": 64544, "mar_projected": 181897, "mar_daily": 5868, "qty_jan": 147, "qty_feb": 90, "qty_mar": 80}, {"store": "El Helmya", "jan": 32687, "feb": 37590, "mar_actual": 59983, "mar_projected": 169044, "mar_daily": 5453, "qty_jan": 39, "qty_feb": 48, "qty_mar": 72}, {"store": "HQ Call Center stop", "jan": 47274, "feb": 32927, "mar_actual": 55998, "mar_projected": 157813, "mar_daily": 5091, "qty_jan": 59, "qty_feb": 41, "qty_mar": 55}, {"store": "Luxor_2", "jan": 7053, "feb": 13930, "mar_actual": 53610, "mar_projected": 151082, "mar_daily": 4874, "qty_jan": 10, "qty_feb": 20, "qty_mar": 67}, {"store": "Qalyub", "jan": 125660, "feb": 67384, "mar_actual": 50588, "mar_projected": 142565, "mar_daily": 4599, "qty_jan": 155, "qty_feb": 83, "qty_mar": 59}, {"store": "Maadi2", "jan": 87757, "feb": 69490, "mar_actual": 48514, "mar_projected": 136721, "mar_daily": 4410, "qty_jan": 100, "qty_feb": 83, "qty_mar": 58}, {"store": "V_Hassan El Maamon", "jan": 46472, "feb": 41026, "mar_actual": 45658, "mar_projected": 128672, "mar_daily": 4151, "qty_jan": 76, "qty_feb": 52, "qty_mar": 77}, {"store": "V_El Tahrir", "jan": 71262, "feb": 83263, "mar_actual": 45196, "mar_projected": 127370, "mar_daily": 4109, "qty_jan": 94, "qty_feb": 111, "qty_mar": 47}, {"store": "P_Mall Of October", "jan": 53983, "feb": 24440, "mar_actual": 43342, "mar_projected": 122146, "mar_daily": 3940, "qty_jan": 78, "qty_feb": 30, "qty_mar": 61}, {"store": "P_Mega Helwan", "jan": 94528, "feb": 43062, "mar_actual": 40965, "mar_projected": 115447, "mar_daily": 3724, "qty_jan": 120, "qty_feb": 59, "qty_mar": 55}, {"store": "Faisal", "jan": 84038, "feb": 38814, "mar_actual": 40944, "mar_projected": 115387, "mar_daily": 3722, "qty_jan": 125, "qty_feb": 58, "qty_mar": 59}, {"store": "P_Town Center El Salam", "jan": 17490, "feb": 51290, "mar_actual": 34126, "mar_projected": 96174, "mar_daily": 3102, "qty_jan": 38, "qty_feb": 77, "qty_mar": 66}, {"store": "P_Sky Mall El Sherouk", "jan": 51303, "feb": 30981, "mar_actual": 32255, "mar_projected": 90901, "mar_daily": 2932, "qty_jan": 65, "qty_feb": 44, "qty_mar": 40}, {"store": "V_Bani Suef", "jan": 59487, "feb": 27117, "mar_actual": 31795, "mar_projected": 89604, "mar_daily": 2890, "qty_jan": 85, "qty_feb": 37, "qty_mar": 41}, {"store": "Fakous", "jan": 44796, "feb": 34594, "mar_actual": 30950, "mar_projected": 87223, "mar_daily": 2814, "qty_jan": 65, "qty_feb": 54, "qty_mar": 40}, {"store": "2Ain Shams", "jan": 18575, "feb": 39369, "mar_actual": 30815, "mar_projected": 86842, "mar_daily": 2801, "qty_jan": 25, "qty_feb": 50, "qty_mar": 44}, {"store": "V_Gesr El Suez", "jan": 21504, "feb": 42762, "mar_actual": 29146, "mar_projected": 82138, "mar_daily": 2650, "qty_jan": 28, "qty_feb": 56, "qty_mar": 37}, {"store": "P_Mall OF Egypt", "jan": 10406, "feb": 13641, "mar_actual": 27785, "mar_projected": 78304, "mar_daily": 2526, "qty_jan": 22, "qty_feb": 27, "qty_mar": 43}, {"store": "AKKAD", "jan": 46026, "feb": 39628, "mar_actual": 27187, "mar_projected": 76618, "mar_daily": 2472, "qty_jan": 67, "qty_feb": 41, "qty_mar": 38}, {"store": "Domyat", "jan": 34611, "feb": 30361, "mar_actual": 26771, "mar_projected": 75446, "mar_daily": 2434, "qty_jan": 47, "qty_feb": 39, "qty_mar": 31}, {"store": "Delta_Berket_ElSabaa", "jan": 15154, "feb": 29662, "mar_actual": 25560, "mar_projected": 72032, "mar_daily": 2324, "qty_jan": 24, "qty_feb": 35, "qty_mar": 25}, {"store": "V_Dokki", "jan": 21334, "feb": 12485, "mar_actual": 25069, "mar_projected": 70650, "mar_daily": 2279, "qty_jan": 29, "qty_feb": 17, "qty_mar": 31}, {"store": "El Menia Mega Store", "jan": 43286, "feb": 29044, "mar_actual": 24868, "mar_projected": 70081, "mar_daily": 2261, "qty_jan": 56, "qty_feb": 40, "qty_mar": 30}, {"store": "P_Mega Shubra El Kheima", "jan": 105198, "feb": 49710, "mar_actual": 23921, "mar_projected": 67414, "mar_daily": 2175, "qty_jan": 154, "qty_feb": 61, "qty_mar": 34}, {"store": "V_Obour2", "jan": 32595, "feb": 30368, "mar_actual": 23904, "mar_projected": 67367, "mar_daily": 2173, "qty_jan": 42, "qty_feb": 31, "qty_mar": 24}, {"store": "V_City Center Maadi", "jan": 45347, "feb": 28878, "mar_actual": 23211, "mar_projected": 65412, "mar_daily": 2110, "qty_jan": 58, "qty_feb": 31, "qty_mar": 27}, {"store": "V_Maadi Grand Mall", "jan": 21932, "feb": 19924, "mar_actual": 22928, "mar_projected": 64616, "mar_daily": 2084, "qty_jan": 30, "qty_feb": 29, "qty_mar": 39}, {"store": "New Domyat", "jan": 18703, "feb": 10689, "mar_actual": 22824, "mar_projected": 64322, "mar_daily": 2075, "qty_jan": 29, "qty_feb": 15, "qty_mar": 32}, {"store": "Desouk", "jan": 29519, "feb": 16253, "mar_actual": 22574, "mar_projected": 63617, "mar_daily": 2052, "qty_jan": 40, "qty_feb": 22, "qty_mar": 28}, {"store": "V_Kafr ElSheikh", "jan": 32283, "feb": 21247, "mar_actual": 22273, "mar_projected": 62769, "mar_daily": 2025, "qty_jan": 47, "qty_feb": 29, "qty_mar": 27}, {"store": "Mall Of Arabia", "jan": 7229, "feb": 789, "mar_actual": 22077, "mar_projected": 62218, "mar_daily": 2007, "qty_jan": 10, "qty_feb": 2, "qty_mar": 27}, {"store": "New Sohag", "jan": 24387, "feb": 31973, "mar_actual": 21957, "mar_projected": 61879, "mar_daily": 1996, "qty_jan": 41, "qty_feb": 47, "qty_mar": 28}, {"store": "V_Ismailia Square", "jan": 2668, "feb": 1095, "mar_actual": 20724, "mar_projected": 58403, "mar_daily": 1884, "qty_jan": 5, "qty_feb": 2, "qty_mar": 23}, {"store": "V_El Sherouk", "jan": 20501, "feb": 17436, "mar_actual": 20421, "mar_projected": 57550, "mar_daily": 1856, "qty_jan": 29, "qty_feb": 23, "qty_mar": 22}, {"store": "V_Elmenia", "jan": 20281, "feb": 5386, "mar_actual": 19571, "mar_projected": 55155, "mar_daily": 1779, "qty_jan": 30, "qty_feb": 10, "qty_mar": 24}, {"store": "Malawi", "jan": 21904, "feb": 31543, "mar_actual": 18488, "mar_projected": 52102, "mar_daily": 1681, "qty_jan": 30, "qty_feb": 41, "qty_mar": 24}, {"store": "Ain Shams", "jan": 12988, "feb": 47120, "mar_actual": 18227, "mar_projected": 51368, "mar_daily": 1657, "qty_jan": 20, "qty_feb": 55, "qty_mar": 20}, {"store": "Misr Al Gadida", "jan": 24931, "feb": 20727, "mar_actual": 18175, "mar_projected": 51222, "mar_daily": 1652, "qty_jan": 29, "qty_feb": 21, "qty_mar": 27}, {"store": "New Roxy", "jan": 4819, "feb": 5388, "mar_actual": 14664, "mar_projected": 41326, "mar_daily": 1333, "qty_jan": 6, "qty_feb": 8, "qty_mar": 24}]
-;
-const MARCH_DAYS_RECORDED = 11;
-const MARCH_FULL_DAYS = 31;
-
-
-
-// ── VISITS ──
-let visitPhotos=[];
-
-function populateVisitBranchSelect(){
-  const sel=document.getElementById('visit-branch-select');if(!sel)return;
-  sel.innerHTML='<option value="">-- اختر الفرع --</option>'+allBranches.map(b=>`<option value="${b.name}">${b.name}</option>`).join('');
+  
+  if(!id && !pass) {
+    notify(ar ? 'أدخل كلمة المرور' : 'Enter password', 'error');
+    return;
+  }
+  
+  if(selectedDayOff < 0) {
+    notify(ar ? 'اختر يوم الإجازة' : 'Select day off', 'error');
+    return;
+  }
+  
+  try {
+    var data = { name: name, username: username, day_off: selectedDayOff, role: role };
+    if(role === 'employee') data.branch = branch;
+    
+    if(id) {
+      await dbPatch('employees', data, '?id=eq.' + id);
+    } else {
+      data.password = pass;
+      await dbPost('employees', data);
+    }
+    notify(ar ? 'تم الحفظ ✅' : 'Saved ✅', 'success');
+    closeModal('add-emp-modal');
+    loadAllEmployees();
+  } catch(e) {
+    notify((ar ? 'خطأ: ' : 'Error: ') + e.message, 'error');
+  }
 }
 
-function addVisitPhoto(e){
-  if(visitPhotos.length>=3)return notify('الحد الأقصى 3 صور','error');
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    // Compress to ~35% quality
-    const img=new Image();
-    img.onload=()=>{
-      const canvas=document.createElement('canvas');
-      const maxW=800;const scale=Math.min(1,maxW/img.width);
-      canvas.width=img.width*scale;canvas.height=img.height*scale;
-      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-      const compressed=canvas.toDataURL('image/jpeg',0.35);
-      visitPhotos.push(compressed);
-      renderVisitPhotoPreviews();
-    };
-    img.src=ev.target.result;
+async function deleteEmp(id) {
+  var ar = (currentLang === 'ar');
+  if(!confirm(ar ? 'حذف الموظف؟ سيتم حذف جميع البيانات!' : 'Delete employee? All data will be removed!')) return;
+  await dbDelete('employees', '?id=eq.' + id);
+  loadAllEmployees();
+}
+
+// ── OPEN WARN MODAL ──
+function openWarnModal(empId, empName) {
+  var sel = document.getElementById('warn-emp-select');
+  if(sel) {
+    var html = '';
+    for(var i = 0; i < allEmployees.length; i++) {
+      var e = allEmployees[i];
+      var selected = (e.id === empId) ? 'selected' : '';
+      html += '<option value="' + e.id + '" ' + selected + '>' + e.name + '</option>';
+    }
+    sel.innerHTML = html;
+  }
+  
+  var warnText = document.getElementById('warn-text');
+  if(warnText) warnText.value = '';
+  
+  openModal('warning-modal');
+}
+
+function setWarnTemplate(n) {
+  var templates = {
+    1: (currentLang === 'ar') ? '⚠️ تحذير: تأخرت اليوم. يرجى الالتزام بمواعيد العمل الرسمية.' : '⚠️ Warning: You were late today. Please commit to work hours.',
+    2: (currentLang === 'ar') ? '🔴 تحذير رسمي: تكرار التأخير. يرجى مراجعة الإدارة فوراً.' : '🔴 Official Warning: Repeated lateness. Contact management.',
+    3: (currentLang === 'ar') ? '📋 تذكير: الالتزام بالمواعيد أو سيتم احتساب غياب.' : '📋 Reminder: Commit to work hours or absence will be recorded.'
   };
-  reader.readAsDataURL(file);
-  e.target.value='';
+  var warnText = document.getElementById('warn-text');
+  if(warnText) warnText.value = templates[n] || '';
 }
 
-function renderVisitPhotoPreviews(){
-  const el=document.getElementById('visit-photo-previews');if(!el)return;
-  el.innerHTML=visitPhotos.map((src,i)=>`
-    <div class="photo-preview-wrap">
-      <img src="${src}" alt="">
-      <button class="photo-preview-del" onclick="removeVisitPhoto(${i})">✕</button>
-    </div>`).join('');
-  const zone=document.getElementById('visit-upload-zone');
-  if(zone)zone.style.display=visitPhotos.length>=3?'none':'block';
-}
-
-function removeVisitPhoto(i){visitPhotos.splice(i,1);renderVisitPhotoPreviews()}
-
-async function submitVisit(){
-  const branch=document.getElementById('visit-branch-select').value;
-  const note=document.getElementById('visit-note-input').value.trim();
-  const ar=currentLang==='ar';
-  if(!branch)return notify(ar?'اختر الفرع':'Select branch','error');
-  try{
-    await dbPost('branch_visits',{
-      employee_id:currentUser.id,
-      employee_name:currentUser.name,
-      branch_name:branch,
-      note:note||null,
-      photo1:visitPhotos[0]||null,
-      photo2:visitPhotos[1]||null,
-      photo3:visitPhotos[2]||null,
-      visit_date:todayStr()
+async function sendWarning() {
+  var empId = document.getElementById('warn-emp-select').value;
+  var msg = document.getElementById('warn-text').value.trim();
+  var ar = (currentLang === 'ar');
+  
+  if(!msg) {
+    notify(ar ? 'أدخل نص التحذير' : 'Enter warning message', 'error');
+    return;
+  }
+  
+  try {
+    await dbPost('warnings', {
+      employee_id: parseInt(empId),
+      message: msg,
+      sent_by: currentUser.name || 'Management'
     });
-    notify(ar?'تم حفظ الزيارة ✅':'Visit saved ✅','success');
-    visitPhotos=[];renderVisitPhotoPreviews();
-    document.getElementById('visit-branch-select').value='';
-    document.getElementById('visit-note-input').value='';
-    loadVisitsTab();
-  }catch(e){notify((ar?'خطأ: ':'Error: ')+(e.message||''),'error')}
+    notify(ar ? 'تم إرسال التحذير ✅' : 'Warning sent ✅', 'success');
+    closeModal('warning-modal');
+  } catch(e) {}
 }
 
-async function loadVisitsTab(){
-  populateVisitBranchSelect();
-  const pm=getPayrollMonth();
-  const visits=await dbGet('branch_visits',`?employee_id=eq.${currentUser.id}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`).catch(()=>[])||[];
-  const photoCount=visits.reduce((s,v)=>{let c=0;if(v.photo1)c++;if(v.photo2)c++;if(v.photo3)c++;return s+c;},0);
-  const done=visits.length,remain=Math.max(0,150-done);
-  const visDone=document.getElementById('vis-done');if(visDone)visDone.textContent=done;
-  const visRem=document.getElementById('vis-remain');if(visRem)visRem.textContent=remain;
-  document.getElementById('vis-photos').textContent=photoCount;
-  document.getElementById('emp-visits-count').textContent=done+' / 150';
-  const el=document.getElementById('visit-history-list');if(!el)return;
-  if(visits.length===0){el.innerHTML='<div class="empty"><div class="empty-icon">📸</div>لا توجد زيارات هذا الشهر</div>';return}
-  el.innerHTML=visits.map(v=>{
-    const photos=[v.photo1,v.photo2,v.photo3].filter(Boolean);
-    return`<div class="visit-card">
-      <div class="visit-header">
-        <div><div class="visit-branch-name">🏪 ${v.branch_name}</div><div class="visit-meta">${v.visit_date}</div></div>
-        <span class="badge badge-green">${photos.length} 📷</span>
-      </div>
-      ${v.note?`<div class="visit-note">📝 ${v.note}</div>`:''}
-      ${photos.length>0?`<div class="visit-photos-row">${photos.map(src=>`<img class="visit-photo" src="${src}" onclick="fullSelfie('${src}')">`).join('')}</div>`:''}
-    </div>`;
-  }).join('');
-}
-
-// ── VISITS ADMIN REPORT ──
-async function populateVisitReportEmps(){
-  const sel=document.getElementById('visit-report-emp');if(!sel)return;
-  sel.innerHTML='<option value="">...</option>';
-  const admins=await dbGet('admins','?select=id,name,role&order=name').catch(()=>[])||[];
-  const managers=admins.filter(a=>a.role==='manager');
-  const ar=currentLang==='ar';
-  sel.innerHTML='<option value="">'+(ar?'كل التيم ليدر':'All Team Leaders')+'</option>'+
-    managers.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
-}
-function initVisitReportMonth(){
-  const el=document.getElementById('visit-report-month');
-  if(!el)return;
-  // Restore last selected month or use current
-  const saved=localStorage.getItem('oraimo_visit_month');
-  const current=getPayrollMonth().start.substring(0,7);
-  el.value=saved||current;
-  el.onchange=function(){localStorage.setItem('oraimo_visit_month',this.value);loadVisitsReport();};
-  loadVisitsReport();
-}
-async function loadVisitsReport(){
-  const el=document.getElementById('visits-report-content');if(!el)return;
-  const empId=document.getElementById('visit-report-emp')?.value||'';
-  const monthEl=document.getElementById('visit-report-month');
-  const month=monthEl?.value||getPayrollMonth().start.substring(0,7);
-  const ar=currentLang==='ar';
-  el.innerHTML='<div class="full-loader"><div class="loader"></div></div>';
-  const[y,m]=month.split('-').map(Number);
-  const start=`${month}-01`;
-  const end=new Date(y,m,0).toISOString().split('T')[0];
-  let query=`?visit_date=gte.${start}&visit_date=lte.${end}&order=visit_date.desc&select=*`;
-  if(empId) query+=`&manager_id=eq.${empId}`;
-  else query+=`&order=visit_date.desc`;
-  const visits=await dbGet('branch_visits',query).catch(()=>[])||[];
-  if(visits.length===0){el.innerHTML=`<div class="empty"><div class="empty-icon">📸</div>${ar?'لا توجد زيارات':'No visits'}</div>`;return}
-  // Group by manager_name
-  const byEmp={};
-  visits.forEach(v=>{
-    const k=v.manager_name||('ID:'+v.manager_id);
-    if(!byEmp[k])byEmp[k]=[];
-    byEmp[k].push(v);
-  });
-  const totalPhotos=visits.reduce((s,v)=>{let c=0;if(v.photo1)c++;if(v.photo2)c++;if(v.photo3)c++;return s+c;},0);
-  el.innerHTML=`
-  <div class="stats-grid" style="margin-bottom:12px">
-    <div class="stat-card"><div class="stat-label">إجمالي الزيارات</div><div class="stat-val" style="color:var(--green)">${visits.length}</div></div>
-    <div class="stat-card"><div class="stat-label">الصور المرفوعة</div><div class="stat-val" style="color:var(--blue)">${totalPhotos}</div></div>
-  </div>
-  ${Object.entries(byEmp).map(([name,empVisits])=>{
-    const pCount=empVisits.reduce((s,v)=>{let c=0;if(v.photo1)c++;if(v.photo2)c++;if(v.photo3)c++;return s+c;},0);
-    const pct=Math.min(100,Math.round(empVisits.length/150*100));
-    return`<div class="card" style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-size:14px;font-weight:800">👤 ${name}</div>
-        <span class="badge ${pct>=100?'badge-green':pct>=50?'badge-yellow':'badge-red'}">${empVisits.length}/150</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span>التقدم</span><span style="color:var(--green);font-weight:700">${pct}%</span></div>
-      <div class="target-bar" style="margin-bottom:12px"><div class="target-fill" style="width:${pct}%"></div></div>
-      ${empVisits.map(v=>{
-        const photos=[v.photo1,v.photo2,v.photo3].filter(Boolean);
-        return`<div class="visit-card" style="margin-bottom:8px">
-          <div class="visit-header">
-            <div><div class="visit-branch-name">🏪 ${v.branch_name}</div><div class="visit-meta">${v.visit_date}</div></div>
-            <span class="badge badge-green">${photos.length} 📷</span>
-          </div>
-          ${v.note?`<div class="visit-note">📝 ${v.note}</div>`:''}
-          ${photos.length>0?`<div class="visit-photos-row">${photos.map(src=>`<img class="visit-photo" src="${src}" onclick="fullSelfie('${src}')">`).join('')}</div>`:''}
-        </div>`;
-      }).join('')}
-    </div>`;
-  }).join('')}`;
-}
-
-// ── AUTO CLEAR VISIT PHOTOS (60 days) ──
-async function clearOldVisitPhotos(){
-  const ar=currentLang==='ar';
-  const cutoff=fmtDate(new Date(Date.now()-60*24*60*60*1000));
-  const old=await dbGet('branch_visits',`?visit_date=lt.${cutoff}&select=id`).catch(()=>[])||[];
-  if(old.length===0)return;
-  for(const r of old){await dbPatch('branch_visits',{photo1:null,photo2:null,photo3:null},`?id=eq.${r.id}`)}
-  console.log(`Cleared photos from ${old.length} old visits`);
-}
-
-
-// ── MANAGER TEAM SYSTEM ──
-let editingManagerId = null;
-let managerTeamData = {}; // cache: managerId -> [empId,...]
-
-// Pre-defined managers
-const MANAGERS = [
-  {name: 'عبد الله فتحي'},
-  {name: 'عبد الرحمن سامي'},
-  {name: 'وليد رجب'}
-];
-
+// ── MANAGER TEAM ──
 async function openManagerTeam(managerId, managerName) {
   editingManagerId = managerId;
-  document.getElementById('manager-team-title').textContent = '👥 فريق: ' + managerName;
-  document.getElementById('manager-team-subtitle').textContent = 'اختر الموظفين التابعين لهذا التيم ليدر';
-  // load existing team
-  const existing = await dbGet('manager_teams', `?manager_id=eq.${managerId}&select=employee_id`).catch(()=>[]) || [];
-  const assignedIds = existing.map(r => r.employee_id);
-  const el = document.getElementById('manager-team-list');
-  if (!allEmployees.length) { el.innerHTML = '<div class="empty">لا يوجد موظفون</div>'; }
-  else {
-    el.innerHTML = allEmployees.map(emp => `
-      <div class="team-emp-row">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div class="emp-avatar" style="width:32px;height:32px;font-size:12px">${emp.name[0].toUpperCase()}</div>
-          <div>
-            <div style="font-size:13px;font-weight:700">${emp.name}</div>
-            <div style="font-size:11px;color:var(--muted)">${emp.branch||'-'}</div>
-          </div>
-        </div>
-        <input type="checkbox" class="team-check" data-emp-id="${emp.id}" ${assignedIds.includes(emp.id)?'checked':''}>
-      </div>
-    `).join('');
+  
+  var titleEl = document.getElementById('manager-team-title');
+  if(titleEl) titleEl.textContent = '👥 فريق: ' + managerName;
+  
+  var subtitleEl = document.getElementById('manager-team-subtitle');
+  if(subtitleEl) subtitleEl.textContent = 'اختر الموظفين التابعين لهذا التيم ليدر';
+  
+  var existing = await dbGet('manager_teams', '?manager_id=eq.' + managerId + '&select=employee_id').catch(function() { return []; }) || [];
+  var assignedIds = [];
+  for(var i = 0; i < existing.length; i++) {
+    assignedIds.push(existing[i].employee_id);
+  }
+  
+  var listEl = document.getElementById('manager-team-list');
+  if(listEl) {
+    if(allEmployees.length === 0) {
+      listEl.innerHTML = '<div class="empty">لا يوجد موظفون</div>';
+    } else {
+      var html = '';
+      for(var j = 0; j < allEmployees.length; j++) {
+        var emp = allEmployees[j];
+        var isChecked = false;
+        for(var k = 0; k < assignedIds.length; k++) {
+          if(assignedIds[k] === emp.id) {
+            isChecked = true;
+            break;
+          }
+        }
+        var checkedAttr = isChecked ? 'checked' : '';
+        html += '<div class="team-emp-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">' +
+          '<div style="display:flex;align-items:center;gap:10px">' +
+          '<div class="emp-avatar" style="width:32px;height:32px;font-size:12px">' + emp.name[0].toUpperCase() + '</div>' +
+          '<div><div style="font-size:13px;font-weight:700">' + emp.name + '</div><div style="font-size:11px;color:var(--muted)">' + (emp.branch || '-') + '</div></div>' +
+          '</div>' +
+          '<input type="checkbox" class="team-check" data-emp-id="' + emp.id + '" ' + checkedAttr + '>' +
+          '</div>';
+      }
+      listEl.innerHTML = html;
+    }
   }
   openModal('manager-team-modal');
 }
 
 async function saveManagerTeam() {
-  if (!editingManagerId) return;
-  const ar = currentLang === 'ar';
-  const checks = document.querySelectorAll('#manager-team-list .team-check');
-  const selectedIds = Array.from(checks).filter(c=>c.checked).map(c=>parseInt(c.dataset.empId));
+  if(!editingManagerId) return;
+  var ar = (currentLang === 'ar');
+  
+  var checks = document.querySelectorAll('#manager-team-list .team-check');
+  var selectedIds = [];
+  for(var i = 0; i < checks.length; i++) {
+    if(checks[i].checked) {
+      selectedIds.push(parseInt(checks[i].dataset.empId));
+    }
+  }
+  
   try {
-    // delete existing
-    await dbDelete('manager_teams', `?manager_id=eq.${editingManagerId}`);
-    // insert new
-    for (const empId of selectedIds) {
-      await dbPost('manager_teams', {manager_id: editingManagerId, employee_id: empId});
+    await dbDelete('manager_teams', '?manager_id=eq.' + editingManagerId);
+    for(var j = 0; j < selectedIds.length; j++) {
+      await dbPost('manager_teams', { manager_id: editingManagerId, employee_id: selectedIds[j] });
     }
     managerTeamData[editingManagerId] = selectedIds;
     notify(ar ? 'تم حفظ الفريق ✅' : 'Team saved ✅', 'success');
     closeModal('manager-team-modal');
-  } catch(e) { notify('Error: ' + e.message, 'error'); }
+  } catch(e) {
+    notify('Error: ' + e.message, 'error');
+  }
 }
 
 async function getManagerTeamIds() {
-  // returns employee IDs managed by current user (if team leader)
-  if (!currentUser || (currentUser.role !== 'manager' && currentUser.role !== 'team_leader')) return null;
-  if (managerTeamData[currentUser.id]) return managerTeamData[currentUser.id];
-  const res = await dbGet('manager_teams', `?manager_id=eq.${currentUser.id}&select=employee_id`).catch(()=>[]) || [];
-  const ids = res.map(r => r.employee_id);
+  if(!currentUser || (currentUser.role !== 'manager' && currentUser.role !== 'team_leader')) return null;
+  if(managerTeamData[currentUser.id]) return managerTeamData[currentUser.id];
+  
+  var res = await dbGet('manager_teams', '?manager_id=eq.' + currentUser.id + '&select=employee_id').catch(function() { return []; }) || [];
+  var ids = [];
+  for(var i = 0; i < res.length; i++) {
+    ids.push(res[i].employee_id);
+  }
   managerTeamData[currentUser.id] = ids;
   return ids;
 }
 
-// Filter employees list for team leader - only show their team
-async function filterEmployeesForManager() {
-  if (!currentUser || (currentUser.role !== 'manager' && currentUser.role !== 'team_leader')) return;
-  const teamIds = await getManagerTeamIds();
-  if (!teamIds) return;
-  // filter allEmployees to only team members
-  allEmployees = allEmployees.filter(e => teamIds.includes(e.id));
-  renderEmployeesList();
-  populateReportSelect();
-}
-
-
-// ── DISPLAY PHOTOS (Employee) ──
-let displayPhotos = [];
-
-function addDisplayPhoto(e) {
-  if (displayPhotos.length >= 3) return notify('الحد الأقصى 3 صور', 'error');
-  const file = e.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const scale = Math.min(1, 800/img.width);
-      canvas.width = img.width*scale; canvas.height = img.height*scale;
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      displayPhotos.push(canvas.toDataURL('image/jpeg', 0.35));
-      renderDisplayPreviews();
-    };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file); e.target.value = '';
-}
-
-function renderDisplayPreviews() {
-  const el = document.getElementById('display-photo-previews'); if (!el) return;
-  el.innerHTML = displayPhotos.map((src,i) => `<div class="photo-preview-wrap"><img src="${src}"><button class="photo-preview-del" onclick="removeDisplayPhoto(${i})">✕</button></div>`).join('');
-  const zone = document.getElementById('display-upload-zone');
-  if (zone) zone.style.display = displayPhotos.length >= 3 ? 'none' : 'block';
-}
-
-function removeDisplayPhoto(i) { displayPhotos.splice(i,1); renderDisplayPreviews(); }
-
-async function submitDisplayPhotos() {
-  const note = document.getElementById('display-note').value.trim();
-  const ar = currentLang === 'ar';
-  if (displayPhotos.length === 0) return notify(ar ? 'أضف صورة واحدة على الأقل' : 'Add at least one photo', 'error');
-  try {
-    // Check RLS disabled on display_photos table
-    await dbPost('display_photos', {
-      employee_id: currentUser.id,
-      employee_name: currentUser.name,
-      branch: currentUser.branch || '',
-      photo1: displayPhotos[0]||null,
-      photo2: displayPhotos[1]||null,
-      photo3: displayPhotos[2]||null,
-      note: note||null,
-      photo_date: todayStr()
-    });
-    notify(ar ? 'تم رفع صور الديسبلاي ✅' : 'Display photos uploaded ✅', 'success');
-    displayPhotos = []; renderDisplayPreviews();
-    document.getElementById('display-note').value = '';
-    loadDisplayTab();
-  } catch(e) {
-    const ar=currentLang==='ar';
-    if(e.message&&e.message.includes('security')){
-      notify(ar?'خطأ: تأكد من إيقاف RLS على جدول display_photos':'Error: Disable RLS on display_photos table','error');
-    } else {
-      notify('Error: '+e.message,'error');
-    }
+// ── NAVIGATION ──
+function empTab(tab, el) {
+  var tabs = ['home', 'sales', 'visits', 'display', 'profile', 'chat'];
+  for(var i = 0; i < tabs.length; i++) {
+    var d = document.getElementById('emp-' + tabs[i]);
+    if(d) d.style.display = (tabs[i] === tab) ? 'block' : 'none';
+  }
+  
+  var navItems = document.querySelectorAll('#emp-app .nav-item');
+  for(var j = 0; j < navItems.length; j++) {
+    navItems[j].classList.remove('active');
+  }
+  if(el) el.classList.add('active');
+  
+  if(tab === 'sales') {
+    renderProducts();
+    loadTodaySales();
+  }
+  if(tab === 'profile') {
+    var nameEl = document.getElementById('profile-name');
+    if(nameEl) nameEl.textContent = currentUser ? currentUser.name : '-';
+    var branchEl = document.getElementById('profile-branch');
+    if(branchEl) branchEl.textContent = currentUser ? (currentUser.branch || '-') : '-';
+    loadEmpMonthlyReport();
+    loadEmpDailyLog();
+    loadProfilePhoto();
+  }
+  if(tab === 'home') {
+    if(typeof loadModelTargetAlert === 'function') loadModelTargetAlert();
+  }
+  if(tab === 'visits') {
+    if(typeof loadVisitsTab === 'function') loadVisitsTab();
+  }
+  if(tab === 'display') {
+    if(typeof loadDisplayTab === 'function') loadDisplayTab();
   }
 }
 
-async function loadDisplayTab() {
-  const el = document.getElementById('display-date-label');
-  if (el) el.textContent = todayStr();
-  const hist = document.getElementById('display-history-list'); if (!hist) return;
-  const pm = getPayrollMonth();
-  const records = await dbGet('display_photos', `?employee_id=eq.${currentUser.id}&photo_date=gte.${pm.start}&photo_date=lte.${pm.end}&order=photo_date.desc&select=*`).catch(()=>[]) || [];
-  if (!records.length) { hist.innerHTML = '<div class="empty"><div class="empty-icon">🖼️</div>لا توجد صور هذا الشهر</div>'; return; }
-  hist.innerHTML = records.map(r => {
-    const photos = [r.photo1,r.photo2,r.photo3].filter(Boolean);
-    return `<div class="visit-card"><div class="visit-header"><div><div class="visit-branch-name">🗓️ ${r.photo_date}</div><div class="visit-meta">${r.branch||''}</div></div><span class="badge badge-blue">${photos.length} 📷</span></div>${r.note?`<div class="visit-note">📝 ${r.note}</div>`:''}<div class="visit-photos-row">${photos.map(src=>`<img class="visit-photo" src="${src}" onclick="fullSelfie('${src}')">`).join('')}</div></div>`;
-  }).join('');
-}
-
-// ── EXCEL EXPORT ──
-async function exportToExcel(type) {
-  const ar = currentLang === 'ar';
-  const pm = getPayrollMonth();
-  notify(ar ? 'جاري تحضير البيانات...' : 'Preparing data...', 'success');
-
-  try {
-    if (type === 'attendance') {
-      const [att, emps] = await Promise.all([
-        dbGet('attendance', `?date=gte.${pm.start}&date=lte.${pm.end}&select=*&order=date.desc`),
-        dbGet('employees', '?select=*')
-      ]);
-      let csv = 'الاسم,الفرع,التاريخ,وقت الدخول,وقت الخروج,التأخير (دقيقة),الحالة\n';
-      (att||[]).forEach(a => {
-        const emp = (emps||[]).find(e=>e.id===a.employee_id);
-        const name = emp?.name||a.employee_id;
-        const branch = emp?.branch||'';
-        const status = a.check_out ? 'حضر وانصرف' : a.check_in ? 'حضر' : 'غائب';
-        csv += `"${name}","${branch}","${a.date}","${a.check_in||''}","${a.check_out||''}","${a.late_minutes||0}","${status}"\n`;
-      });
-      downloadCSV(csv, `attendance_${pm.start.substring(0,7)}.csv`);
-    } else if (type === 'sales') {
-      const [sales, emps, tls] = await Promise.all([
-        dbGet('sales', `?date=gte.${pm.start}&date=lte.${pm.end}&select=*&order=date.desc`),
-        dbGet('employees', '?select=*'),
-        dbGet('manager_teams', '?select=*').catch(()=>[])
-      ]);
-      // build team map
-      const teamMap = {};
-      (tls||[]).forEach(t => { teamMap[t.employee_id] = t.manager_id; });
-      const admins = await dbGet('admins','?select=id,name').catch(()=>[]) || [];
-      const adminMap = {};
-      admins.forEach(a => adminMap[a.id] = a.name);
-      // also check employees for team_leaders
-      const empLeaders = (emps||[]).filter(e=>e.role==='team_leader');
-      empLeaders.forEach(e => adminMap[e.id] = e.name);
-
-      let csv = 'الاسم,الفرع,التيم ليدر,التاريخ,المنتج,الكمية,سعر الوحدة,الإجمالي\n';
-      (sales||[]).forEach(s => {
-        const emp = (emps||[]).find(e=>e.id===s.employee_id);
-        const name = emp?.name||s.employee_id;
-        const branch = emp?.branch||'';
-        const tlId = teamMap[s.employee_id];
-        const tlName = tlId ? (adminMap[tlId]||'') : '';
-        csv += `"${name}","${branch}","${tlName}","${s.date}","${s.product_name}","${s.quantity}","${s.unit_price}","${s.total_amount}"\n`;
-      });
-      downloadCSV(csv, `sales_${pm.start.substring(0,7)}.csv`);
-    }
-  } catch(e) { notify('Error: '+e.message, 'error'); }
-}
-
-function downloadCSV(csv, filename) {
-  const BOM = '\uFEFF';
-  const blob = new Blob([BOM+csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
-}
-
-
-async function populateDisplayReportEmps(){
-  const sel=document.getElementById('display-report-emp');if(!sel)return;
-  sel.innerHTML='<option value="">كل الموظفين</option>'+(allEmployees||[]).filter(e=>e.role!=='team_leader').map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
-  const mSel=document.getElementById('display-report-month');
-  if(mSel){
-    const savedDM=localStorage.getItem('oraimo_display_month');
-    mSel.value=savedDM||getPayrollMonth().start.substring(0,7);
-    mSel.onchange=function(){localStorage.setItem('oraimo_display_month',this.value);loadDisplayReport();};
+function adminTab(tab, el) {
+  var tabs = ['dashboard', 'employees', 'branches', 'reports', 'settings', 'visits', 'chat'];
+  for(var i = 0; i < tabs.length; i++) {
+    var d = document.getElementById('admin-' + tabs[i]);
+    if(d) d.style.display = (tabs[i] === tab) ? 'block' : 'none';
   }
-}
-
-async function loadDisplayReport(){
-  const el=document.getElementById('display-report-content');if(!el)return;
-  const month=document.getElementById('display-report-month')?.value||getPayrollMonth().start.substring(0,7);
-  const empId=document.getElementById('display-report-emp')?.value||'';
-  el.innerHTML='<div class="full-loader"><div class="loader"></div></div>';
-  const[y,m]=month.split('-').map(Number);
-  const start=`${month}-01`;
-  const end=new Date(y,m,0).toISOString().split('T')[0];
-  let query=`?photo_date=gte.${start}&photo_date=lte.${end}&order=photo_date.desc&select=*`;
-  if(empId) query+=`&employee_id=eq.${empId}`;
-  const records=await dbGet('display_photos',query).catch(()=>[])||[];
-  if(!records.length){el.innerHTML='<div class="empty"><div class="empty-icon">🖼️</div>لا توجد صور</div>';return;}
-  const byEmp={};
-  records.forEach(r=>{const k=r.employee_name||r.employee_id;if(!byEmp[k])byEmp[k]=[];byEmp[k].push(r);});
-  el.innerHTML=Object.entries(byEmp).map(([name,recs])=>`
-    <div class="card" style="margin-bottom:10px">
-      <div style="font-size:14px;font-weight:800;margin-bottom:10px">👤 ${name} <span class="badge badge-blue">${recs.length} يوم</span></div>
-      ${recs.map(r=>{
-        const photos=[r.photo1,r.photo2,r.photo3].filter(Boolean);
-        return`<div class="visit-card" style="margin-bottom:8px"><div class="visit-header"><div><div class="visit-branch-name">🗓️ ${r.photo_date}</div><div class="visit-meta">${r.branch||''}</div></div><span class="badge badge-blue">${photos.length} 📷</span></div>${r.note?`<div class="visit-note">📝 ${r.note}</div>`:''}<div class="visit-photos-row">${photos.map(src=>`<img class="visit-photo" src="${src}" onclick="fullSelfie('${src}')">`).join('')}</div></div>`;
-      }).join('')}
-    </div>`).join('');
-}
-
-
-// ── TEAM LEADER VISITS ──
-let tlVisitPhotos = [];
-
-function addTLVisitPhoto(e) {
-  if (tlVisitPhotos.length >= 3) return notify('الحد الأقصى 3 صور', 'error');
-  const file = e.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const scale = Math.min(1, 800/img.width);
-      canvas.width = img.width*scale; canvas.height = img.height*scale;
-      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-      tlVisitPhotos.push(canvas.toDataURL('image/jpeg',0.35));
-      renderTLPreviews();
-    };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file); e.target.value='';
-}
-
-function renderTLPreviews() {
-  const el=document.getElementById('tl-visit-previews');if(!el)return;
-  el.innerHTML=tlVisitPhotos.map((src,i)=>`<div class="photo-preview-wrap"><img src="${src}"><button class="photo-preview-del" onclick="removeTLPhoto(${i})">✕</button></div>`).join('');
-  const zone=document.getElementById('tl-visit-zone');
-  if(zone) zone.style.display=tlVisitPhotos.length>=3?'none':'block';
-}
-
-function removeTLPhoto(i){tlVisitPhotos.splice(i,1);renderTLPreviews();}
-
-async function submitTLVisit(){
-  const branch=document.getElementById('tl-visit-branch').value;
-  const note=document.getElementById('tl-visit-note').value.trim();
-  const ar=currentLang==='ar';
-  if(!branch) return notify(ar?'اختر الفرع':'Select branch','error');
-  if(tlVisitPhotos.length===0) return notify(ar?'أضف صورة واحدة على الأقل':'Add at least one photo','error');
-  try{
-    await dbPost('branch_visits',{
-      manager_id:currentUser.id,
-      manager_name:currentUser.name,
-      branch_name:branch,
-      note:note||null,
-      photo1:tlVisitPhotos[0]||null,
-      photo2:tlVisitPhotos[1]||null,
-      photo3:tlVisitPhotos[2]||null,
-      visit_date:todayStr()
-    });
-    notify(ar?'تم حفظ الزيارة ✅':'Visit saved ✅','success');
-    tlVisitPhotos=[];renderTLPreviews();
-    document.getElementById('tl-visit-branch').value='';
-    document.getElementById('tl-visit-note').value='';
-    loadTLVisitsTab();
-  }catch(e){notify('Error: '+e.message,'error');}
-}
-
-async function loadTLVisitsTab(){
-  // populate branch select
-  const sel=document.getElementById('tl-visit-branch');
-  if(sel) sel.innerHTML='<option value="">-- اختر الفرع --</option>'+(allBranches||[]).map(b=>`<option value="${b.name}">${b.name}</option>`).join('');
-  const pm=getPayrollMonth();
-  const visits=await dbGet('branch_visits',`?manager_id=eq.${currentUser.id}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`).catch(()=>[]) || await dbGet('branch_visits',`?employee_id=eq.${currentUser.id}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`).catch(()=>[])||[];
-  const done=visits.length;
-  const remain=Math.max(0,150-done);
-  const doneEl=document.getElementById('tl-vis-done');
-  const remEl=document.getElementById('tl-vis-remain');
-  const cntEl=document.getElementById('tl-visit-count');
-  if(doneEl) doneEl.textContent=done;
-  if(remEl) remEl.textContent=remain;
-  if(cntEl) cntEl.textContent=done+' / 150';
-  const el=document.getElementById('tl-visit-history');if(!el)return;
-  if(!visits.length){el.innerHTML='<div class="empty"><div class="empty-icon">📸</div>لا توجد زيارات هذا الشهر</div>';return;}
-  el.innerHTML=visits.map(v=>{
-    const photos=[v.photo1,v.photo2,v.photo3].filter(Boolean);
-    return`<div class="visit-card"><div class="visit-header"><div><div class="visit-branch-name">🏪 ${v.branch_name}</div><div class="visit-meta">${v.visit_date}</div></div><span class="badge badge-green">${photos.length} 📷</span></div>${v.note?`<div class="visit-note">📝 ${v.note}</div>`:''}<div class="visit-photos-row">${photos.map(src=>`<img class="visit-photo" src="${src}" onclick="fullSelfie('${src}')">`).join('')}</div></div>`;
-  }).join('');
-}
-
-
-function toggleLeaveFields(){
-  const type=document.getElementById('leave-type')?.value;
-  const durGrp=document.getElementById('leave-duration-group');
-  const dateGrp=document.getElementById('leave-date-group');
-  if(durGrp) durGrp.style.display=type==='vacation'?'none':'block';
-  if(dateGrp) dateGrp.style.display=type==='vacation'?'block':'none';
-}
-
-// ── CHAT SYSTEM ──
-let currentChat = null;
-let chatSubscription = null;
-
-async function openChat(chatType, title) {
-  currentChat = chatType;
-  document.getElementById('chat-title').textContent = title;
-  document.getElementById('chat-modal').style.display = 'flex';
-  document.getElementById('chat-modal').style.flexDirection = 'column';
-  await loadMessages();
-  subscribeToMessages();
-}
-
-function closeChat() {
-  document.getElementById('chat-modal').style.display = 'none';
-  currentChat = null;
-  if (chatSubscription) {
-    if (typeof chatSubscription === 'function') {
-      try { chatSubscription(); } catch (_) {}
-    } else {
-      try { clearInterval(chatSubscription); } catch (_) {}
-    }
-    chatSubscription = null;
+  
+  var navItems = document.querySelectorAll('#admin-app .nav-item');
+  for(var j = 0; j < navItems.length; j++) {
+    navItems[j].classList.remove('active');
   }
+  if(el) el.classList.add('active');
+  
+  if(tab === 'dashboard') loadAdminDashboard();
+  if(tab === 'employees') loadAllEmployees();
+  if(tab === 'branches') {
+    if(typeof initBranchDashboard === 'function') initBranchDashboard();
+  }
+  if(tab === 'visits') {
+    if(typeof loadTLVisitsTab === 'function') loadTLVisitsTab();
+  }
+  if(tab === 'chat') {
+    if(typeof loadAdminChatList === 'function') loadAdminChatList();
+  }
+  if(typeof applyLang === 'function') applyLang();
 }
 
-async function loadMessages() {
-  const el = document.getElementById('chat-messages');
-  el.innerHTML = '<div class="full-loader"><div class="loader"></div></div>';
-  let query = '?order=created_at.asc&limit=100';
-  if (currentChat === 'group') {
-    query += '&chat_type=eq.group';
-  } else if (currentChat === 'admin') {
-    // employee talking to admin
-    const myId = currentUser.id;
-    query += `&chat_type=eq.private&or=(sender_id.eq.${myId},receiver_id.eq.${myId})`;
+// ── EMP MONTHLY REPORT ──
+async function loadEmpMonthlyReport() {
+  var pm = getPayrollMonth();
+  var ar = (currentLang === 'ar');
+  
+  var att = await dbGet('attendance', '?employee_id=eq.' + currentUser.id + '&date=gte.' + pm.start + '&date=lte.' + pm.end + '&select=*');
+  var sales = await dbGet('sales', '?employee_id=eq.' + currentUser.id + '&date=gte.' + pm.start + '&date=lte.' + pm.end + '&select=*');
+  
+  var salesTotal = 0;
+  if(sales) {
+    for(var i = 0; i < sales.length; i++) {
+      salesTotal += sales[i].total_amount;
+    }
+  }
+  
+  var lateTotal = 0;
+  if(att) {
+    for(var j = 0; j < att.length; j++) {
+      lateTotal += (att[j].late_minutes || 0);
+    }
+  }
+  
+  var el = document.getElementById('monthly-report-emp');
+  if(!el) return;
+  
+  var rows = [];
+  if(ar) {
+    rows = [
+      ['أيام الحضور', (att ? att.length : 0) + ' أيام', 'var(--green)'],
+      ['دقائق التأخير', lateTotal + ' د', 'var(--yellow)'],
+      ['إجمالي المبيعات', 'EGP ' + salesTotal.toLocaleString(), 'var(--green)'],
+      ['عدد المعاملات', (sales ? sales.length : 0), 'var(--text)']
+    ];
   } else {
-    // admin talking to specific employee
-    const empId = currentChat;
-    query += `&chat_type=eq.private&or=(sender_id.eq.${empId},receiver_id.eq.${empId})`;
+    rows = [
+      ['Attendance', (att ? att.length : 0) + ' days', 'var(--green)'],
+      ['Late', lateTotal + 'm', 'var(--yellow)'],
+      ['Total Sales', 'EGP ' + salesTotal.toLocaleString(), 'var(--green)'],
+      ['Transactions', (sales ? sales.length : 0), 'var(--text)']
+    ];
   }
-  const msgs = await dbGet('messages', query).catch(() => []) || [];
-  renderMessages(msgs);
+  
+  var html = '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">' + pm.label + '</div>';
+  for(var k = 0; k < rows.length; k++) {
+    html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">' +
+      '<span style="font-size:12px;color:var(--muted)">' + rows[k][0] + '</span>' +
+      '<span style="font-size:13px;font-weight:700;color:' + rows[k][2] + '">' + rows[k][1] + '</span>' +
+      '</div>';
+  }
+  el.innerHTML = html;
 }
 
-function renderMessages(msgs) {
-  const el = document.getElementById('chat-messages');
-  if (!msgs.length) {
-    el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">لا توجد رسائل بعد</div>';
+async function loadEmpDailyLog() {
+  var pm = getPayrollMonth();
+  var ar = (currentLang === 'ar');
+  var att = await dbGet('attendance', '?employee_id=eq.' + currentUser.id + '&date=gte.' + pm.start + '&date=lte.' + pm.end + '&select=*&order=date.desc') || [];
+  
+  var el = document.getElementById('emp-daily-log');
+  if(!el) return;
+  
+  if(att.length === 0) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div>' + (ar ? 'لا توجد سجلات' : 'No records') + '</div>';
     return;
   }
-  const myId = currentUser.id;
-  const myName = currentUser.name;
-  el.innerHTML = msgs.map(m => {
-    // isMe: my messages align to right (end) in RTL
-    const isMe = m.sender_id === myId || m.sender_name === myName;
-    const time = new Date(m.created_at).toLocaleTimeString('ar-EG', {hour:'2-digit',minute:'2-digit'});
-    const bubbleBg = isMe ? 'linear-gradient(135deg,rgba(0,200,83,.25),rgba(0,160,64,.15))' : 'var(--card2)';
-    const bubbleBorder = isMe ? '1px solid rgba(0,200,83,.35)' : '1px solid var(--border)';
-    const bubbleRadius = isMe ? '18px 4px 18px 18px' : '4px 18px 18px 18px';
-    return `<div style="display:flex;flex-direction:column;align-items:${isMe?'flex-end':'flex-start'};margin-bottom:2px">
-      <div style="max-width:78%;min-width:60px;background:${bubbleBg};border-radius:${bubbleRadius};padding:8px 13px;border:${bubbleBorder}">
-        ${!isMe?`<div style="font-size:10px;color:var(--green);font-weight:800;margin-bottom:3px">${m.sender_name}</div>`:''}
-        <div style="font-size:14px;line-height:1.4;word-break:break-word">${escapeHtmlLocal(m.message)}</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:3px;text-align:${isMe?'left':'right'}">${time}</div>
-      </div>
-    </div>`;
-  }).join('');
-  el.scrollTop = el.scrollHeight;
-}
-function escapeHtmlLocal(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-
-let _sendingMsg = false;
-async function sendMessage() {
-  if(_sendingMsg) return;
-  const input = document.getElementById('chat-input');
-  const msg = (input.value||'').trim();
-  if (!msg || msg.length > 2000) return;
-  _sendingMsg = true;
-  input.value = '';
-  // Optimistic UI: show message immediately
-  const nowIso = new Date().toISOString();
-  const tmpMsg = {
-    sender_id: currentUser.id, sender_name: currentUser.name,
-    message: msg, chat_type: currentChat==='group'?'group':'private',
-    created_at: nowIso, _tmp: true
-  };
-  appendMessage(tmpMsg);
-  try{
-    const data = {
-      sender_id: currentUser.id,
-      sender_name: currentUser.name,
-      message: msg,
-      chat_type: currentChat === 'group' ? 'group' : 'private',
-      receiver_id: currentChat === 'group' ? null : (currentChat === 'admin' ? null : parseInt(currentChat))
-    };
-    await dbPost('messages', data).catch(e => { notify('Error: '+e.message, 'error'); throw e; });
-    const notifTitle = currentChat === 'group' ? 'B.tech team 💬' : `رسالة من ${currentUser.name}`;
-    if(typeof sendPushNotification==='function') sendPushNotification(notifTitle, msg, currentChat==='group'?null:(currentChat==='admin'?null:currentChat));
-  }catch(_){
-    // On error, reload to remove optimistic message
-    await loadMessages();
-  }finally{ _sendingMsg = false; }
-}
-function appendMessage(m){
-  const el=document.getElementById('chat-messages');if(!el)return;
-  const myId=currentUser.id,myName=currentUser.name;
-  const isMe=m.sender_id===myId||m.sender_name===myName;
-  const time=new Date(m.created_at).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});
-  const bubbleBg=isMe?'linear-gradient(135deg,rgba(0,200,83,.25),rgba(0,160,64,.15))':'var(--card2)';
-  const bubbleBorder=isMe?'1px solid rgba(0,200,83,.35)':'1px solid var(--border)';
-  const bubbleRadius=isMe?'18px 4px 18px 18px':'4px 18px 18px 18px';
-  const div=document.createElement('div');
-  div.style.cssText=`display:flex;flex-direction:column;align-items:${isMe?'flex-end':'flex-start'};margin-bottom:2px`;
-  div.innerHTML=`<div style="max-width:78%;min-width:60px;background:${bubbleBg};border-radius:${bubbleRadius};padding:8px 13px;border:${bubbleBorder}">
-    ${!isMe?`<div style="font-size:10px;color:var(--green);font-weight:800;margin-bottom:3px">${m.sender_name}</div>`:''}
-    <div style="font-size:14px;line-height:1.4;word-break:break-word">${escapeHtmlLocal(m.message)}</div>
-    <div style="font-size:10px;color:var(--muted);margin-top:3px;text-align:${isMe?'left':'right'}">${time}</div>
-  </div>`;
-  el.appendChild(div);
-  el.scrollTop=el.scrollHeight;
-}
-
-function subscribeToMessages() {
-  // Clean up old subscription
-  if (chatSubscription) {
-    try{if(typeof chatSubscription==='function')chatSubscription();else clearInterval(chatSubscription);}catch(_){}
-    chatSubscription=null;
+  
+  var html = '<div class="table-wrap"><table style="width:100%"><thead><tr>' +
+    '<th>' + (ar ? 'التاريخ' : 'Date') + '</th>' +
+    '<th>' + (ar ? 'دخول' : 'In') + '</th>' +
+    '<th>' + (ar ? 'خروج' : 'Out') + '</th>' +
+    '<th>' + (ar ? 'تأخير' : 'Late') + '</th>' +
+    '</tr></thead><tbody>';
+  
+  for(var i = 0; i < att.length; i++) {
+    var a = att[i];
+    var lateBadge = (a.late_minutes > 0) ?
+      '<span class="badge badge-yellow">' + a.late_minutes + (ar ? 'د' : 'm') + '</span>' :
+      '<span class="badge badge-green">✓</span>';
+    
+    html += '<tr>' +
+      '<td>' + a.date + '</td>' +
+      '<td>' + (a.check_in || '-') + '</td>' +
+      '<td>' + (a.check_out || '-') + '</td>' +
+      '<td>' + lateBadge + '</td>' +
+      '</tr>';
   }
-  const onNew = (newMsg) => {
-    if(!currentChat||!currentUser) return;
-    // Avoid duplicate temp messages from ourselves
-    if(newMsg.sender_id===currentUser.id||newMsg.sender_name===currentUser.name) {
-      // we already added optimistically, just reload to sync
-      loadMessages();return;
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+function loadProfilePhoto() {
+  var saved = localStorage.getItem('profile_photo_' + (currentUser ? currentUser.id : ''));
+  if(saved) {
+    var img = document.getElementById('profile-avatar-img');
+    var icon = document.getElementById('profile-avatar-icon');
+    if(img) {
+      img.src = saved;
+      img.style.display = 'block';
     }
-    appendMessage(newMsg);
-  };
-  if (window.chatSubscribeRealtime) {
-    window.chatSubscribeRealtime(onNew).then(unsub => {
-      chatSubscription = unsub;
-    }).catch(() => {
-      chatSubscription = setInterval(() => {
-        if (currentChat) loadMessages();
-      }, 5000);
-    });
-  } else {
-    chatSubscription = setInterval(() => {
-      if (currentChat) loadMessages();
-    }, 5000);
+    if(icon) icon.style.display = 'none';
   }
 }
 
-async function loadAdminChatList() {
-  const el = document.getElementById('admin-chat-list'); if (!el) return;
-  const ar=currentLang==='ar';
-  el.innerHTML = (allEmployees || []).map(emp => `
-    <div class="card" onclick="openChat('${emp.id}','${emp.name}')" style="cursor:pointer;display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-direction:${ar?'row-reverse':'row'}">
-      <div class="emp-avatar" style="width:44px;height:44px;font-size:15px;flex-shrink:0;overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:emp.name[0].toUpperCase()}</div>
-      <div style="text-align:${ar?'right':'left'}"><div style="font-size:13px;font-weight:700">${emp.name}</div><div style="font-size:11px;color:var(--muted)">${emp.branch||''}</div></div>
-    </div>`).join('');
-}
-
-// ── ABSENT EMPLOYEES CLICK ──
-function showAbsentEmployees() {
-  const ar = currentLang === 'ar';
-  const absentEmps = allEmployees.filter(emp => {
-    const att = document.querySelector(`[data-emp-id="${emp.id}"]`);
-    return !att;
-  });
-  // Simple modal with absent list
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
-  
-  // Get today attendance data from dashboard
-  const presentIds = window._todayPresentIds || [];
-  const absentList = allEmployees.filter(e => !presentIds.includes(e.id));
-  
-  overlay.innerHTML = `<div style="background:var(--card);border-radius:22px 22px 0 0;padding:22px 18px;width:100%;max-height:70vh;overflow-y:auto;border-top:2px solid var(--red)">
-    <div style="font-size:16px;font-weight:800;color:var(--red);margin-bottom:14px">😴 ${ar?'الغائبون اليوم':'Absent Today'} (${absentList.length})</div>
-    ${absentList.length === 0 ? `<div style="text-align:center;color:var(--muted);padding:20px">${ar?'لا يوجد غياب':'No absences'}</div>` :
-    absentList.map(emp => `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div class="emp-avatar" style="width:36px;height:36px;font-size:13px">${emp.name[0].toUpperCase()}</div>
-      <div><div style="font-size:13px;font-weight:700">${emp.name}</div><div style="font-size:11px;color:var(--muted)">${emp.branch||'-'}</div></div>
-    </div>`).join('')}
-    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px">${ar?'إغلاق':'Close'}</button>
-  </div>`;
-  document.body.appendChild(overlay);
-}
-
-
-// ── PROFILE PHOTO ──
-async function uploadProfilePhoto(event){
-  const file = event.target.files[0];
+async function uploadProfilePhoto(event) {
+  var file = event.target.files[0];
   if(!file) return;
-  const ar = currentLang==='ar';
-  // Compress image before saving
-  const canvas = document.createElement('canvas');
-  const img = new Image();
-  const reader = new FileReader();
-  reader.onload = async function(e){
-    img.onload = async function(){
-      const maxSize = 200;
-      let w = img.width, h = img.height;
-      if(w > h){ h = h*maxSize/w; w = maxSize; } else { w = w*maxSize/h; h = maxSize; }
-      canvas.width = w; canvas.height = h;
+  var ar = (currentLang === 'ar');
+  
+  var canvas = document.createElement('canvas');
+  var img = new Image();
+  var reader = new FileReader();
+  
+  reader.onload = async function(e) {
+    img.onload = async function() {
+      var maxSize = 200;
+      var w = img.width;
+      var h = img.height;
+      if(w > h) {
+        h = h * maxSize / w;
+        w = maxSize;
+      } else {
+        w = w * maxSize / h;
+        h = maxSize;
+      }
+      canvas.width = w;
+      canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      const base64 = canvas.toDataURL('image/jpeg', 0.7);
-      try{
-        localStorage.setItem('profile_photo_'+currentUser.id, base64);
-        document.getElementById('profile-avatar-img').src = base64;
-        document.getElementById('profile-avatar-img').style.display = 'block';
-        document.getElementById('profile-avatar-icon').style.display = 'none';
-        // Save to Supabase so team can see it
-        await dbPatch('employees',{profile_photo:base64},`?id=eq.${currentUser.id}`).catch(()=>{});
-        // Update currentUser
+      var base64 = canvas.toDataURL('image/jpeg', 0.7);
+      
+      try {
+        localStorage.setItem('profile_photo_' + currentUser.id, base64);
+        var imgEl = document.getElementById('profile-avatar-img');
+        var iconEl = document.getElementById('profile-avatar-icon');
+        if(imgEl) {
+          imgEl.src = base64;
+          imgEl.style.display = 'block';
+        }
+        if(iconEl) iconEl.style.display = 'none';
+        
+        await dbPatch('employees', { profile_photo: base64 }, '?id=eq.' + currentUser.id).catch(function() {});
         currentUser.profile_photo = base64;
         localStorage.setItem('oraimo_user', JSON.stringify(currentUser));
-        notify(ar?'تم تحديث الصورة ✅':'Photo updated ✅','success');
-      } catch(e){ notify('Error: '+e.message,'error'); }
+        notify(ar ? 'تم تحديث الصورة ✅' : 'Photo updated ✅', 'success');
+      } catch(e) {
+        notify('Error: ' + e.message, 'error');
+      }
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
-function loadProfilePhoto(){
-  const saved = localStorage.getItem('profile_photo_'+(currentUser?.id||''));
-  if(saved){
-    const img = document.getElementById('profile-avatar-img');
-    const icon = document.getElementById('profile-avatar-icon');
-    if(img){ img.src=saved; img.style.display='block'; }
-    if(icon) icon.style.display='none';
+// ── FIX NAV DIRECTION ──
+function fixNavDirection() {
+  var dir = (currentLang === 'ar') ? 'rtl' : 'ltr';
+  var navs = document.querySelectorAll('.bottom-nav');
+  for(var i = 0; i < navs.length; i++) {
+    navs[i].style.direction = dir;
+    navs[i].style.flexDirection = 'row';
   }
 }
 
-
-
-
-// ── ACCORDION ──
-function toggleAcc(id){
-  const body=document.getElementById(id);
-  const arrow=document.getElementById(id+'-arrow');
-  const isOpen=body.style.display!=='none';
-  body.style.display=isOpen?'none':'block';
-  if(arrow)arrow.classList.toggle('open',!isOpen);
-  // Lazy load content
-  if(!isOpen){
-    if(id==='acc-branches')loadBranches();
-    if(id==='acc-products')loadProductsSettings();
-    if(id==='acc-targets')loadTargetsList();
-    if(id==='acc-admins')loadAdminsList();
-    if(id==='acc-team')loadSettingsEmpList();
+function toggleLang() {
+  if(typeof window.setLang === 'function') {
+    window.setLang(currentLang === 'ar' ? 'en' : 'ar');
+  }
+  if(typeof window.applyLang === 'function') {
+    window.applyLang();
   }
 }
 
-// ── SETTINGS EMP LIST ──
-function loadSettingsEmpList(){
-  const el=document.getElementById('settings-emp-list');if(!el)return;
-  const ar=currentLang==='ar';
-  if(allEmployees.length===0){el.innerHTML='<div class="empty"><div class="empty-icon">👥</div>No employees</div>';return}
-  el.innerHTML=allEmployees.map(emp=>`
-    <div class="emp-card">
-      <div class="emp-avatar" style="overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:emp.name[0].toUpperCase()}</div>
-      <div class="emp-info"><div class="emp-name">${emp.name}</div><div class="emp-branch">${emp.branch||'-'}</div></div>
-      <div class="emp-actions">
-        <button class="action-btn edit" onclick="openEditEmp(${emp.id})">✏️</button>
-        <button class="action-btn del" onclick="deleteEmp(${emp.id})">🗑️</button>
-      </div>
-    </div>`).join('');
+// ── INIT BRANCH DASHBOARD ──
+function initBranchDashboard() {
+  var sTier = [];
+  var aTier = [];
+  var bTier = [];
+  var noSales = [];
+  
+  for(var i = 0; i < BRANCH_DATA.length; i++) {
+    var b = BRANCH_DATA[i];
+    if(b.tier === 'S') sTier.push(b);
+    else if(b.tier === 'A') aTier.push(b);
+    else if(b.tier === 'B') bTier.push(b);
+    else noSales.push(b);
+  }
+  
+  var ar = (currentLang === 'ar');
+  
+  var sCount = document.getElementById('kpi-s-count');
+  if(sCount) sCount.textContent = sTier.length;
+  var aCount = document.getElementById('kpi-a-count');
+  if(aCount) aCount.textContent = aTier.length;
+  var bCount = document.getElementById('kpi-b-count');
+  if(bCount) bCount.textContent = bTier.length;
+  
+  var totalCurr = 0;
+  var totalPrev = 0;
+  for(var j = 0; j < BRANCH_DATA.length; j++) {
+    totalCurr += BRANCH_DATA[j].revenue;
+    totalPrev += BRANCH_DATA[j].prev_revenue;
+  }
+  
+  var totalChange = (totalPrev > 0) ? ((totalCurr - totalPrev) / totalPrev * 100) : 0;
+  
+  var currRevEl = document.getElementById('kpi-curr-rev');
+  if(currRevEl) currRevEl.textContent = 'EGP ' + fmtEGP(totalCurr);
+  
+  var prevRevEl = document.getElementById('kpi-prev-rev');
+  if(prevRevEl) prevRevEl.textContent = 'EGP ' + fmtEGP(totalPrev);
+  
+  var changeEl = document.getElementById('kpi-change');
+  if(changeEl) {
+    changeEl.textContent = (totalChange >= 0 ? '+' : '') + totalChange.toFixed(1) + '%';
+    changeEl.style.color = (totalChange >= 0) ? 'var(--green)' : 'var(--red)';
+  }
+  
+  var top10 = [];
+  for(var k = 0; k < BRANCH_DATA.length && top10.length < 10; k++) {
+    if(BRANCH_DATA[k].revenue > 0) top10.push(BRANCH_DATA[k]);
+  }
+  top10.sort(function(a, b) { return b.revenue - a.revenue; });
+  
+  var maxR = (top10[0] && top10[0].revenue > 0) ? top10[0].revenue : 1;
+  var medals = ['🥇', '🥈', '🥉'];
+  
+  var topListEl = document.getElementById('branch-top-list');
+  if(topListEl) {
+    var topHtml = '';
+    for(var t = 0; t < top10.length; t++) {
+      var br = top10[t];
+      var chg = (br.prev_revenue > 0) ? ((br.revenue - br.prev_revenue) / br.prev_revenue * 100) : null;
+      var tierBadge = '';
+      if(br.tier === 'S') tierBadge = '<span class="tier-s">S 🥇</span>';
+      else if(br.tier === 'A') tierBadge = '<span class="tier-a">A 🥈</span>';
+      else tierBadge = '<span class="tier-b">B 🥉</span>';
+      
+      var pct = Math.max(4, Math.round(br.revenue / maxR * 100));
+      var medalIcon = (t < 3) ? medals[t] : '#' + (t + 1);
+      
+      topHtml += '<div class="branch-card branch-card.tier-' + br.tier.toLowerCase() + '-card">' +
+        '<div style="display:flex;align-items:center;margin-bottom:8px">' +
+        '<span style="font-size:16px;margin-left:6px">' + medalIcon + '</span>' +
+        '<div class="branch-name">' + br.name + '</div>' +
+        tierBadge +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px">' +
+        '<span style="color:var(--green);font-weight:800">EGP ' + fmtEGP(br.revenue) + '</span>';
+      if(chg !== null) {
+        topHtml += '<span class="' + (chg >= 0 ? 'change-up' : 'change-down') + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(0) + '%</span>';
+      }
+      topHtml += '</div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px">' +
+        '<span>' + (ar ? 'سابقاً:' : 'Prev:') + ' EGP ' + fmtEGP(br.prev_revenue) + '</span>' +
+        '<span>' + (ar ? 'كمية:' : 'Qty:') + ' ' + br.qty + '</span>' +
+        '</div>' +
+        '<div class="target-bar"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,var(--green),#00e676);border-radius:4px;transition:width .6s"></div></div>' +
+        '</div>';
+    }
+    topListEl.innerHTML = topHtml;
+  }
 }
 
-// ── Q1 ANALYTICS ──
-function loadQ1Analytics(){
-  const el=document.getElementById('q1-analytics-content');
-  if(!el||!Q1_STORES||Q1_STORES.length===0)return;
-  const ar=currentLang==='ar';
-  el.innerHTML=Q1_STORES.slice(0,30).map(s=>{
-    const marActual=s.mar_actual;
-    const marProj=s.mar_projected;
-    const dailyRate=s.mar_daily;
-    const vsJan=s.jan>0?Math.round((marProj-s.jan)/s.jan*100):0;
-    const vsFeb=s.feb>0?Math.round((marProj-s.feb)/s.feb*100):0;
-    const maxVal=Math.max(s.jan,s.feb,marProj,1);
-    const trendUp=marProj>s.feb;
-    return `<div class="q1-card">
-      <div class="q1-store-name">${s.store}</div>
-      <div class="q1-months">
-        <div class="q1-month">
-          <div class="q1-month-label">${ar?'يناير':'Jan'}</div>
-          <div class="q1-month-val">${(s.jan/1000).toFixed(1)}K</div>
-        </div>
-        <div class="q1-month">
-          <div class="q1-month-label">${ar?'فبراير':'Feb'}</div>
-          <div class="q1-month-val">${(s.feb/1000).toFixed(1)}K</div>
-        </div>
-        <div class="q1-month">
-          <div class="q1-month-label">${ar?'مارس (فعلي)':'Mar (Actual)'}</div>
-          <div class="q1-month-val" style="color:var(--yellow)">${(marActual/1000).toFixed(1)}K</div>
-          <div style="font-size:8px;color:var(--muted)">${MARCH_DAYS_RECORDED}d</div>
-        </div>
-        <div class="q1-month" style="background:rgba(0,200,83,.12);border:1px solid rgba(0,200,83,.25)">
-          <div class="q1-month-label" style="color:var(--green)">${ar?'مارس (متوقع)':'Mar (Proj.)'}</div>
-          <div class="q1-month-val" style="color:var(--green)">${(marProj/1000).toFixed(1)}K</div>
-          <div class="${trendUp?'q1-trend-up':'q1-trend-down'}">${trendUp?'▲':'▼'} ${Math.abs(vsFeb)}% vs Feb</div>
-        </div>
-      </div>
-      <div class="q1-proj">
-        <div>
-          <div class="q1-proj-label">${ar?'المعدل اليومي':'Daily Rate'}</div>
-          <div style="font-size:12px;color:var(--muted)">EGP ${dailyRate.toLocaleString()} / ${ar?'يوم':'day'}</div>
-        </div>
-        <div class="q1-proj-val">EGP ${(marProj/1000).toFixed(1)}K</div>
-      </div>
-      <div class="run-rate-bar"><div class="run-rate-fill" style="width:${Math.min(100,Math.round(marProj/maxVal*100))}%"></div></div>
-    </div>`;
-  }).join('');
+// ── MODEL TARGET ALERT ──
+async function loadModelTargetAlert() {
+  var el = document.getElementById('model-target-alert');
+  if(!el) return;
+  
+  var ar = (currentLang === 'ar');
+  var pm = getPayrollMonth();
+  var mon = pm.start.substring(0, 7);
+  
+  var targetRes = await dbGet('targets', '?employee_id=eq.' + currentUser.id + '&month=eq.' + mon + '&select=*');
+  var sales = await dbGet('sales', '?employee_id=eq.' + currentUser.id + '&date=gte.' + pm.start + '&date=lte.' + pm.end + '&select=product_name,quantity');
+  
+  if(!targetRes || targetRes.length === 0) {
+    el.innerHTML = '';
+    return;
+  }
+  
+  var models = targetRes[0].model_targets || [];
+  if(models.length === 0) {
+    el.innerHTML = '';
+    return;
+  }
+  
+  var soldQty = {};
+  if(sales) {
+    for(var i = 0; i < sales.length; i++) {
+      var name = sales[i].product_name;
+      soldQty[name] = (soldQty[name] || 0) + sales[i].quantity;
+    }
+  }
+  
+  var today = new Date();
+  var endDate = new Date(pm.end);
+  var daysLeft = Math.max(0, Math.ceil((endDate - today) / (1000 * 60 * 60 * 24)));
+  var totalDays = new Date(pm.end).getDate();
+  var daysPassed = totalDays - daysLeft;
+  
+  var behindModels = [];
+  for(var m = 0; m < models.length; m++) {
+    var model = models[m];
+    var done = soldQty[model.name] || 0;
+    var expectedByNow = (daysPassed > 0) ? Math.round(model.qty / totalDays * daysPassed) : 0;
+    if(done < expectedByNow) {
+      behindModels.push(model);
+    }
+  }
+  
+  var allOnTrack = (behindModels.length === 0);
+  
+  var html = '<div class="model-alert-card ' + (allOnTrack ? 'on-track' : '') + '">' +
+    '<div class="model-alert-title">' + (allOnTrack ? '✅' : '⚠️') + ' ' + (ar ? (allOnTrack ? 'تارجت الموديلات — على المسار' : 'تارجت الموديلات — يحتاج اهتمام') : (allOnTrack ? 'Model Targets — On Track' : 'Model Targets — Needs Attention')) +
+    '<span style="font-size:10px;color:var(--muted);font-weight:500;margin-right:auto">' + daysLeft + ' ' + (ar ? 'يوم متبقي' : 'days left') + '</span>' +
+    '</div>';
+  
+  for(var n = 0; n < models.length; n++) {
+    var mdl = models[n];
+    var doneQty = soldQty[mdl.name] || 0;
+    var pct = Math.min(100, Math.round(doneQty / mdl.qty * 100));
+    var color = (pct >= 80) ? 'var(--green)' : ((pct >= 50) ? 'var(--yellow)' : 'var(--red)');
+    var shortName = mdl.name.split(' ').slice(-2).join(' ');
+    
+    html += '<div class="model-row">' +
+      '<div class="model-name-sm">' + shortName + '</div>' +
+      '<div class="model-progress">' +
+      '<div style="width:70px;height:5px;background:var(--border);border-radius:3px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:3px;transition:.4s"></div></div>' +
+      '<div class="model-pct" style="color:' + color + '">' + doneQty + '/' + mdl.qty + '</div>' +
+      '</div></div>';
+  }
+  html += '</div>';
+  el.innerHTML = html;
 }
-// Ensure splash screen is hidden after everything loads
+
+// ── VISITS TAB ──
+var visitPhotos = [];
+
+function populateVisitBranchSelect() {
+  var sel = document.getElementById('visit-branch-select');
+  if(!sel) return;
+  
+  var html = '<option value="">-- اختر الفرع --</option>';
+  for(var i = 0; i < allBranches.length; i++) {
+    html += '<option value="' + allBranches[i].name + '">' + allBranches[i].name + '</option>';
+  }
+  sel.innerHTML = html;
+}
+
+function addVisitPhoto(e) {
+  if(visitPhotos.length >= 3) {
+    notify('الحد الأقصى 3 صور', 'error');
+    return;
+  }
+  
+  var file = e.target.files[0];
+  if(!file) return;
+  
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      var maxW = 800;
+      var scale = Math.min(1, maxW / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      var compressed = canvas.toDataURL('image/jpeg', 0.35);
+      visitPhotos.push(compressed);
+      renderVisitPhotoPreviews();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+function renderVisitPhotoPreviews() {
+  var el = document.getElementById('visit-photo-previews');
+  if(!el) return;
+  
+  var html = '';
+  for(var i = 0; i < visitPhotos.length; i++) {
+    html += '<div class="photo-preview-wrap">' +
+      '<img src="' + visitPhotos[i] + '" alt="">' +
+      '<button class="photo-preview-del" onclick="removeVisitPhoto(' + i + ')">✕</button>' +
+      '</div>';
+  }
+  el.innerHTML = html;
+  
+  var zone = document.getElementById('visit-upload-zone');
+  if(zone) {
+    zone.style.display = (visitPhotos.length >= 3) ? 'none' : 'block';
+  }
+}
+
+function removeVisitPhoto(i) {
+  visitPhotos.splice(i, 1);
+  renderVisitPhotoPreviews();
+}
+
+async function submitVisit() {
+  var branch = document.getElementById('visit-branch-select').value;
+  var note = document.getElementById('visit-note-input').value.trim();
+  var ar = (currentLang === 'ar');
+  
+  if(!branch) {
+    notify(ar ? 'اختر الفرع' : 'Select branch', 'error');
+    return;
+  }
+  
+  try {
+    await dbPost('branch_visits', {
+      employee_id: currentUser.id,
+      employee_name: currentUser.name,
+      branch_name: branch,
+      note: note || null,
+      photo1: visitPhotos[0] || null,
+      photo2: visitPhotos[1] || null,
+      photo3: visitPhotos[2] || null,
+      visit_date: todayStr()
+    });
+    notify(ar ? 'تم حفظ الزيارة ✅' : 'Visit saved ✅', 'success');
+    visitPhotos = [];
+    renderVisitPhotoPreviews();
+    
+    var branchSel = document.getElementById('visit-branch-select');
+    if(branchSel) branchSel.value = '';
+    var noteInput = document.getElementById('visit-note-input');
+    if(noteInput) noteInput.value = '';
+    
+    loadVisitsTab();
+  } catch(e) {
+    notify((ar ? 'خطأ: ' : 'Error: ') + (e.message || ''), 'error');
+  }
+}
+
+async function loadVisitsTab() {
+  populateVisitBranchSelect();
+  var pm = getPayrollMonth();
+  var visits = await dbGet('branch_visits', '?employee_id=eq.' + currentUser.id + '&visit_date=gte.' + pm.start + '&visit_date=lte.' + pm.end + '&order=visit_date.desc&select=*').catch(function() { return []; }) || [];
+  
+  var photoCount = 0;
+  for(var i = 0; i < visits.length; i++) {
+    var v = visits[i];
+    if(v.photo1) photoCount++;
+    if(v.photo2) photoCount++;
+    if(v.photo3) photoCount++;
+  }
+  
+  var done = visits.length;
+  var remain = Math.max(0, 150 - done);
+  
+  var visDone = document.getElementById('vis-done');
+  if(visDone) visDone.textContent = done;
+  
+  var visRem = document.getElementById('vis-remain');
+  if(visRem) visRem.textContent = remain;
+  
+  var visPhotosEl = document.getElementById('vis-photos');
+  if(visPhotosEl) visPhotosEl.textContent = photoCount;
+  
+  var empVisitsCount = document.getElementById('emp-visits-count');
+  if(empVisitsCount) empVisitsCount.textContent = done + ' / 150';
+  
+  var el = document.getElementById('visit-history-list');
+  if(!el) return;
+  
+  if(visits.length === 0) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📸</div>لا توجد زيارات هذا الشهر</div>';
+    return;
+  }
+  
+  var html = '';
+  for(var j = 0; j < visits.length; j++) {
+    var visit = visits[j];
+    var photos = [];
+    if(visit.photo1) photos.push(visit.photo1);
+    if(visit.photo2) photos.push(visit.photo2);
+    if(visit.photo3) photos.push(visit.photo3);
+    
+    html += '<div class="visit-card">' +
+      '<div class="visit-header">' +
+      '<div><div class="visit-branch-name">🏪 ' + visit.branch_name + '</div><div class="visit-meta">' + visit.visit_date + '</div></div>' +
+      '<span class="badge badge-green">' + photos.length + ' 📷</span>' +
+      '</div>';
+    if(visit.note) {
+      html += '<div class="visit-note">📝 ' + visit.note + '</div>';
+    }
+    if(photos.length > 0) {
+      html += '<div class="visit-photos-row">';
+      for(var p = 0; p < photos.length; p++) {
+        html += '<img class="visit-photo" src="' + photos[p] + '" onclick="fullSelfie(\'' + photos[p] + '\')">';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  el.innerHTML = html;
+}
+
+// ── DISPLAY TAB ──
+var displayPhotos = [];
+
+function addDisplayPhoto(e) {
+  if(displayPhotos.length >= 3) {
+    notify('الحد الأقصى 3 صور', 'error');
+    return;
+  }
+  
+  var file = e.target.files[0];
+  if(!file) return;
+  
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      var scale = Math.min(1, 800 / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      var compressed = canvas.toDataURL('image/jpeg', 0.35);
+      displayPhotos.push(compressed);
+      renderDisplayPreviews();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+function renderDisplayPreviews() {
+  var el = document.getElementById('display-photo-previews');
+  if(!el) return;
+  
+  var html = '';
+  for(var i = 0; i < displayPhotos.length; i++) {
+    html += '<div class="photo-preview-wrap">' +
+      '<img src="' + displayPhotos[i] + '">' +
+      '<button class="photo-preview-del" onclick="removeDisplayPhoto(' + i + ')">✕</button>' +
+      '</div>';
+  }
+  el.innerHTML = html;
+  
+  var zone = document.getElementById('display-upload-zone');
+  if(zone) {
+    zone.style.display = (displayPhotos.length >= 3) ? 'none' : 'block';
+  }
+}
+
+function removeDisplayPhoto(i) {
+  displayPhotos.splice(i, 1);
+  renderDisplayPreviews();
+}
+
+async function submitDisplayPhotos() {
+  var note = document.getElementById('display-note').value.trim();
+  var ar = (currentLang === 'ar');
+  
+  if(displayPhotos.length === 0) {
+    notify(ar ? 'أضف صورة واحدة على الأقل' : 'Add at least one photo', 'error');
+    return;
+  }
+  
+  try {
+    await dbPost('display_photos', {
+      employee_id: currentUser.id,
+      employee_name: currentUser.name,
+      branch: currentUser.branch || '',
+      photo1: displayPhotos[0] || null,
+      photo2: displayPhotos[1] || null,
+      photo3: displayPhotos[2] || null,
+      note: note || null,
+      photo_date: todayStr()
+    });
+    notify(ar ? 'تم رفع صور الديسبلاي ✅' : 'Display photos uploaded ✅', 'success');
+    displayPhotos = [];
+    renderDisplayPreviews();
+    
+    var noteInput = document.getElementById('display-note');
+    if(noteInput) noteInput.value = '';
+    
+    loadDisplayTab();
+  } catch(e) {
+    notify('Error: ' + e.message, 'error');
+  }
+}
+
+async function loadDisplayTab() {
+  var dateLabel = document.getElementById('display-date-label');
+  if(dateLabel) dateLabel.textContent = todayStr();
+  
+  var hist = document.getElementById('display-history-list');
+  if(!hist) return;
+  
+  var pm = getPayrollMonth();
+  var records = await dbGet('display_photos', '?employee_id=eq.' + currentUser.id + '&photo_date=gte.' + pm.start + '&photo_date=lte.' + pm.end + '&order=photo_date.desc&select=*').catch(function() { return []; }) || [];
+  
+  if(records.length === 0) {
+    hist.innerHTML = '<div class="empty"><div class="empty-icon">🖼️</div>لا توجد صور هذا الشهر</div>';
+    return;
+  }
+  
+  var html = '';
+  for(var i = 0; i < records.length; i++) {
+    var r = records[i];
+    var photos = [];
+    if(r.photo1) photos.push(r.photo1);
+    if(r.photo2) photos.push(r.photo2);
+    if(r.photo3) photos.push(r.photo3);
+    
+    html += '<div class="visit-card">' +
+      '<div class="visit-header">' +
+      '<div><div class="visit-branch-name">🗓️ ' + r.photo_date + '</div><div class="visit-meta">' + (r.branch || '') + '</div></div>' +
+      '<span class="badge badge-blue">' + photos.length + ' 📷</span>' +
+      '</div>';
+    if(r.note) {
+      html += '<div class="visit-note">📝 ' + r.note + '</div>';
+    }
+    if(photos.length > 0) {
+      html += '<div class="visit-photos-row">';
+      for(var p = 0; p < photos.length; p++) {
+        html += '<img class="visit-photo" src="' + photos[p] + '" onclick="fullSelfie(\'' + photos[p] + '\')">';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  hist.innerHTML = html;
+}
+
+// ── TEAM LEADER VISITS ──
+var tlVisitPhotos = [];
+
+function addTLVisitPhoto(e) {
+  if(tlVisitPhotos.length >= 3) {
+    notify('الحد الأقصى 3 صور', 'error');
+    return;
+  }
+  
+  var file = e.target.files[0];
+  if(!file) return;
+  
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      var scale = Math.min(1, 800 / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      var compressed = canvas.toDataURL('image/jpeg', 0.35);
+      tlVisitPhotos.push(compressed);
+      renderTLPreviews();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+function renderTLPreviews() {
+  var el = document.getElementById('tl-visit-previews');
+  if(!el) return;
+  
+  var html = '';
+  for(var i = 0; i < tlVisitPhotos.length; i++) {
+    html += '<div class="photo-preview-wrap">' +
+      '<img src="' + tlVisitPhotos[i] + '">' +
+      '<button class="photo-preview-del" onclick="removeTLPhoto(' + i + ')">✕</button>' +
+      '</div>';
+  }
+  el.innerHTML = html;
+  
+  var zone = document.getElementById('tl-visit-zone');
+  if(zone) {
+    zone.style.display = (tlVisitPhotos.length >= 3) ? 'none' : 'block';
+  }
+}
+
+function removeTLPhoto(i) {
+  tlVisitPhotos.splice(i, 1);
+  renderTLPreviews();
+}
+
+async function submitTLVisit() {
+  var branch = document.getElementById('tl-visit-branch').value;
+  var note = document.getElementById('tl-visit-note').value.trim();
+  var ar = (currentLang === 'ar');
+  
+  if(!branch) {
+    notify(ar ? 'اختر الفرع' : 'Select branch', 'error');
+    return;
+  }
+  
+  if(tlVisitPhotos.length === 0) {
+    notify(ar ? 'أضف صورة واحدة على الأقل' : 'Add at least one photo', 'error');
+    return;
+  }
+  
+  try {
+    await dbPost('branch_visits', {
+      manager_id: currentUser.id,
+      manager_name: currentUser.name,
+      branch_name: branch,
+      note: note || null,
+      photo1: tlVisitPhotos[0] || null,
+      photo2: tlVisitPhotos[1] || null,
+      photo3: tlVisitPhotos[2] || null,
+      visit_date: todayStr()
+    });
+    notify(ar ? 'تم حفظ الزيارة ✅' : 'Visit saved ✅', 'success');
+    tlVisitPhotos = [];
+    renderTLPreviews();
+    
+    var branchSel = document.getElementById('tl-visit-branch');
+    if(branchSel) branchSel.value = '';
+    var noteInput = document.getElementById('tl-visit-note');
+    if(noteInput) noteInput.value = '';
+    
+    loadTLVisitsTab();
+  } catch(e) {
+    notify('Error: ' + e.message, 'error');
+  }
+}
+
+async function loadTLVisitsTab() {
+  var sel = document.getElementById('tl-visit-branch');
+  if(sel) {
+    var html = '<option value="">-- اختر الفرع --</option>';
+    for(var i = 0; i < allBranches.length; i++) {
+      html += '<option value="' + allBranches[i].name + '">' + allBranches[i].name + '</option>';
+    }
+    sel.innerHTML = html;
+  }
+  
+  var pm = getPayrollMonth();
+  var visits = await dbGet('branch_visits', '?manager_id=eq.' + currentUser.id + '&visit_date=gte.' + pm.start + '&visit_date=lte.' + pm.end + '&order=visit_date.desc&select=*').catch(function() { return []; }) || [];
+  
+  var done = visits.length;
+  var remain = Math.max(0, 150 - done);
+  
+  var doneEl = document.getElementById('tl-vis-done');
+  if(doneEl) doneEl.textContent = done;
+  
+  var remEl = document.getElementById('tl-vis-remain');
+  if(remEl) remEl.textContent = remain;
+  
+  var cntEl = document.getElementById('tl-visit-count');
+  if(cntEl) cntEl.textContent = done + ' / 150';
+  
+  var el = document.getElementById('tl-visit-history');
+  if(!el) return;
+  
+  if(visits.length === 0) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📸</div>لا توجد زيارات هذا الشهر</div>';
+    return;
+  }
+  
+  var historyHtml = '';
+  for(var j = 0; j < visits.length; j++) {
+    var v = visits[j];
+    var photos = [];
+    if(v.photo1) photos.push(v.photo1);
+    if(v.photo2) photos.push(v.photo2);
+    if(v.photo3) photos.push(v.photo3);
+    
+    historyHtml += '<div class="visit-card">' +
+      '<div class="visit-header">' +
+      '<div><div class="visit-branch-name">🏪 ' + v.branch_name + '</div><div class="visit-meta">' + v.visit_date + '</div></div>' +
+      '<span class="badge badge-green">' + photos.length + ' 📷</span>' +
+      '</div>';
+    if(v.note) {
+      historyHtml += '<div class="visit-note">📝 ' + v.note + '</div>';
+    }
+    if(photos.length > 0) {
+      historyHtml += '<div class="visit-photos-row">';
+      for(var p = 0; p < photos.length; p++) {
+        historyHtml += '<img class="visit-photo" src="' + photos[p] + '" onclick="fullSelfie(\'' + photos[p] + '\')">';
+      }
+      historyHtml += '</div>';
+    }
+    historyHtml += '</div>';
+  }
+  el.innerHTML = historyHtml;
+}
+
+// ── LOAD ADMIN CHAT LIST ──
+async function loadAdminChatList() {
+  var el = document.getElementById('admin-chat-list');
+  if(!el) return;
+  
+  var ar = (currentLang === 'ar');
+  var html = '';
+  
+  for(var i = 0; i < allEmployees.length; i++) {
+    var emp = allEmployees[i];
+    html += '<div class="card" onclick="openChat(\'' + emp.id + '\',\'' + emp.name + '\')" style="cursor:pointer;display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-direction:' + (ar ? 'row-reverse' : 'row') + '">' +
+      '<div class="emp-avatar" style="width:44px;height:44px;font-size:15px;flex-shrink:0;overflow:hidden">' + (emp.profile_photo ? '<img src="' + emp.profile_photo + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : emp.name[0].toUpperCase()) + '</div>' +
+      '<div style="text-align:' + (ar ? 'right' : 'left') + '"><div style="font-size:13px;font-weight:700">' + emp.name + '</div><div style="font-size:11px;color:var(--muted)">' + (emp.branch || '') + '</div></div>' +
+      '</div>';
+  }
+  el.innerHTML = html || '<div class="empty">' + (ar ? 'لا يوجد موظفون' : 'No employees') + '</div>';
+}
+
+// ── CHAT SYSTEM ──
+async function openChat(chatType, title) {
+  currentChat = chatType;
+  var titleEl = document.getElementById('chat-title');
+  if(titleEl) titleEl.textContent = title;
+  
+  var modal = document.getElementById('chat-modal');
+  if(modal) {
+    modal.style.display = 'flex';
+    modal.style.flexDirection = 'column';
+  }
+  
+  await loadMessages();
+  subscribeToMessages();
+}
+
+function closeChat() {
+  var modal = document.getElementById('chat-modal');
+  if(modal) modal.style.display = 'none';
+  currentChat = null;
+  
+  if(chatSubscription) {
+    if(typeof chatSubscription === 'function') {
+      try { chatSubscription(); } catch(e) {}
+    } else {
+      try { clearInterval(chatSubscription); } catch(e) {}
+    }
+    chatSubscription = null;
+  }
+}
+
+async function loadMessages() {
+  var el = document.getElementById('chat-messages');
+  if(!el) return;
+  
+  el.innerHTML = '<div class="full-loader"><div class="loader"></div></div>';
+  
+  var myId = currentUser.id;
+  var query = '?order=created_at.asc&limit=100';
+  
+  if(currentChat === 'group') {
+    query += '&chat_type=eq.group';
+  } else if(currentChat === 'admin') {
+    query += '&chat_type=eq.private&or=(sender_id.eq.' + myId + ',receiver_id.eq.' + myId + ')';
+  } else {
+    query += '&chat_type=eq.private&or=(sender_id.eq.' + currentChat + ',receiver_id.eq.' + currentChat + ')';
+  }
+  
+  var msgs = await dbGet('messages', query).catch(function() { return []; }) || [];
+  renderMessages(msgs);
+}
+
+function renderMessages(msgs) {
+  var el = document.getElementById('chat-messages');
+  if(!el) return;
+  
+  if(msgs.length === 0) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">لا توجد رسائل بعد</div>';
+    return;
+  }
+  
+  var myId = currentUser.id;
+  var myName = currentUser.name;
+  var html = '';
+  
+  for(var i = 0; i < msgs.length; i++) {
+    var m = msgs[i];
+    var isMe = (m.sender_id === myId || m.sender_name === myName);
+    var time = new Date(m.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    var bubbleBg = isMe ? 'linear-gradient(135deg,rgba(0,200,83,.25),rgba(0,160,64,.15))' : 'var(--card2)';
+    var bubbleBorder = isMe ? '1px solid rgba(0,200,83,.35)' : '1px solid var(--border)';
+    var bubbleRadius = isMe ? '18px 4px 18px 18px' : '4px 18px 18px 18px';
+    var align = isMe ? 'flex-end' : 'flex-start';
+    
+    html += '<div style="display:flex;flex-direction:column;align-items:' + align + ';margin-bottom:2px">' +
+      '<div style="max-width:78%;min-width:60px;background:' + bubbleBg + ';border-radius:' + bubbleRadius + ';padding:8px 13px;border:' + bubbleBorder + '">';
+    if(!isMe) {
+      html += '<div style="font-size:10px;color:var(--green);font-weight:800;margin-bottom:3px">' + escapeHtmlLocal(m.sender_name) + '</div>';
+    }
+    html += '<div style="font-size:14px;line-height:1.4;word-break:break-word">' + escapeHtmlLocal(m.message) + '</div>' +
+      '<div style="font-size:10px;color:var(--muted);margin-top:3px;text-align:' + (isMe ? 'left' : 'right') + '">' + time + '</div>' +
+      '</div></div>';
+  }
+  el.innerHTML = html;
+  el.scrollTop = el.scrollHeight;
+}
+
+function escapeHtmlLocal(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+var _sendingMsg = false;
+
+async function sendMessage() {
+  if(_sendingMsg) return;
+  
+  var input = document.getElementById('chat-input');
+  var msg = (input ? input.value : '').trim();
+  if(!msg || msg.length > 2000) return;
+  
+  _sendingMsg = true;
+  if(input) input.value = '';
+  
+  var tmpMsg = {
+    sender_id: currentUser.id,
+    sender_name: currentUser.name,
+    message: msg,
+    chat_type: (currentChat === 'group') ? 'group' : 'private',
+    created_at: new Date().toISOString(),
+    _tmp: true
+  };
+  appendMessage(tmpMsg);
+  
+  try {
+    var data = {
+      sender_id: currentUser.id,
+      sender_name: currentUser.name,
+      message: msg,
+      chat_type: (currentChat === 'group') ? 'group' : 'private',
+      receiver_id: (currentChat === 'group') ? null : ((currentChat === 'admin') ? null : parseInt(currentChat))
+    };
+    await dbPost('messages', data);
+  } catch(e) {
+    await loadMessages();
+  } finally {
+    _sendingMsg = false;
+  }
+}
+
+function appendMessage(m) {
+  var el = document.getElementById('chat-messages');
+  if(!el) return;
+  
+  var myId = currentUser.id;
+  var myName = currentUser.name;
+  var isMe = (m.sender_id === myId || m.sender_name === myName);
+  var time = new Date(m.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+  var bubbleBg = isMe ? 'linear-gradient(135deg,rgba(0,200,83,.25),rgba(0,160,64,.15))' : 'var(--card2)';
+  var bubbleBorder = isMe ? '1px solid rgba(0,200,83,.35)' : '1px solid var(--border)';
+  var bubbleRadius = isMe ? '18px 4px 18px 18px' : '4px 18px 18px 18px';
+  var align = isMe ? 'flex-end' : 'flex-start';
+  
+  var div = document.createElement('div');
+  div.style.cssText = 'display:flex;flex-direction:column;align-items:' + align + ';margin-bottom:2px';
+  div.innerHTML = '<div style="max-width:78%;min-width:60px;background:' + bubbleBg + ';border-radius:' + bubbleRadius + ';padding:8px 13px;border:' + bubbleBorder + '">' +
+    (!isMe ? '<div style="font-size:10px;color:var(--green);font-weight:800;margin-bottom:3px">' + escapeHtmlLocal(m.sender_name) + '</div>' : '') +
+    '<div style="font-size:14px;line-height:1.4;word-break:break-word">' + escapeHtmlLocal(m.message) + '</div>' +
+    '<div style="font-size:10px;color:var(--muted);margin-top:3px;text-align:' + (isMe ? 'left' : 'right') + '">' + time + '</div>' +
+    '</div>';
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function subscribeToMessages() {
+  if(chatSubscription) {
+    if(typeof chatSubscription === 'function') {
+      try { chatSubscription(); } catch(e) {}
+    } else {
+      try { clearInterval(chatSubscription); } catch(e) {}
+    }
+    chatSubscription = null;
+  }
+  
+  chatSubscription = setInterval(function() {
+    if(currentChat) loadMessages();
+  }, 5000);
+}
+
+// ── SHOW ABSENT EMPLOYEES ──
+function showAbsentEmployees() {
+  var ar = (currentLang === 'ar');
+  var presentIds = window._todayPresentIds || [];
+  var absentList = [];
+  
+  for(var i = 0; i < allEmployees.length; i++) {
+    var found = false;
+    for(var j = 0; j < presentIds.length; j++) {
+      if(presentIds[j] === allEmployees[i].id) {
+        found = true;
+        break;
+      }
+    }
+    if(!found) absentList.push(allEmployees[i]);
+  }
+  
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
+  
+  var html = '<div style="background:var(--card);border-radius:22px 22px 0 0;padding:22px 18px;width:100%;max-height:70vh;overflow-y:auto;border-top:2px solid var(--red)">' +
+    '<div style="font-size:16px;font-weight:800;color:var(--red);margin-bottom:14px">😴 ' + (ar ? 'الغائبون اليوم' : 'Absent Today') + ' (' + absentList.length + ')</div>';
+  
+  if(absentList.length === 0) {
+    html += '<div style="text-align:center;color:var(--muted);padding:20px">' + (ar ? 'لا يوجد غياب' : 'No absences') + '</div>';
+  } else {
+    for(var k = 0; k < absentList.length; k++) {
+      var emp = absentList[k];
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">' +
+        '<div class="emp-avatar" style="width:36px;height:36px;font-size:13px">' + emp.name[0].toUpperCase() + '</div>' +
+        '<div><div style="font-size:13px;font-weight:700">' + emp.name + '</div><div style="font-size:11px;color:var(--muted)">' + (emp.branch || '-') + '</div></div>' +
+        '</div>';
+    }
+  }
+  
+  html += '<button onclick="this.closest(\'[style*=fixed]\').remove()" style="width:100%;padding:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px">' + (ar ? 'إغلاق' : 'Close') + '</button></div>';
+  overlay.innerHTML = html;
+  document.body.appendChild(overlay);
+}
+
+// ── CLEAR OLD VISIT PHOTOS ──
+async function clearOldVisitPhotos() {
+  var cutoff = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+  var cutoffStr = cutoff.toISOString().split('T')[0];
+  var old = await dbGet('branch_visits', '?visit_date=lt.' + cutoffStr + '&select=id').catch(function() { return []; }) || [];
+  
+  for(var i = 0; i < old.length; i++) {
+    await dbPatch('branch_visits', { photo1: null, photo2: null, photo3: null }, '?id=eq.' + old[i].id);
+  }
+}
+
+// ── SPLASH HIDE ON LOAD ──
 window.addEventListener('load', function() {
   setTimeout(function() {
     var splash = document.getElementById('splash');
-    if (splash) splash.classList.add('hide');
+    if(splash) splash.classList.add('hide');
   }, 1000);
 });
 
-// Also try to show the correct page once the DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() {
     try {
       var splash = document.getElementById('splash');
-      if (splash && !splash.classList.contains('hide')) {
+      if(splash && !splash.classList.contains('hide')) {
         splash.classList.add('hide');
       }
       
-      if (typeof showPage === 'function') {
-        if (typeof currentUser !== 'undefined' && currentUser) {
-          if (['superadmin','admin','manager','viewer','team_leader'].includes(currentUser.role)) {
+      if(typeof showPage === 'function') {
+        if(typeof currentUser !== 'undefined' && currentUser) {
+          if(['superadmin','admin','manager','viewer','team_leader'].indexOf(currentUser.role) !== -1) {
             showPage('admin-app');
           } else {
             showPage('emp-app');
@@ -2192,7 +2520,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     } catch(e) {
       var login = document.getElementById('login-page');
-      if (login) login.style.display = 'block';
+      if(login) login.style.display = 'block';
     }
   }, 100);
 });

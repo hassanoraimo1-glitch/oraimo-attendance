@@ -223,7 +223,7 @@ function showApp(){
   window.addEventListener('popstate', function(e) {
     // If chat is open, close chat first
     const chatModal=document.getElementById('chat-modal');
-    if(chatModal&&chatModal.style.display==='flex'){closeChat();history.pushState(null,'',location.href);return;}
+    if(chatModal&&chatModal.classList.contains('open')){closeChat();history.pushState(null,'',location.href);return;}
     // If any modal is open, close it
     const openModal=document.querySelector('.modal-overlay.open');
     if(openModal){openModal.classList.remove('open');history.pushState(null,'',location.href);return;}
@@ -1852,20 +1852,26 @@ async function openChat(chatType, title) {
   currentChat = chatType;
   document.getElementById('chat-title').textContent = title;
   const modal = document.getElementById('chat-modal');
-  // Force display via cssText to override any conflicting styles
-  modal.style.cssText = 'display:flex !important;flex-direction:column;position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:var(--black);z-index:500;-webkit-overflow-scrolling:touch;overflow:hidden';
-  // Scroll to bottom after brief paint
+  // Remove inline style completely — let CSS class handle display
+  modal.removeAttribute('style');
+  modal.classList.add('open');
+  document.body.classList.add('modal-open');
+  // Scroll to bottom after paint
   setTimeout(() => {
     const msgs = document.getElementById('chat-messages');
     if (msgs) msgs.scrollTop = msgs.scrollHeight;
-  }, 100);
+  }, 150);
   await loadMessages();
   subscribeToMessages();
 }
 
 function closeChat() {
   const modal = document.getElementById('chat-modal');
-  if (modal) modal.style.cssText = 'display:none;position:fixed;inset:0;background:var(--black);z-index:500;flex-direction:column;-webkit-overflow-scrolling:touch';
+  if (modal) {
+    modal.classList.remove('open');
+    modal.removeAttribute('style');
+  }
+  document.body.classList.remove('modal-open');
   currentChat = null;
   if (chatSubscription) {
     if (typeof chatSubscription === 'function') {

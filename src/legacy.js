@@ -151,7 +151,7 @@ function showApp(){
     if(currentUser.role==='viewer'){const b=document.getElementById('add-emp-btn');if(b)b.style.display='none'}
     showPage('admin-app');
     loadAdminDashboard();loadAllEmployees();loadBranches();clearOldVisitPhotos();
-    if(currentUser.role==='superadmin')loadAdminsList();
+    if(currentUser.role==='superadmin'||currentUser.role==='admin')loadAdminsList();
     // Reset all nav items to visible for admin/superadmin
     if(currentUser.role==='superadmin'||currentUser.role==='admin'||currentUser.role==='viewer'){
       document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>n.style.display='');
@@ -219,7 +219,6 @@ function showApp(){
 
 // ── BACK BUTTON HANDLING ──
 (function(){
-  // Push state when entering app so back button works inside
   window.addEventListener('popstate', function(e) {
     // If chat is open, close chat first
     const chatModal=document.getElementById('chat-modal');
@@ -227,10 +226,11 @@ function showApp(){
     // If any modal is open, close it
     const openModal=document.querySelector('.modal-overlay.open');
     if(openModal){openModal.classList.remove('open');history.pushState(null,'',location.href);return;}
-    // If user is logged in, prevent going to blank page
-    if(currentUser){history.pushState(null,'',location.href);return;}
+    // Always trap back — never let user leave the app while logged in
+    history.pushState(null,'',location.href);
   });
-  // Push initial state
+  // Push two states so the first back press is absorbed
+  history.pushState(null,'',location.href);
   history.pushState(null,'',location.href);
 })();
 
@@ -974,9 +974,14 @@ function renderEmployeesList(){
   const el=document.getElementById('adm-emp-list');if(!el)return;const ar=currentLang==='ar';
   if(allEmployees.length===0){el.innerHTML=`<div class="empty"><div class="empty-icon">👥</div>${ar?'لا يوجد موظفون بعد':'No employees yet'}</div>`;return}
   const isViewer=currentUser?.role==='viewer';
+  const shiftLabel=s=>s==='evening'?(ar?'🌙 مسائي':'🌙 Eve'):(ar?'🌅 صباحي':'🌅 Mor');
   el.innerHTML=allEmployees.map(emp=>`<div class="emp-card">
     <div class="emp-avatar" style="${emp.role==='team_leader'?'background:linear-gradient(135deg,#9c27b0,#6a0080)':''};overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:emp.name[0].toUpperCase()}</div>
-    <div class="emp-info"><div class="emp-name">${emp.name} ${emp.role==='team_leader'?'<span class="badge badge-purple" style="font-size:9px">Team Leader</span>':''}</div><div class="emp-branch">${emp.branch||'-'} · ${ar?'إجازة:':'Off:'} ${ar?DAYS_AR[emp.day_off]:DAYS_EN[emp.day_off]||'-'}</div></div>
+    <div class="emp-info">
+      <div class="emp-name">${emp.name} ${emp.role==='team_leader'?'<span class="badge badge-purple" style="font-size:9px">Team Leader</span>':''}</div>
+      <div class="emp-branch">${emp.branch||'-'} · ${ar?'إجازة:':'Off:'} ${ar?DAYS_AR[emp.day_off]:DAYS_EN[emp.day_off]||'-'}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">${shiftLabel(emp.shift)} ${emp.job_title?'· '+emp.job_title:emp.role==='employee'?'· '+(ar?'بروموتر':'Promoter'):''}</div>
+    </div>
     ${!isViewer?`<div class="emp-actions">${emp.role==='team_leader'?`<button class="action-btn view" onclick="openManagerTeam(${emp.id},'${emp.name}')">👥 فريق</button>`:''}<button class="action-btn edit" onclick="openEditEmp(${emp.id})">✏️</button><button class="action-btn del" onclick="deleteEmp(${emp.id})">🗑️</button><button class="action-btn warn" onclick="openWarnModal(${emp.id},'${emp.name}')">⚠️</button></div>`:''}
   </div>`).join('');
 }
@@ -998,6 +1003,7 @@ function openEditEmp(id){
   document.getElementById('edit-emp-id').value=id;document.getElementById('emp-form-name').value=emp.name;
   document.getElementById('emp-form-username').value=emp.username;document.getElementById('emp-pass-group').style.display='none';
   const roleEl=document.getElementById('emp-form-role');if(roleEl)roleEl.value=emp.role||'employee';
+  const shiftEl=document.getElementById('emp-form-shift');if(shiftEl)shiftEl.value=emp.shift||'morning';
   toggleEmpBranchField();
   selectedDayOff=emp.day_off;populateBranchSelects();
   if(emp.branch)document.getElementById('emp-form-branch').value=emp.branch;
@@ -1019,22 +1025,41 @@ async function saveEmployee(){
   const pass=document.getElementById('emp-form-pass').value.trim();
   const branch=document.getElementById('emp-form-branch')?.value||'';
   const role=document.getElementById('emp-form-role')?.value||'employee';
+  const shiftVal=document.getElementById('emp-form-shift')?.value||'morning';
   const ar=currentLang==='ar';
   if(!name||!username)return notify(ar?'أدخل الاسم واسم المستخدم':'Enter name and username','error');
   if(!id&&!pass)return notify(ar?'أدخل كلمة المرور':'Enter password','error');
   if(selectedDayOff<0)return notify(ar?'اختر يوم الإجازة':'Select day off','error');
   try{
-    const data={name,username,day_off:selectedDayOff,role};
+    // Check if username already taken by another employee
+    if(!id){
+      const existing=await dbGet('employees',`?username=eq.${encodeURIComponent(username)}&select=id`).catch(()=>[]);
+      if(existing&&existing.length>0)return notify(ar?'اسم المستخدم مستخدم بالفعل، اختر آخر':'Username already taken','error');
+    }
+    const data={name,username,day_off:selectedDayOff,role,shift:shiftVal};
     if(role==='employee') data.branch=branch;
     if(id) await dbPatch('employees',data,`?id=eq.${id}`);
-    else await dbPost('employees',{...data,...(!id&&{password:pass})});
+    else await dbPost('employees',{...data,password:pass});
     notify(ar?'تم الحفظ ✅':'Saved ✅','success');closeModal('add-emp-modal');loadAllEmployees();
-  }catch(e){notify((ar?'خطأ: ':'Error: ')+e.message,'error')}
+  }catch(e){
+    const msg=e.message||'';
+    const ar2=currentLang==='ar';
+    if(msg.includes('409')||msg.includes('conflict')||msg.includes('duplicate')){
+      notify(ar2?'اسم المستخدم مستخدم بالفعل، اختر اسم آخر':'Username already taken, choose another','error');
+    } else {
+      notify((ar2?'خطأ: ':'Error: ')+msg,'error');
+    }
+  }
 }
 async function deleteEmp(id){const ar=currentLang==='ar';if(!confirm(ar?'حذف الموظف؟ سيتم حذف جميع البيانات!':'Delete employee? All data will be removed!'))return;await dbDelete('employees',`?id=eq.${id}`);loadAllEmployees()}
 
 // ── ADMINS ──
-async function loadAdminsList(){try{allAdmins=await dbGet('admins','?select=*&order=name').catch(()=>[])||[];renderAdminsList()}catch(e){}}
+async function loadAdminsList(){
+  try{
+    allAdmins=await dbGet('admins','?select=*&order=name').catch(()=>[])||[];
+    renderAdminsList();
+  }catch(e){console.warn('loadAdminsList:',e);}
+}
 function renderAdminsList(){
   const el=document.getElementById('admins-list');if(!el)return;
   if(allAdmins.length===0){el.innerHTML=`<div style="color:var(--muted);font-size:12px">${currentLang==='ar'?'لا يوجد مسؤولون':'No admins'}</div>`;return}
@@ -1428,12 +1453,12 @@ async function loadVisitsTab(){
 // ── VISITS ADMIN REPORT ──
 async function populateVisitReportEmps(){
   const sel=document.getElementById('visit-report-emp');if(!sel)return;
-  sel.innerHTML='<option value="">...</option>';
-  const admins=await dbGet('admins','?select=id,name,role&order=name').catch(()=>[])||[];
-  const managers=admins.filter(a=>a.role==='manager');
   const ar=currentLang==='ar';
-  sel.innerHTML='<option value="">'+(ar?'كل التيم ليدر':'All Team Leaders')+'</option>'+
-    managers.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+  // Load all employees for filter
+  const emps=allEmployees.length>0?allEmployees:(await dbGet('employees','?select=id,name&order=name').catch(()=>[])||[]);
+  sel.innerHTML='<option value="">'+(ar?'الكل':'All')+'</option>'+
+    emps.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  sel.onchange=function(){loadVisitsReport();};
 }
 function initVisitReportMonth(){
   const el=document.getElementById('visit-report-month');
@@ -1456,14 +1481,13 @@ async function loadVisitsReport(){
   const start=`${month}-01`;
   const end=new Date(y,m,0).toISOString().split('T')[0];
   let query=`?visit_date=gte.${start}&visit_date=lte.${end}&order=visit_date.desc&select=*`;
-  if(empId) query+=`&manager_id=eq.${empId}`;
-  else query+=`&order=visit_date.desc`;
+  if(empId) query+=`&employee_id=eq.${empId}`;
   const visits=await dbGet('branch_visits',query).catch(()=>[])||[];
   if(visits.length===0){el.innerHTML=`<div class="empty"><div class="empty-icon">📸</div>${ar?'لا توجد زيارات':'No visits'}</div>`;return}
-  // Group by manager_name
+  // Group by employee name
   const byEmp={};
   visits.forEach(v=>{
-    const k=v.manager_name||('ID:'+v.manager_id);
+    const k=v.employee_name||v.manager_name||('ID:'+v.employee_id);
     if(!byEmp[k])byEmp[k]=[];
     byEmp[k].push(v);
   });
@@ -2187,20 +2211,13 @@ setTimeout(() => {
   try {
     const splash1 = document.getElementById('splash');
     const splash2 = document.getElementById('splash-screen');
-
     if (splash1) splash1.classList.add('hide');
     if (splash2) splash2.style.display = 'none';
-
-    if (typeof showPage === 'function') {
-      if (typeof currentUser !== 'undefined' && currentUser) {
-        if (['superadmin','admin','manager','viewer','team_leader'].includes(currentUser.role)) {
-          showPage('admin-app');
-        } else {
-          showPage('emp-app');
-        }
-      } else {
-        showPage('login-page');
-      }
+    // Always use showApp() — it handles all roles correctly including team_leader
+    if (typeof showApp === 'function') {
+      showApp();
+    } else if (typeof showPage === 'function') {
+      showPage(currentUser ? 'admin-app' : 'login-page');
     }
   } catch (e) {
     const login = document.getElementById('login-page');

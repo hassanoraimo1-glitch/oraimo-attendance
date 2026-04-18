@@ -732,19 +732,23 @@ body{background:var(--black)}
 #chat-modal {
   position: fixed !important;
   inset: 0 !important;
-  display: none;
+  display: none !important;
   flex-direction: column !important;
   background: var(--black, #060608) !important;
   z-index: 500 !important;
-  /* iOS Safari fix */
   -webkit-overflow-scrolling: touch;
+  overflow: hidden;
+  height: 100% !important;
+  width: 100% !important;
 }
-#chat-modal.open, #chat-modal[style*="flex"] {
+#chat-modal.open {
   display: flex !important;
 }
 #chat-messages {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 70px 14px calc(80px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
@@ -756,6 +760,7 @@ body{background:var(--black)}
 #chat-modal > div:last-child {
   position: sticky !important;
   bottom: 0;
+  flex-shrink: 0;
   padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
 }
 

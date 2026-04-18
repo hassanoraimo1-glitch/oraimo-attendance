@@ -89,7 +89,11 @@ const PRODUCTS=[
     // أهم حاجة 👇
     // افتح صفحة اللوجين إجباري
     if (typeof showPage === 'function') {
-      showPage('login-page');
+      if (typeof currentUser !== 'undefined' && currentUser) {
+  showPage('home-page');
+} else {
+  showPage('login-page');
+}
     }
 
   } catch (e) {
@@ -2158,3 +2162,19 @@ function loadQ1Analytics(){
     </div>`;
   }).join('');
 }
+setTimeout(() => {
+
+  // اخفي شاشة البداية (Oraimo)
+  const splash = document.getElementById('splash-screen');
+  if (splash) splash.style.display = 'none';
+
+  // افتح اللوجين أو الهوم
+  if (typeof showPage === 'function') {
+    if (typeof currentUser !== 'undefined' && currentUser) {
+      showPage('home-page');
+    } else {
+      showPage('login-page');
+    }
+  }
+
+}, 1000);

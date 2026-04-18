@@ -249,6 +249,13 @@ function showPage(id){
 function showApp(){
   if(!currentUser)return showPage('login-page');
   applyLang();
+  // Hide الفريق nav (moved to settings)
+  setTimeout(()=>{
+    document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{
+      const oc=n.getAttribute('onclick')||'';
+      if(oc.includes("'employees'")) n.style.display='none';
+    });
+  },50);
   // ALWAYS reset nav state first to prevent bleed from previous session
   document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});
   const visNavReset=document.getElementById('adm-visits-nav');
@@ -1879,6 +1886,7 @@ async function filterEmployeesForManager() {
 let displayPhotos = [];
 
 function addDisplayPhoto(e) {
+  if (currentUser && currentUser.role !== 'employee') { notify('الديسبلاي للموظفين فقط','error'); return; }
   if (displayPhotos.length >= 3) return notify('الحد الأقصى 3 صور', 'error');
   const file = e.target.files[0]; if (!file) return;
   const reader = new FileReader();

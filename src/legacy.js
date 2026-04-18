@@ -2163,18 +2163,26 @@ function loadQ1Analytics(){
   }).join('');
 }
 setTimeout(() => {
+  try {
+    const splash1 = document.getElementById('splash');
+    const splash2 = document.getElementById('splash-screen');
 
-  // اخفي شاشة البداية (Oraimo)
-  const splash = document.getElementById('splash-screen');
-  if (splash) splash.style.display = 'none';
+    if (splash1) splash1.classList.add('hide');
+    if (splash2) splash2.style.display = 'none';
 
-  // افتح اللوجين أو الهوم
-  if (typeof showPage === 'function') {
-    if (typeof currentUser !== 'undefined' && currentUser) {
-      showPage('home-page');
-    } else {
-      showPage('login-page');
+    if (typeof showPage === 'function') {
+      if (typeof currentUser !== 'undefined' && currentUser) {
+        if (['superadmin','admin','manager','viewer','team_leader'].includes(currentUser.role)) {
+          showPage('admin-app');
+        } else {
+          showPage('emp-app');
+        }
+      } else {
+        showPage('login-page');
+      }
     }
+  } catch (e) {
+    const login = document.getElementById('login-page');
+    if (login) login.style.display = 'block';
   }
-
-}, 1000);
+}, 800);

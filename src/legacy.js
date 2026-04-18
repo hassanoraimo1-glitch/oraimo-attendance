@@ -105,7 +105,7 @@ const PRODUCTS=[
   }
 
 })();
-function hideSplash(){document.getElementById('splash').classList.add('hide')}
+function hideSplash(){   const splash = document.getElementById('splash');   if(splash) splash.classList.add('hide'); }
 
 // ── PAGE TRANSITIONS ──
 let _prevPage='login-page';
@@ -2162,27 +2162,37 @@ function loadQ1Analytics(){
     </div>`;
   }).join('');
 }
-setTimeout(() => {
-  try {
-    const splash1 = document.getElementById('splash');
-    const splash2 = document.getElementById('splash-screen');
+// Ensure splash screen is hidden after everything loads
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    var splash = document.getElementById('splash');
+    if (splash) splash.classList.add('hide');
+  }, 1000);
+});
 
-    if (splash1) splash1.classList.add('hide');
-    if (splash2) splash2.style.display = 'none';
-
-    if (typeof showPage === 'function') {
-      if (typeof currentUser !== 'undefined' && currentUser) {
-        if (['superadmin','admin','manager','viewer','team_leader'].includes(currentUser.role)) {
-          showPage('admin-app');
-        } else {
-          showPage('emp-app');
-        }
-      } else {
-        showPage('login-page');
+// Also try to show the correct page once the DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    try {
+      var splash = document.getElementById('splash');
+      if (splash && !splash.classList.contains('hide')) {
+        splash.classList.add('hide');
       }
+      
+      if (typeof showPage === 'function') {
+        if (typeof currentUser !== 'undefined' && currentUser) {
+          if (['superadmin','admin','manager','viewer','team_leader'].includes(currentUser.role)) {
+            showPage('admin-app');
+          } else {
+            showPage('emp-app');
+          }
+        } else {
+          showPage('login-page');
+        }
+      }
+    } catch(e) {
+      var login = document.getElementById('login-page');
+      if (login) login.style.display = 'block';
     }
-  } catch (e) {
-    const login = document.getElementById('login-page');
-    if (login) login.style.display = 'block';
-  }
-}, 800);
+  }, 100);
+});

@@ -1488,12 +1488,11 @@ function showModelAlertBanner(behindModels,soldQty,daysLeft){
 
 // ── NAVIGATION ──
 function empTab(tab,el){
-  ['home','sales','visits','display','profile','chat'].forEach(t=>{const d=document.getElementById('emp-'+t);if(d)d.style.display=t===tab?'block':'none';});
+  ['home','sales','visits','display','profile','chat','specs'].forEach(t=>{const d=document.getElementById('emp-'+t);if(d)d.style.display=t===tab?'block':'none';});
   document.querySelectorAll('#emp-app .nav-item').forEach(n=>n.classList.remove('active'));
   if(el) el.classList.add('active');
   if(tab==='sales'){renderProducts();loadTodaySales()}
   if(tab==='profile'){
-    // Load profile data
     const nameEl=document.getElementById('profile-name');
     const branchEl=document.getElementById('profile-branch');
     if(nameEl) nameEl.textContent=currentUser?.name||'-';
@@ -1505,6 +1504,7 @@ function empTab(tab,el){
   if(tab==='home'){loadModelTargetAlert()}
   if(tab==='visits'){loadVisitsTab()}
   if(tab==='display'){loadDisplayTab()}
+  if(tab==='specs'){renderSpecsList()}
 }
 function adminTab(tab,el){
   ['dashboard','employees','branches','reports','settings','visits','chat'].forEach(t=>{const d=document.getElementById('admin-'+t);if(d)d.style.display=t===tab?'block':'none';});
@@ -1591,7 +1591,18 @@ function adminTab(tab,el){
 
 // ── HELPERS ──
 function showErr(id,msg){const el=document.getElementById(id);if(el){el.textContent=msg;setTimeout(()=>el.textContent='',3000)}}
-function notify(msg,type='success'){const el=document.createElement('div');el.className=`notif ${type}`;el.textContent=msg;document.body.appendChild(el);setTimeout(()=>el.remove(),3000)}
+function notify(msg,type='success'){
+  // Use window.notify from dom.js if available
+  if(window.notify && window.notify !== notify) { window.notify(msg,type); return; }
+  const el=document.createElement('div');
+  const bg=type==='error'?'#ff3b3b':type==='success'?'#00C853':'#2979FF';
+  el.style.cssText='pointer-events:auto;background:'+bg+';color:'+(type==='success'?'#000':'#fff')+';padding:11px 18px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:toastIn .3s;font-family:Cairo,sans-serif;text-align:center';
+  el.textContent=String(msg||'');
+  let container=document.getElementById('toast-container');
+  if(!container){container=document.createElement('div');container.id='toast-container';container.setAttribute('aria-live','polite');container.style.cssText='position:fixed;top:calc(20px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:90vw';document.body.appendChild(container);}
+  container.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),300);},3000);
+}
 function openModal(id){document.getElementById(id).classList.add('open')}
 function closeModal(id){document.getElementById(id).classList.remove('open')}
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
@@ -2623,6 +2634,205 @@ function showPhotoSourceModal(inputId){
       <button onclick="document.getElementById('${inputId}').removeAttribute('capture');document.getElementById('${inputId}').click();this.closest('[style*=fixed]').remove()" style="padding:16px;background:var(--card2);border:1.5px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">🖼️ ${ar?'المعرض':'Gallery'}</button>
     </div>
     <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:transparent;border:none;color:var(--muted);font-family:Cairo,sans-serif;font-size:13px;cursor:pointer;margin-top:10px">${ar?'إلغاء':'Cancel'}</button>
+  </div>`;
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  document.body.appendChild(overlay);
+}
+
+// ── SPECS (Models Database) ──
+const ORAIMO_SPECS = [
+  {
+    name:"Oraimo Smart Watch OSW-850H",price:6906,cat:"⌚ Smartwatch",
+    img:"⌚",color:"#FFD700",
+    specs:["شاشة AMOLED 1.96 بوصة","GPS مدمج","مقاومة للماء IP68","بطارية 7 أيام","قياس SpO2 وضغط الدم"],
+    sell:["أعلى ساعة في الفئة","GPS حقيقي بدون هاتف","شاشة أوضح تحت الشمس","الأقوى مقارنة بـ Samsung & Huawei بنفس السعر"]
+  },
+  {
+    name:"Oraimo Smart Watch Nova2 OSW814",price:2326,cat:"⌚ Smartwatch",
+    img:"⌚",color:"#00C853",
+    specs:["شاشة 1.85 بوصة IPS","مقاومة IP68","120+ وضع رياضي","بطارية 10 أيام","إشعارات واتساب وفيسبوك"],
+    sell:["أفضل قيمة في سعرها","10 أيام بطارية — ضعف Apple Watch","120 وضع رياضي لكل الأنشطة","تصميم رفيع أنيق"]
+  },
+  {
+    name:"Oraimo Smart Watch OSW-30",price:1517,cat:"⌚ Smartwatch",
+    img:"⌚",color:"#2979FF",
+    specs:["شاشة كبيرة 2.01 بوصة","ضغط دم وأكسجين","بطارية 7 أيام","مقاومة IP67","مكالمات بلوتوث"],
+    sell:["أكبر شاشة في الفئة","مكالمات مباشرة من الساعة","سعر لا يُقاوَم","مثالية كهدية"]
+  },
+  {
+    name:"Oraimo Smart Watch OSW-42",price:1862,cat:"⌚ Smartwatch",
+    img:"⌚",color:"#9c27b0",
+    specs:["شاشة 1.95 بوصة","مكالمات بلوتوث","قياس ضغط دم وأكسجين","بطارية 7 أيام","100+ وضع رياضي"],
+    sell:["مكالمات بلوتوث عالية الجودة","تصميم مميز وعصري","ملحقات متعددة الألوان","أفضل من Mi Band بكثير"]
+  },
+  {
+    name:"Oraimo Smart Watch OSW-810",price:1988,cat:"⌚ Smartwatch",
+    img:"⌚",color:"#FF6D00",
+    specs:["شاشة AMOLED 1.43 بوصة","Always On Display","مقاومة IP68","بطارية 14 يوم","تصميم مستدير فاخر"],
+    sell:["شاشة AMOLED الأوضح","14 يوم بطارية — غير مسبوق","تصميم مستدير كالساعات الكلاسيكية","AOD يظهر الوقت دائماً"]
+  },
+  {
+    name:"Oraimo TWS OTW-930",price:3954,cat:"🎧 إيرباد",
+    img:"🎧",color:"#FF3B3B",
+    specs:["ANC إلغاء ضوضاء نشط","بطارية 40 ساعة مع الكيس","مقاومة IPX5","لاتنس منخفض للألعاب","تقنية ENC للمكالمات"],
+    sell:["ANC ينافس AirPods Pro بسعر 4x أقل","40 ساعة — أطول بطارية في الفئة","صوت ممتاز للمحتوى والمكالمات","مثالية للطلاب والموظفين"]
+  },
+  {
+    name:"Oraimo TWS OpenArc OPN675",price:3024,cat:"🎧 إيرباد",
+    img:"🎧",color:"#00BCD4",
+    specs:["Open-ear بدون سد الأذن","بطارية 60 ساعة مع الكيس","صوت ستيريو واسع","تصميم hook مريح","للرياضة والاستخدام اليومي"],
+    sell:["60 ساعة — الأطول في السوق","Open-ear صحي للأذن — لا يسبب ضغط","مثالية للرياضيين وقيادة السيارة","صوت طبيعي وواضح"]
+  },
+  {
+    name:"Oraimo TWS Openpods OPN-50D",price:2209,cat:"🎧 إيرباد",
+    img:"🎧",color:"#8BC34A",
+    specs:["Open-ear تصميم عصري","بطارية 30 ساعة","اتصال فوري","ميكروفون واضح","مريح للاستخدام الطويل"],
+    sell:["تصميم Open-ear الأكثر أماناً","لا تسقط أثناء الرياضة","مناسبة لكل أحجام الأذن","الأفضل مع Oraimo Watch كبرومو"]
+  },
+  {
+    name:"Oraimo TWS OEB-E108D",price:2095,cat:"🎧 إيرباد",
+    img:"🎧",color:"#FF4081",
+    specs:["ANC إلغاء ضوضاء","بطارية 35 ساعة","شاشة LED بالكيس","ENC للمكالمات","مقاومة IPX5"],
+    sell:["ANC بسعر اقتصادي جداً","شاشة الكيس تُظهر نسبة البطارية","35 ساعة كافية لرحلات طويلة","أفضل من سامسونج Buds2 بنفس السعر"]
+  },
+  {
+    name:"Oraimo Neckband OEB611 ANC",price:1396,cat:"🎧 إيرباد",
+    img:"🎧",color:"#795548",
+    specs:["ANC إلغاء ضوضاء","بطارية 30 ساعة","مقاومة للماء","تصميم neckband مريح","ENC للمكالمات"],
+    sell:["ANC في neckband — نادر جداً","30 ساعة لا تنتهي","لا تقع من الأذن أبداً","مثالية للموصلات والعمل الطويل"]
+  },
+  {
+    name:"Oraimo BT Headphone OHP-610S",price:1517,cat:"🎧 هيدفون",
+    img:"🎧",color:"#607D8B",
+    specs:["Over-ear مريح","بطارية 40 ساعة","بلوتوث 5.3","ميكروفون مدمج","قابل للطي"],
+    sell:["40 ساعة للطلاب والمذاكرة","صوت محيطي ممتاز","قابل للطي ومناسب للسفر","أرخص من Sony & JBL بمواصفات مقاربة"]
+  },
+  {
+    name:"Oraimo PowerJet 130 OPB-727SQ 27600mAh",price:3499,cat:"🔋 باور بانك",
+    img:"🔋",color:"#FFD700",
+    specs:["27600 mAh سعة ضخمة","شحن 65W سريع","3 منافذ USB","شاشة رقمية","يشحن لاب توب"],
+    sell:["يشحن لاب توب + موبايل معاً","65W — أسرع شحن في الفئة","يكفي لرحلات أسبوع كامل","أقوى من Anker بنفس السعر"]
+  },
+  {
+    name:"Oraimo PowerNova L21 OPB-7203C 30W 20K",price:1749,cat:"🔋 باور بانك",
+    img:"🔋",color:"#00C853",
+    specs:["20000 mAh","شحن PD 30W","منفذ Type-C وUSB-A","شحن الموبايل 4 مرات","رفيع وخفيف الوزن"],
+    sell:["30W PD — يشحن iPhone في ساعة","20000 رفيع وخفيف للحمل اليومي","يشحن الموبايل 4-5 مرات كاملة","أفضل قيمة في السوق المصري"]
+  },
+  {
+    name:"Oraimo P.Bank OPB-7103C 22.5W 10K",price:1279,cat:"🔋 باور بانك",
+    img:"🔋",color:"#2979FF",
+    specs:["10000 mAh","22.5W سريع","منفذ USB-C وUSB-A","شاشة رقمية","حجم صغير جداً"],
+    sell:["الأصغر حجماً في فئة 10000","22.5W يشحن أسرع من معظم المنافسين","شاشة رقمية تُظهر نسبة الشحن الدقيقة","مثالية للفتيات والطلاب"]
+  },
+  {
+    name:"Oraimo Wireless Speaker SpaceBox Pro 80W OBS682",price:4604,cat:"🔊 سبيكر",
+    img:"🔊",color:"#FF6D00",
+    specs:["80W صوت قوي جداً","بطارية 12 ساعة","مقاومة IPX6","LED ملونة","صوت ستيريو 360°"],
+    sell:["80W يملأ أي غرفة أو حفلة","IPX6 للحفلات الخارجية والشاطئ","LED جميلة تضيف أجواء","أقوى من JBL Xtreme بسعر أقل"]
+  },
+  {
+    name:"Oraimo Portable Speaker OBS382",price:1165,cat:"🔊 سبيكر",
+    img:"🔊",color:"#E91E63",
+    specs:["20W صوت واضح","بطارية 12 ساعة","مقاومة IPX5","بلوتوث 5.3","حمل مريح"],
+    sell:["20W للاستخدام الشخصي والسفر","IPX5 للشاطئ والرياضة","صوت أوضح من JBL Go3","أفضل هدية عملية"]
+  },
+  {
+    name:"Oraimo OCW-5451ECC 45W GaN Ultra PD",price:599,cat:"⚡ شاحن",
+    img:"⚡",color:"#FF3B3B",
+    specs:["GaN تقنية متقدمة","45W PD سريع جداً","منفذ USB-C وUSB-A","حجم صغير جداً","يشحن MacBook"],
+    sell:["GaN — أصغر بـ60% من الشواحن العادية","45W يشحن iPhone من 0-80% في 35 دقيقة","يشحن MacBook Air بكفاءة","مثالي للمسافرين"]
+  },
+  {
+    name:"Oraimo Charger OCW7331E 33W GaN Fast Dual",price:466,cat:"⚡ شاحن",
+    img:"⚡",color:"#9c27b0",
+    specs:["33W GaN","منفذان USB-C + USB-A","حجم كبريت تقريباً","شحن سريع QC","متوافق مع جميع الأجهزة"],
+    sell:["شاحن + كابل = حزمة مثالية","GaN يوفر الكهرباء ويقلل السخونة","منفذان لشحن جهازين معاً","أصغر شاحن 33W في السوق"]
+  },
+  {
+    name:"Oraimo Car Charger 48W OCC73D",price:466,cat:"⚡ شاحن سيارة",
+    img:"⚡",color:"#FF9800",
+    specs:["48W للسيارة","منفذ USB-C PD وUSB-A","يشحن الموبايل سريعاً","تصميم أنيق","مؤشر LED"],
+    sell:["48W — أسرع شاحن سيارة Oraimo","يشحن iPhone من 0-50% في 30 دقيقة","يناسب كل السيارات","هدية مثالية لأصحاب السيارات"]
+  },
+  {
+    name:"Oraimo Wireless Charger 15W OWH-1151",price:576,cat:"⚡ شاحن لاسلكي",
+    img:"⚡",color:"#00BCD4",
+    specs:["15W شحن لاسلكي","متوافق Qi مع iPhone وSamsung","LED مؤشر","حجم رفيع","لا يسخن"],
+    sell:["15W — أسرع من Apple MagSafe الأصلي","يشحن عبر الجراب (حتى 5mm)","لا حاجة لفك الجراب","سعر أقل من Apple و Samsung بنفس الجودة"]
+  },
+  {
+    name:"Oraimo Cable C to C 3M 100W OCD-173CC",price:366,cat:"🔌 كابل",
+    img:"🔌",color:"#607D8B",
+    specs:["طول 3 متر","100W PD","تحمل يصل لـ 20,000 انحناء","مادة نايلون مضفر","متوافق مع MacBook"],
+    sell:["3 متر — مثالي للاستخدام في السرير أو المكتب","100W يكفي لشحن لاب توب","نايلون لا يتقصف أبداً","الكابل الأطول والأقوى في الفئة"]
+  }
+];
+
+let filteredSpecs = [...ORAIMO_SPECS];
+
+function filterSpecs(){
+  const q=(document.getElementById('specs-search')?.value||'').toLowerCase();
+  filteredSpecs=q?ORAIMO_SPECS.filter(s=>s.name.toLowerCase().includes(q)||s.cat.includes(q)):ORAIMO_SPECS;
+  renderSpecsList();
+}
+
+function renderSpecsList(){
+  const el=document.getElementById('specs-list');if(!el)return;
+  const ar=currentLang==='ar';
+  // Group by category
+  const cats={};
+  filteredSpecs.forEach(s=>{if(!cats[s.cat])cats[s.cat]=[];cats[s.cat].push(s);});
+  el.innerHTML=Object.entries(cats).map(([cat,items])=>`
+    <div style="margin-bottom:8px">
+      <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:1px;margin-bottom:8px;padding:4px 0;border-bottom:1px solid var(--border)">${cat}</div>
+      ${items.map(s=>`
+        <div class="spec-card" onclick="showSpecDetail('${s.name.replace(/'/g,"\\'")}')" style="background:linear-gradient(145deg,#15151c,#0d0d13);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px;margin-bottom:8px;cursor:pointer;transition:.15s;position:relative;overflow:hidden">
+          <div style="position:absolute;top:0;right:0;width:3px;height:100%;background:${s.color};border-radius:0 16px 16px 0"></div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:48px;height:48px;border-radius:14px;background:${s.color}22;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;border:1px solid ${s.color}44">${s.img}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:ltr">${s.name.replace('Oraimo ','')}</div>
+              <div style="font-size:13px;color:${s.color};font-weight:900;margin-top:2px">EGP ${s.price.toLocaleString()}</div>
+            </div>
+            <div style="font-size:20px;color:var(--muted)">›</div>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function showSpecDetail(name){
+  const s=ORAIMO_SPECS.find(x=>x.name===name);if(!s)return;
+  const ar=currentLang==='ar';
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(8px)';
+  overlay.innerHTML=`<div style="background:linear-gradient(160deg,#15151c,#0a0a10);border-radius:24px 24px 0 0;padding:24px 20px;width:100%;max-height:88vh;overflow-y:auto;border-top:3px solid ${s.color};box-shadow:0 -20px 60px rgba(0,0,0,.6)">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+      <div style="width:64px;height:64px;border-radius:18px;background:${s.color}22;display:flex;align-items:center;justify-content:center;font-size:32px;border:2px solid ${s.color}44;flex-shrink:0">${s.img}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:800;direction:ltr;overflow:hidden;text-overflow:ellipsis">${s.name.replace('Oraimo ','')}</div>
+        <div style="font-size:20px;font-weight:900;color:${s.color};margin-top:2px">EGP ${s.price.toLocaleString()}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.cat}</div>
+      </div>
+    </div>
+
+    <div style="background:rgba(255,255,255,.03);border-radius:16px;padding:16px;margin-bottom:14px;border:1px solid rgba(255,255,255,.06)">
+      <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:1px;margin-bottom:12px">📋 المواصفات الرئيسية</div>
+      ${s.specs.map(spec=>`<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
+        <span style="color:${s.color};font-size:14px;margin-top:2px;flex-shrink:0">✓</span>
+        <span style="font-size:13px;line-height:1.5">${spec}</span>
+      </div>`).join('')}
+    </div>
+
+    <div style="background:${s.color}11;border-radius:16px;padding:16px;margin-bottom:20px;border:1px solid ${s.color}33">
+      <div style="font-size:12px;font-weight:800;color:${s.color};letter-spacing:1px;margin-bottom:12px">🏆 نقاط البيع الأقوى</div>
+      ${s.sell.map((pt,i)=>`<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;padding:8px;background:rgba(255,255,255,.03);border-radius:10px">
+        <span style="background:${s.color};color:#000;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;margin-top:1px">${i+1}</span>
+        <span style="font-size:13px;line-height:1.5">${pt}</span>
+      </div>`).join('')}
+    </div>
+
+    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:14px;background:linear-gradient(135deg,${s.color},${s.color}99);border:none;border-radius:16px;color:#000;font-family:Cairo,sans-serif;font-size:15px;font-weight:800;cursor:pointer">${ar?'إغلاق':'Close'}</button>
   </div>`;
   overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
   document.body.appendChild(overlay);

@@ -407,12 +407,17 @@ function handleAttendClick(){
       btn.style.pointerEvents='';
       openCamera();
     },
-    ()=>{
+    (err)=>{
+      // iOS: if denied permanently show guide
       capturedLocation=null;
       btn.style.pointerEvents='';
-      notify(ar?'❌ يجب تفعيل الموقع الجغرافي لتسجيل الحضور':'❌ Enable location to check in','error');
+      if(err.code===1){
+        notify(ar?'❌ افتح الإعدادات ← Safari ← الموقع وافعّله':'❌ Settings → Safari → Location → Allow','error');
+      } else {
+        notify(ar?'❌ تعذر تحديد الموقع، حاول مرة أخرى':'❌ Location failed, try again','error');
+      }
     },
-    {enableHighAccuracy:true,timeout:12000}
+    {enableHighAccuracy:true,timeout:15000,maximumAge:0}
   );
 }
 
@@ -501,8 +506,39 @@ async function loadEmpMonthlyReport(){
 
 // ── CAMERA ──
 async function openCamera(){
-  try{videoStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});document.getElementById('video').srcObject=videoStream;document.getElementById('camera-modal').classList.add('open');}
-  catch(e){notify((currentLang==='ar'?'خطأ كاميرا: ':'Camera error: ')+e.message,'error')}
+  try{
+    // iOS Safari requires specific constraints
+    const constraints={
+      video:{
+        facingMode:{ideal:'user'},
+        width:{ideal:1280},
+        height:{ideal:720}
+      },
+      audio:false
+    };
+    videoStream=await navigator.mediaDevices.getUserMedia(constraints);
+    const video=document.getElementById('video');
+    video.srcObject=videoStream;
+    // iOS requires playsinline + explicit play()
+    video.setAttribute('playsinline','');
+    video.setAttribute('autoplay','');
+    video.muted=true;
+    await video.play().catch(()=>{});
+    document.getElementById('camera-modal').classList.add('open');
+  }catch(e){
+    // iOS fallback: try without ideal constraints
+    try{
+      videoStream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+      const video=document.getElementById('video');
+      video.srcObject=videoStream;
+      video.setAttribute('playsinline','');
+      video.muted=true;
+      await video.play().catch(()=>{});
+      document.getElementById('camera-modal').classList.add('open');
+    }catch(e2){
+      notify((currentLang==='ar'?'❌ خطأ في الكاميرا: ':'❌ Camera error: ')+e2.message,'error');
+    }
+  }
 }
 function closeCamera(){if(videoStream){videoStream.getTracks().forEach(t=>t.stop());videoStream=null}document.getElementById('camera-modal').classList.remove('open')}
 function capturePhoto(){

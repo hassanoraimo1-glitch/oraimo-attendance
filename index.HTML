@@ -7,6 +7,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-touch-fullscreen" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- iOS camera permissions require HTTPS — already set -->
+<!-- iOS notifications: OneSignal handles via service worker -->
 <title>Oraimo HR System</title>
 <link rel="manifest" href="/manifest.json">
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
@@ -80,7 +84,7 @@
 
 <!-- CAMERA -->
 <div id="camera-modal">
-  <video id="video" autoplay playsinline muted></video>
+  <video id="video" autoplay playsinline muted webkit-playsinline x-webkit-airplay="allow" style="-webkit-transform:scaleX(-1);transform:scaleX(-1)"></video>
   <canvas id="canvas"></canvas>
   <div class="camera-overlay">
     <div style="color:#fff;font-size:13px;margin-bottom:18px;font-weight:700" id="camera-label">📸 التقط سيلفي للتحقق</div>
@@ -142,7 +146,6 @@
         <div class="attend-label" data-ar="تسجيل دخول" data-en="Check In">تسجيل دخول</div>
       </div>
       <div style="margin-top:14px;font-size:12px;color:var(--muted);text-align:center" id="attend-status" data-ar="لم يتم تسجيل حضور اليوم" data-en="No attendance recorded today">لم يتم تسجيل حضور اليوم</div>
-      <div id="emp-shift-info" style="margin-top:6px;font-size:11px;color:var(--green);text-align:center;font-weight:700"></div>
     </div>
 
     <div class="stats-grid">

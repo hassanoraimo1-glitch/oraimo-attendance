@@ -39,8 +39,8 @@
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js')
-        .then(reg => console.log('التطبيق جاهز للعمل'))
-        .catch(err => console.log('فشل تسجيل الخدمة', err));
+        .then(reg => console.log('SW registered'))
+        .catch(err => console.log('SW failed', err));
     });
   }
 </script>
@@ -883,27 +883,6 @@
   </div>
 </div>
 
-<!-- App entry (module) — evaluates before DOMContentLoaded -->
-<script type="module" src="./src/app.js"></script>
-<!-- Legacy UI script — loaded after app.js is guaranteed to have run.
-     Module scripts block DOMContentLoaded, so by the time this fires,
-     all window.* globals from app.js are in place. -->
-<script>
-  window.addEventListener('app:ready', function() {
-    var s = document.createElement('script');
-    s.src = './src/legacy.js';
-    document.body.appendChild(s);
-  }, { once: true });
-  // Hard fallback
-  setTimeout(function() {
-    if (!window.__LEGACY_LOADED__) {
-      var s = document.createElement('script');
-      s.src = './src/legacy.js';
-      document.body.appendChild(s);
-    }
-  }, 3000);
-</script>
-
 <!-- ═══════════════ CHAT MODAL ═══════════════ -->
 <div id="chat-modal" style="display:none !important;position:fixed;inset:0;background:var(--black);z-index:500;flex-direction:column;-webkit-overflow-scrolling:touch">
   <div style="position:fixed;top:0;left:0;right:0;background:rgba(6,6,8,.98);padding:12px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);z-index:501">
@@ -917,7 +896,17 @@
     <button onclick="sendMessage()" style="width:44px;height:44px;border-radius:50%;background:var(--green);border:none;font-size:18px;cursor:pointer;flex-shrink:0">➤</button>
   </div>
 </div>
+
+<!-- ========================================== -->
+<!-- SCRIPTS (MODERN LOADING SEQUENCE)         -->
+<!-- ========================================== -->
+<!-- 
+  IMPORTANT FIX: 
+  - app.js is loaded as a module first (sets up all core services)
+  - legacy.js is loaded after with `defer` to ensure it runs after app.js
+  - This prevents race conditions and missing global variables
+-->
 <script type="module" src="./src/app.js"></script>
-<script src="./src/legacy.js"></script>
+<script src="./src/legacy.js" defer></script>
 </body>
 </html>

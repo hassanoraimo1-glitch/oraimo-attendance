@@ -166,16 +166,17 @@ function showApp(){
     }
   setTimeout(fixNavDirection, 100);
   if(currentUser.role==='team_leader'){
-      // Team leader: show ONLY visits + employees nav, hide everything else
+      // Team leader: visits + employees + settings (for team mgmt), hide branches/reports
       setTimeout(()=>{
         // show visits nav
         const admVisNav=document.getElementById('adm-visits-nav');
         if(admVisNav) admVisNav.style.display='flex';
-        // hide branches, settings, reports
-        ['adm-branches-nav','settings-nav-item'].forEach(id=>{
-          const el=document.getElementById(id);
-          if(el) el.style.display='none';
-        });
+        // show settings nav (team leader manages their team there)
+        const settingsNavEl=document.getElementById('settings-nav-item');
+        if(settingsNavEl) settingsNavEl.style.display='flex';
+        // hide branches nav
+        const branchesNavEl=document.getElementById('adm-branches-nav');
+        if(branchesNavEl) branchesNavEl.style.display='none';
         // hide reports nav
         document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{
           const oc=n.getAttribute('onclick')||'';
@@ -354,6 +355,22 @@ async function loadEmpData(){
     renderDailySalesGrid(monthSales,pm);renderEmpPerfChart(monthSales,pm);
     const recent=await dbGet('attendance',`?employee_id=eq.${currentUser.id}&order=date.desc&limit=7&select=*`);
     renderAttendHistory(recent);loadEmpWarnings();loadTodaySales();
+    // Show shift label on home
+    const shiftInfoEl=document.getElementById('emp-shift-info');
+    if(shiftInfoEl&&currentUser){
+      const ar=currentLang==='ar';
+      const today=new Date();const dow=today.getDay();
+      const isThurFri=(dow===4||dow===5);
+      let label;
+      if(currentUser.shift==='evening'){
+        label=isThurFri
+          ?(ar?'🌙 مسائي: 3م – 11م':'🌙 Evening: 3PM–11PM')
+          :(ar?'🌙 مسائي: 2م – 10م':'🌙 Evening: 2PM–10PM');
+      } else {
+        label=ar?'🌅 صباحي: 10ص – 6م':'🌅 Morning: 10AM–6PM';
+      }
+      shiftInfoEl.textContent=label;
+    }
   }catch(e){console.error(e)}
 }
 
@@ -380,7 +397,23 @@ function handleAttendClick(){
   const ar=currentLang==='ar';
   document.getElementById('selfie-modal-title').textContent=attendMode==='in'?(ar?'تأكيد تسجيل الدخول':'Confirm Check In'):(ar?'تأكيد تسجيل الخروج':'Confirm Check Out');
   document.getElementById('camera-label').textContent=attendMode==='in'?(ar?'📸 التقط سيلفي للدخول':'📸 Take selfie to check in'):(ar?'📸 التقط سيلفي للخروج':'📸 Take selfie to check out');
-  openCamera();
+  // FIX: Location must be confirmed BEFORE camera opens
+  if(!navigator.geolocation){notify(ar?'⚠️ جهازك لا يدعم تحديد الموقع':'⚠️ Geolocation not supported','error');return;}
+  notify(ar?'📍 جاري تحديد موقعك...':'📍 Getting your location...','info');
+  btn.style.pointerEvents='none';
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      capturedLocation={lat:pos.coords.latitude,lng:pos.coords.longitude};
+      btn.style.pointerEvents='';
+      openCamera();
+    },
+    ()=>{
+      capturedLocation=null;
+      btn.style.pointerEvents='';
+      notify(ar?'❌ يجب تفعيل الموقع الجغرافي لتسجيل الحضور':'❌ Enable location to check in','error');
+    },
+    {enableHighAccuracy:true,timeout:12000}
+  );
 }
 
 function renderAttendHistory(records){
@@ -481,14 +514,13 @@ function capturePhoto(){
   document.getElementById('selfie-modal').classList.add('open');
   document.getElementById('confirm-attend-btn').disabled=false;
   const ar=currentLang==='ar';
-  document.getElementById('location-status').textContent=ar?'📍 جاري تحديد الموقع...':'📍 Getting location...';
-  capturedLocation=null;
-  if(!navigator.geolocation){document.getElementById('location-status').textContent=ar?'⚠️ تحديد الموقع غير متاح':'⚠️ Geolocation not supported';return}
-  const locTimer=setTimeout(()=>{if(!capturedLocation)document.getElementById('location-status').textContent=ar?'⚠️ انتهت مهلة الموقع':'⚠️ Location timeout'},12000);
-  navigator.geolocation.getCurrentPosition(pos=>{
-    clearTimeout(locTimer);capturedLocation={lat:pos.coords.latitude,lng:pos.coords.longitude};
-    document.getElementById('location-status').innerHTML=`✅ ${ar?'تم تحديد الموقع':'Location found'} (±${Math.round(pos.coords.accuracy)}m) — <a href="https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}" target="_blank" style="color:var(--green)">${ar?'عرض':'View'}</a>`;
-  },()=>{clearTimeout(locTimer);capturedLocation=null;document.getElementById('location-status').textContent=ar?'⚠️ تعذر تحديد الموقع':'⚠️ Location unavailable'},{enableHighAccuracy:true,timeout:10000});
+  // Location already captured before camera opened
+  const locStatusEl=document.getElementById('location-status');
+  if(capturedLocation){
+    locStatusEl.innerHTML=`✅ ${ar?'تم تحديد الموقع':'Location found'} — <a href="https://maps.google.com/?q=${capturedLocation.lat},${capturedLocation.lng}" target="_blank" style="color:var(--green)">${ar?'عرض':'View'}</a>`;
+  } else {
+    locStatusEl.textContent=ar?'⚠️ لم يتم تحديد الموقع':'⚠️ Location unavailable';
+  }
 }
 async function confirmAttendance(){
   const today=todayStr(),now=new Date(),timeStr=now.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
@@ -496,7 +528,16 @@ async function confirmAttendance(){
   try{
     const todayAtt=await dbGet('attendance',`?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`);
     if(attendMode==='in'){
-      const[wh,wm]=workSettings.start.split(':').map(Number),[ah,am]=timeStr.split(':').map(Number);
+      // Determine shift start based on employee shift & day
+      const dayOfWeek=now.getDay(); // 0=Sun,4=Thu,5=Fri
+      const isThurFri=(dayOfWeek===4||dayOfWeek===5);
+      let shiftStart;
+      if(currentUser.shift==='evening'){
+        shiftStart=isThurFri?'15:00':'14:00'; // Thu/Fri: 3pm-11pm, else 2pm-10pm
+      } else {
+        shiftStart='10:00'; // Morning: 10am-6pm
+      }
+      const[wh,wm]=shiftStart.split(':').map(Number),[ah,am]=timeStr.split(':').map(Number);
       const lateMin=Math.max(0,(ah*60+am)-(wh*60+wm));
       await dbPost('attendance',{employee_id:currentUser.id,date:today,check_in:timeStr,late_minutes:lateMin,selfie_in:capturedPhoto,location_lat:capturedLocation?.lat,location_lng:capturedLocation?.lng});
       notify(ar?'تم تسجيل الدخول ✅':'Checked in ✅','success');
@@ -1297,7 +1338,62 @@ function adminTab(tab,el){
   if(tab==='branches')initBranchDashboard();
   if(tab==='visits')loadTLVisitsTab();
   if(tab==='chat'){loadAdminChatList();}
-  if(tab==='settings'){/* lazy loaded via accordion */}
+  if(tab==='settings'){
+    // For team_leader: hide all settings sections, show only team members
+    if(currentUser&&currentUser.role==='team_leader'){
+      setTimeout(()=>{
+        // Hide all standard accordion items
+        document.querySelectorAll('#admin-settings .acc-item').forEach(item=>{item.style.display='none';});
+        // Inject team section if not exists
+        let tlSection=document.getElementById('tl-team-acc-item');
+        if(!tlSection){
+          tlSection=document.createElement('div');
+          tlSection.id='tl-team-acc-item';
+          tlSection.className='acc-item';
+          tlSection.innerHTML=`
+            <div class="acc-hdr" onclick="toggleAcc('acc-tl-myteam')">
+              <span>👥 فريقي</span>
+              <span class="acc-arrow" id="acc-tl-myteam-arrow">▲</span>
+            </div>
+            <div class="acc-body" id="acc-tl-myteam" style="display:block">
+              <div style="font-size:12px;color:var(--muted);margin-bottom:10px">الموظفون المسجلون في فريقك</div>
+              <div id="tl-myteam-list"><div style="text-align:center;padding:16px"><div class="loader"></div></div></div>
+            </div>`;
+          const settingsEl=document.getElementById('admin-settings');
+          if(settingsEl) settingsEl.prepend(tlSection);
+        }
+        tlSection.style.display='';
+        loadTLMyTeamSettings();
+      },100);
+    }
+    // For superadmin/admin: ensure shift accordion is injected
+    if(currentUser&&['superadmin','admin','manager'].includes(currentUser.role)){
+      setTimeout(()=>{
+        let shiftSection=document.getElementById('acc-shifts-item');
+        if(!shiftSection){
+          shiftSection=document.createElement('div');
+          shiftSection.id='acc-shifts-item';
+          shiftSection.className='acc-item';
+          shiftSection.innerHTML=`
+            <div class="acc-hdr" onclick="toggleAcc('acc-shifts')">
+              <span>🌗 <span>إدارة الشيفتات</span></span>
+              <span class="acc-arrow" id="acc-shifts-arrow">▼</span>
+            </div>
+            <div class="acc-body" id="acc-shifts" style="display:none">
+              <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                🌅 صباحي: 10:00 – 18:00&nbsp;&nbsp;|&nbsp;&nbsp;🌙 مسائي: 14:00 – 22:00 (الخميس/الجمعة: 15:00 – 23:00)
+              </div>
+              <div id="shift-settings-list"><div style="text-align:center;padding:16px"><div class="loader"></div></div></div>
+            </div>`;
+          // Insert after work hours accordion
+          const hoursItem=document.querySelector('#admin-settings .acc-item');
+          if(hoursItem&&hoursItem.parentNode){
+            hoursItem.parentNode.insertBefore(shiftSection,hoursItem.nextSibling);
+          }
+        }
+      },100);
+    }
+  }
   applyLang();
   if(tab==='reports'){
     loadAllEmployees();
@@ -2142,6 +2238,8 @@ function toggleAcc(id){
     if(id==='acc-targets')loadTargetsList();
     if(id==='acc-admins')loadAdminsList();
     if(id==='acc-team')loadSettingsEmpList();
+    if(id==='acc-shifts')loadShiftSettings();
+    if(id==='acc-tl-myteam')loadTLMyTeamSettings();
   }
 }
 
@@ -2224,3 +2322,83 @@ setTimeout(() => {
     if (login) login.style.display = 'block';
   }
 }, 800);
+
+// ── SHIFT SETTINGS (admin/superadmin) ──
+async function loadShiftSettings(){
+  const el=document.getElementById('shift-settings-list');if(!el)return;
+  const ar=currentLang==='ar';
+  try{
+    const emps=await dbGet('employees','?select=id,name,shift,branch&order=name.asc')||[];
+    if(!emps.length){el.innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">${ar?'لا يوجد موظفون':'No employees'}</div>`;return;}
+    el.innerHTML=emps.map(emp=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${emp.name}</div>
+          <div style="font-size:10px;color:var(--muted)">${emp.branch||''}</div>
+        </div>
+        <select data-empid="${emp.id}" onchange="updateEmpShift(${emp.id},this.value)"
+          style="padding:7px 10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;flex-shrink:0">
+          <option value="morning" ${(emp.shift||'morning')==='morning'?'selected':''}>🌅 ${ar?'صباحي':'Morning'}</option>
+          <option value="evening" ${emp.shift==='evening'?'selected':''}>🌙 ${ar?'مسائي':'Evening'}</option>
+        </select>
+      </div>`).join('');
+  }catch(e){el.innerHTML=`<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`;}
+}
+
+async function updateEmpShift(empId,shift){
+  const ar=currentLang==='ar';
+  try{
+    await dbPatch('employees',`?id=eq.${empId}`,{shift});
+    const emp=allEmployees.find(e=>e.id===empId);
+    if(emp) emp.shift=shift;
+    notify(ar?'✅ تم تحديث الشيفت':'✅ Shift updated','success');
+  }catch(e){notify('Error: '+e.message,'error');}
+}
+
+// ── TEAM LEADER: MY TEAM IN SETTINGS ──
+async function loadTLMyTeamSettings(){
+  const el=document.getElementById('tl-myteam-list');if(!el)return;
+  const ar=currentLang==='ar';
+  el.innerHTML=`<div style="text-align:center;padding:16px"><div class="loader"></div></div>`;
+  try{
+    const teamRes=await dbGet('manager_teams',`?manager_id=eq.${currentUser.id}&select=employee_id`).catch(()=>[])||[];
+    const teamIds=teamRes.map(r=>r.employee_id);
+    if(!teamIds.length){
+      el.innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">${ar?'لا يوجد موظفون في فريقك':'No team members'}</div>`;
+      return;
+    }
+    const emps=await dbGet('employees','?select=*')||[];
+    const myTeam=emps.filter(e=>teamIds.includes(e.id));
+    const today=todayStr();
+    const attToday=await dbGet('attendance',`?date=eq.${today}&select=employee_id,check_in,check_out,late_minutes`).catch(()=>[])||[];
+    const attMap={};attToday.forEach(a=>{attMap[a.employee_id]=a;});
+    if(!myTeam.length){
+      el.innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">${ar?'لا يوجد موظفون':'No team members'}</div>`;
+      return;
+    }
+    el.innerHTML=myTeam.map(emp=>{
+      const att=attMap[emp.id];
+      const shiftLabel=emp.shift==='evening'?(ar?'🌙 مسائي':'🌙 Eve'):(ar?'🌅 صباحي':'🌅 Mor');
+      const attBadge=att
+        ?(att.check_out
+          ?`<span class="badge badge-blue" style="font-size:9px">${ar?'خرج':'Out'} ${att.check_out}</span>`
+          :`<span class="badge badge-green" style="font-size:9px">${ar?'حاضر':'In'} ${att.check_in}${att.late_minutes>0?' ⚠️':''}</span>`)
+        :`<span class="badge badge-yellow" style="font-size:9px;background:rgba(255,59,59,.15);color:var(--red)">${ar?'غائب':'Absent'}</span>`;
+      return `<div class="emp-card" style="margin-bottom:8px">
+        <div class="emp-avatar" style="overflow:hidden;flex-shrink:0">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:(emp.name[0]||'?').toUpperCase()}</div>
+        <div class="emp-info" style="flex:1;min-width:0">
+          <div class="emp-name">${emp.name}</div>
+          <div class="emp-branch" style="font-size:10px">${shiftLabel} ${emp.branch?'· '+emp.branch:''}</div>
+        </div>
+        ${attBadge}
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML=`<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`;}
+}
+
+// ── SHIFT LABEL HELPER for employee home ──
+function getShiftLabel(shift,lang){
+  const ar=lang==='ar';
+  if(shift==='evening') return ar?'🌙 مسائي (2م - 10م)':'🌙 Evening (2PM - 10PM)';
+  return ar?'🌅 صباحي (10ص - 6م)':'🌅 Morning (10AM - 6PM)';
+}

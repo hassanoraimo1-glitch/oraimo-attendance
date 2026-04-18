@@ -14,10 +14,10 @@
 
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config.js';
 
-const DEFAULT_TIMEOUT_MS = 15_000;
-const MAX_RETRIES = 2;
-const GET_CACHE_TTL_MS = 60_000;
-const GET_CACHE_MAX_ENTRIES = 100;
+const DEFAULT_TIMEOUT_MS = 10_000;
+const MAX_RETRIES = 1;
+const GET_CACHE_TTL_MS = 3 * 60_000;  // 3 min cache — reduces DB calls dramatically
+const GET_CACHE_MAX_ENTRIES = 150;
 
 const baseHeaders = {
   apikey: SUPABASE_ANON_KEY,

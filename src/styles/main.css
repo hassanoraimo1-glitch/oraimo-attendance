@@ -1232,3 +1232,22 @@ body{background:linear-gradient(180deg,#05050a 0%,#0a0a12 100%)!important;}
 .day-off-select{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:6px!important;margin-top:8px!important;}
 .day-chip{padding:10px 4px!important;text-align:center!important;border-radius:10px!important;background:rgba(255,255,255,.04)!important;border:1.5px solid transparent!important;font-size:12px!important;cursor:pointer!important;font-weight:700!important;}
 .day-chip.selected{border-color:var(--green)!important;background:rgba(0,200,83,.15)!important;color:var(--green)!important;}
+
+/* ══ SPECS TAB ══ */
+.spec-card:active{transform:scale(.98)!important;border-color:rgba(0,200,83,.3)!important;}
+
+/* ══ MODEL ALERT CARD ══ */
+.model-alert-card{background:linear-gradient(145deg,rgba(255,59,59,.08),rgba(180,0,0,.04));border:1px solid rgba(255,59,59,.2);border-radius:16px;padding:14px;margin-bottom:10px;}
+.model-alert-card.on-track{background:linear-gradient(145deg,rgba(0,200,83,.08),rgba(0,120,50,.04))!important;border-color:rgba(0,200,83,.2)!important;}
+.model-alert-title{font-size:13px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.model-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:6px 8px;background:rgba(255,255,255,.03);border-radius:10px;}
+.model-name-sm{font-size:11px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr;}
+.model-progress{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.model-pct{font-size:11px;font-weight:800;min-width:35px;text-align:left;}
+
+/* ══ TEAM MODAL ══ */
+.team-emp-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
+.team-emp-row input[type=checkbox]{width:20px;height:20px;accent-color:var(--green);}
+
+/* ══ SHIFT BADGE ══ */
+#emp-shift-info{background:rgba(0,200,83,.08);border:1px solid rgba(0,200,83,.2);border-radius:20px;padding:4px 12px;display:inline-block;margin-top:6px;}

@@ -69,48 +69,37 @@ const PRODUCTS=[
 // ── INIT ──
 // Init immediately since legacy.js loads AFTER app:ready (load event already fired)
 (async function initApp(){
-  // Ensure chat modal is hidden on startup
-  const chatM=document.getElementById('chat-modal');
-  if(chatM) chatM.style.display='none';
-  try{
-    applyLang();
-    // Load work settings from DB (non-blocking)
-    dbGet('settings','?select=*').then(s=>{
-      if(s&&s.length>0){
-        workSettings={start:s[0].work_start||'09:00',end:s[0].work_end||'18:00'};
-        const wsEl=document.getElementById('work-start');const weEl=document.getElementById('work-end');
-        if(wsEl)wsEl.value=workSettings.start;if(weEl)weEl.value=workSettings.end;
-      }
-    }).catch(()=>{});
-    // Splash clock
-    const splashClock=document.getElementById('splash-clock');
-    if(splashClock){
-      const d=new Date();
-      splashClock.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+
+  try {
+
+    // اقفل الشات لو مفتوح
+    const chatM = document.getElementById('chat-modal');
+    if (chatM) chatM.style.display = 'none';
+
+    // شغل الدوال بس لو موجودة
+    if (typeof applyLang === 'function') applyLang();
+    if (typeof startClock === 'function') startClock();
+
+    if (typeof dbGet === 'function') {
+      dbGet('settings','?select=*')
+        .then(r => console.log('settings loaded'))
+        .catch(e => console.log('db error'));
     }
-    const saved=localStorage.getItem('oraimo_user');
-    if(saved){
-      try{currentUser=JSON.parse(saved);}catch(_){currentUser=null;localStorage.removeItem('oraimo_user');}
+
+    // أهم حاجة 👇
+    // افتح صفحة اللوجين إجباري
+    if (typeof showPage === 'function') {
+      showPage('login-page');
     }
-    // Hide splash fast (600ms instead of 2200ms)
-    setTimeout(()=>{
-      hideSplash();
-      if(currentUser){
-        document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});
-        const vn=document.getElementById('adm-visits-nav');if(vn)vn.style.display='none';
-        document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
-        showApp();
-      }else{
-        showPage('login-page');
-      }
-    },600);
-    startClock();
-  }catch(e){
-    console.error('[init] error:',e);
-    // Emergency fallback: always show login
-    const sp=document.getElementById('splash');if(sp)sp.classList.add('hide');
-    showPage('login-page');
+
+  } catch (e) {
+
+    // fallback
+    const login = document.getElementById('login-page');
+    if (login) login.style.display = 'block';
+
   }
+
 })();
 function hideSplash(){document.getElementById('splash').classList.add('hide')}
 

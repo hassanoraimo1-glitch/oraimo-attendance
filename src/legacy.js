@@ -268,27 +268,41 @@ async function doLogin(){
   const pass=document.getElementById('login-pass').value.trim();
   const errEl=document.getElementById('login-err');
   const btn=document.querySelector('#login-page .btn-green');
-  if(!username||!pass){errEl.textContent=currentLang==='ar'?'أدخل بيانات الدخول':'Enter your credentials';return;}
+  const ar=currentLang==='ar';
+  if(!username||!pass){errEl.textContent=ar?'أدخل بيانات الدخول':'Enter your credentials';return;}
   _isSubmitting=true;
-  if(btn){btn.disabled=true;btn.textContent=currentLang==='ar'?'جاري الدخول...':'Signing in...';}
+  if(btn){btn.disabled=true;btn.textContent=ar?'جاري الدخول...':'Signing in...';}
   errEl.textContent='';
   try{
-    // استخدم auth.js اللي بيتعامل مع كل الأدوار صح
-    const user = await authLogin(username, pass);
-    window.currentUser = user;
+    // Super admin
+    if(username==='admin'&&pass==='Oraimo@Admin2026'){
+      currentUser={role:'superadmin',name:'Super Admin'};
+      localStorage.setItem('oraimo_user',JSON.stringify(currentUser));
+      showApp();return;
+    }
+    // Admin from DB
+    const uname=encodeURIComponent(username);
+    const admRes=await dbGet('admins',`?username=eq.${uname}&select=*`).catch(()=>[]);
+    const admMatch=(admRes||[]).find(r=>r.password===pass);
+    if(admMatch){
+      currentUser={...admMatch,role:admMatch.role||'admin'};
+      delete currentUser.password;
+      localStorage.setItem('oraimo_user',JSON.stringify(currentUser));
+      showApp();return;
+    }
+    // Employee from DB
+    const empRes=await dbGet('employees',`?username=eq.${uname}&select=*`).catch(()=>[]);
+    const empMatch=(empRes||[]).find(r=>r.password===pass);
+    if(!empMatch){errEl.textContent=ar?'بيانات دخول غير صحيحة':'Invalid credentials';return;}
+    currentUser={...empMatch,role:empMatch.role||'employee'};
+    delete currentUser.password;
+    localStorage.setItem('oraimo_user',JSON.stringify(currentUser));
     showApp();
   }catch(e){
-    const ar=currentLang==='ar';
-    if(e.message==='RATE_LIMITED'){
-      errEl.textContent=ar?`حاول بعد ${e.retryAfterSec} ثانية`:`Try again in ${e.retryAfterSec}s`;
-    } else if(e.message==='INVALID_CREDENTIALS'){
-      errEl.textContent=ar?'بيانات دخول غير صحيحة':'Invalid credentials';
-    } else {
-      errEl.textContent=ar?'خطأ في الاتصال، حاول مرة أخرى':'Connection error, try again';
-    }
+    errEl.textContent=ar?'خطأ في الاتصال، حاول مرة أخرى':'Connection error, try again';
   }finally{
     _isSubmitting=false;
-    if(btn){btn.disabled=false;btn.textContent=currentLang==='ar'?'تسجيل الدخول':'Sign In';}
+    if(btn){btn.disabled=false;btn.textContent=ar?'تسجيل الدخول':'Sign In';}
   }
 }
 function doLogout(){

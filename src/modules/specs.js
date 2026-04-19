@@ -4,15 +4,16 @@
 // Depends on: ORAIMO_SPECS (from data.js)
 // ═══════════════════════════════════════════════════════════
 
-let filteredSpecs = [...ORAIMO_SPECS];
+let filteredSpecs = [];
 
 function filterSpecs(){
   const q=(document.getElementById('specs-search')?.value||'').toLowerCase();
-  filteredSpecs=q?ORAIMO_SPECS.filter(s=>s.name.toLowerCase().includes(q)||s.cat.includes(q)):ORAIMO_SPECS;
+  const _specs=window.ORAIMO_SPECS||[];filteredSpecs=q?_specs.filter(s=>s.name.toLowerCase().includes(q)||s.cat.includes(q)):ORAIMO_SPECS;
   renderSpecsList();
 }
 
 function renderSpecsList(){
+  if(!filteredSpecs.length) filteredSpecs=[...(window.ORAIMO_SPECS||[])];
   const el=document.getElementById('specs-list');if(!el)return;
   const ar=currentLang==='ar';
   // Group by category
@@ -37,7 +38,7 @@ function renderSpecsList(){
 }
 
 function showSpecDetail(name){
-  const s=ORAIMO_SPECS.find(x=>x.name===name);if(!s)return;
+  const s=(window.ORAIMO_SPECS||[]).find(x=>x.name===name);if(!s)return;
   const ar=currentLang==='ar';
   const overlay=document.createElement('div');
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(8px)';

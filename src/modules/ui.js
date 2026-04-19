@@ -482,3 +482,11 @@ function showPhotoSourceModal(inputId){
 }
 
 // ── SPECS (Models Database) ──
+
+// ── FIX NAV DIRECTION (RTL/LTR) ──
+function fixNavDirection(){
+  const isAr = (window.currentLang || 'ar') === 'ar';
+  document.querySelectorAll('.bottom-nav').forEach(nav => {
+    nav.style.direction = isAr ? 'rtl' : 'ltr';
+  });
+}

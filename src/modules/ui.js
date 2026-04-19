@@ -382,4 +382,103 @@ async function loadTLMyTeamSettings(){
     const emps=await dbGet('employees','?select=*')||[];
     const myTeam=emps.filter(e=>teamIds.includes(e.id));
     const today=todayStr();
-    const attToday=await dbGet('attendance',`?date=eq.${today}&select=employee_id,check_in,check_out,l
+    const attToday=await dbGet('attendance',`?date=eq.${today}&select=employee_id,check_in,check_out,late_minutes`).catch(()=>[])||[];
+    const attMap={};attToday.forEach(a=>{attMap[a.employee_id]=a;});
+    if(!myTeam.length){
+      el.innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">${ar?'لا يوجد موظفون':'No team members'}</div>`;
+      return;
+    }
+    el.innerHTML=myTeam.map(emp=>{
+      const att=attMap[emp.id];
+      const shiftLabel=emp.shift==='evening'?(ar?'🌙 مسائي':'🌙 Eve'):(ar?'🌅 صباحي':'🌅 Mor');
+      const attBadge=att
+        ?(att.check_out
+          ?`<span class="badge badge-blue" style="font-size:9px">${ar?'خرج':'Out'} ${att.check_out}</span>`
+          :`<span class="badge badge-green" style="font-size:9px">${ar?'حاضر':'In'} ${att.check_in}${att.late_minutes>0?' ⚠️':''}</span>`)
+        :`<span class="badge badge-yellow" style="font-size:9px;background:rgba(255,59,59,.15);color:var(--red)">${ar?'غائب':'Absent'}</span>`;
+      return `<div class="emp-card" style="margin-bottom:8px">
+        <div class="emp-avatar" style="overflow:hidden;flex-shrink:0">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:(emp.name[0]||'?').toUpperCase()}</div>
+        <div class="emp-info" style="flex:1;min-width:0">
+          <div class="emp-name">${emp.name}</div>
+          <div class="emp-branch" style="font-size:10px">${shiftLabel} ${emp.branch?'· '+emp.branch:''}</div>
+        </div>
+        ${attBadge}
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML=`<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`;}
+}
+
+// ── SHIFT LABEL HELPER for employee home ──
+function getShiftLabel(shift,lang){
+  const ar=lang==='ar';
+  if(shift==='evening') return ar?'🌙 مسائي (2م - 10م)':'🌙 Evening (2PM - 10PM)';
+  return ar?'🌅 صباحي (10ص - 6م)':'🌅 Morning (10AM - 6PM)';
+}
+
+
+// ── HELPERS: Present employees, Product details, Photo source choice ──
+
+// ── PRESENT EMPLOYEES CLICK + product employees + photo source modal ──
+function showPresentEmployees(todayAtt){
+  const ar=currentLang==='ar';
+  const empMap={};(allEmployees||[]).forEach(e=>{empMap[e.id]=e;});
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
+  overlay.innerHTML=`<div style="background:var(--card);border-radius:22px 22px 0 0;padding:22px 18px;width:100%;max-height:70vh;overflow-y:auto;border-top:2px solid var(--green)">
+    <div style="font-size:16px;font-weight:800;color:var(--green);margin-bottom:14px">✅ ${ar?'الحاضرون اليوم':'Present Today'} (${todayAtt.length})</div>
+    ${todayAtt.length===0?`<div style="text-align:center;color:var(--muted);padding:20px">${ar?'لا يوجد حضور':'None'}</div>`:
+    todayAtt.map(a=>{const emp=empMap[a.employee_id]||{};const lateT=a.late_minutes>0?`<span class="badge badge-yellow" style="font-size:10px">⚠️ ${a.late_minutes}${ar?'د':'m'}</span>`:`<span class="badge badge-green" style="font-size:10px">${ar?'في الوقت':'On time'}</span>`;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div class="emp-avatar" style="width:36px;height:36px;font-size:13px;overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:(emp.name||'?')[0].toUpperCase()}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:700">${emp.name||a.employee_id}</div><div style="font-size:11px;color:var(--muted)">${emp.branch||''} · ${ar?'دخل':'In'}: ${a.check_in||'-'}</div></div>
+      ${lateT}</div>`;}).join('')}
+    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px">${ar?'إغلاق':'Close'}</button>
+  </div>`;
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  document.body.appendChild(overlay);
+}
+
+function showProductEmployees(productName){
+  const ar=currentLang==='ar';
+  const sales=(window._productSalesData||[]).filter(s=>s.product_name===productName);
+  const emps=window._allEmpsData||[];
+  const empMap={};emps.forEach(e=>{empMap[e.id]=e;});
+  const byEmp={};
+  sales.forEach(s=>{if(!byEmp[s.employee_id])byEmp[s.employee_id]={name:(empMap[s.employee_id]?.name||s.employee_id),qty:0,total:0};byEmp[s.employee_id].qty+=s.quantity;byEmp[s.employee_id].total+=s.total_amount;});
+  const sorted=Object.values(byEmp).sort((a,b)=>b.qty-a.qty);
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
+  overlay.innerHTML=`<div style="background:var(--card);border-radius:22px 22px 0 0;padding:22px 18px;width:100%;max-height:75vh;overflow-y:auto;border-top:2px solid var(--green)">
+    <div style="font-size:15px;font-weight:800;margin-bottom:4px;direction:ltr">${productName}</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px">${ar?'مبيعات الموظفين':'Employee Sales'}</div>
+    ${sorted.length===0?`<div style="text-align:center;color:var(--muted);padding:20px">${ar?'لا توجد مبيعات':'No sales'}</div>`:
+    sorted.map((e,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="width:26px;font-size:13px;font-weight:800;color:var(--muted);text-align:center">${i+1}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:700">${e.name}</div></div>
+      <div style="text-align:left"><div style="font-size:14px;font-weight:800;color:var(--green)">${e.qty} ${ar?'قطعة':'pcs'}</div><div style="font-size:10px;color:var(--muted)">EGP ${fmtEGP(e.total)}</div></div></div>`).join('')}
+    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px">${ar?'إغلاق':'Close'}</button>
+  </div>`;
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  document.body.appendChild(overlay);
+}
+
+function showPhotoSourceModal(inputId){
+  const ar=currentLang==='ar';
+  const input=document.getElementById(inputId);if(!input)return;
+  const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
+  if(isIOS){input.removeAttribute('capture');input.click();return;}
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
+  overlay.innerHTML=`<div style="background:var(--card);border-radius:22px 22px 0 0;padding:24px 18px;width:100%;border-top:2px solid var(--green)">
+    <div style="font-size:15px;font-weight:800;margin-bottom:18px;text-align:center">${ar?'اختر مصدر الصورة':'Choose image source'}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <button onclick="document.getElementById('${inputId}').setAttribute('capture','environment');document.getElementById('${inputId}').click();this.closest('[style*=fixed]').remove()" style="padding:16px;background:var(--card2);border:1.5px solid var(--green);border-radius:14px;color:var(--green);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">📷 ${ar?'الكاميرا':'Camera'}</button>
+      <button onclick="document.getElementById('${inputId}').removeAttribute('capture');document.getElementById('${inputId}').click();this.closest('[style*=fixed]').remove()" style="padding:16px;background:var(--card2);border:1.5px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">🖼️ ${ar?'المعرض':'Gallery'}</button>
+    </div>
+    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:transparent;border:none;color:var(--muted);font-family:Cairo,sans-serif;font-size:13px;cursor:pointer;margin-top:10px">${ar?'إلغاء':'Cancel'}</button>
+  </div>`;
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  document.body.appendChild(overlay);
+}
+
+// ── SPECS (Models Database) ──

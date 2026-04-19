@@ -189,3 +189,4 @@ async function loadAdminChatList() {
       <div style="text-align:${ar?'right':'left'}"><div style="font-size:13px;font-weight:700">${emp.name}</div><div style="font-size:11px;color:var(--muted)">${emp.branch||''}</div></div>
     </div>`).join('');
 }
+

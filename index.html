@@ -921,8 +921,13 @@
 
 <!-- APP (module الوحيد) -->
 <!-- CORE -->
+<!-- APP -->
+<script type="module" src="./src/app.js"></script>
+
+<!-- CORE -->
 <script src="./src/core/fallbacks.js"></script>
 <script src="./src/core/data.js"></script>
+<script src="./src/core/bootstrap.js"></script> <!-- 🔥 لازم قبل أي modules -->
 
 <!-- UI -->
 <script src="./src/modules/ui.js"></script>
@@ -944,6 +949,5 @@
 <script src="./src/modules/admin/reports.js"></script>
 <script src="./src/modules/admin/visits.js"></script>
 <script src="./src/modules/admin/display.js"></script>
-<script src="./src/core/bootstrap.js"></script>
 </body>
 </html>

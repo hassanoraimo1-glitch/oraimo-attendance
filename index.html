@@ -919,42 +919,56 @@
   </div>
 </div>
 
-<!-- App entry (module) — evaluates before DOMContentLoaded -->
-<script type="module" src="./src/app.js"></script>
-<!-- Legacy UI script — loaded after app.js is guaranteed to have run.
-     Module scripts block DOMContentLoaded, so by the time this fires,
-     all window.* globals from app.js are in place. -->
-<script>
-  window.addEventListener('app:ready', function() {
-    var s = document.createElement('script');
-    s.src = './src/legacy.js';
-    document.body.appendChild(s);
-  }, { once: true });
-  // Hard fallback
-  setTimeout(function() {
-    if (!window.__LEGACY_LOADED__) {
-      var s = document.createElement('script');
-      s.src = './src/legacy.js';
-      document.body.appendChild(s);
-    }
-  }, 3000);
-</script>
-
-<!-- ═══════ CHAT MODAL - WhatsApp Style ═══════ -->
-<div id="chat-modal">
-  <div class="chat-header-bar">
-    <button class="chat-back-btn" onclick="closeChat()">←</button>
-    <div class="chat-header-avatar" id="chat-header-avatar">💬</div>
-    <div class="chat-header-info">
-      <div class="chat-header-title" id="chat-title"></div>
-      <div class="chat-header-status" id="chat-online">متصل</div>
+    <div class="sh" style="margin-top:4px">
+      <div class="sh-title">📋 زياراتي هذا الشهر</div>
     </div>
+    <div id="visit-history-list"></div>
   </div>
-  <div id="chat-messages"></div>
-  <div class="chat-input-bar">
-    <input id="chat-input" type="text" placeholder="اكتب رسالة..." enterkeyhint="send" onkeydown="if(event.key==='Enter'){event.preventDefault();sendMessage()}">
-    <button class="chat-send-btn" onclick="sendMessage()">➤</button>
+
+  <!-- SPECS TAB (Employee) -->
+  <div id="emp-specs" class="content" style="display:none">
+    <div class="sh">
+      <div class="sh-title">📱 موديلات Oraimo</div>
+    </div>
+
+    <input
+      class="product-search"
+      id="specs-search"
+      placeholder="🔍 ابحث عن موديل..."
+      oninput="filterSpecs()"
+    />
+
+    <div id="specs-list"></div>
   </div>
-</div>
+
+  <!-- ═══════════════ SCRIPTS ═══════════════ -->
+
+  <!-- مهم جداً: app.js الأول -->
+  <script type="module" src="./src/app.js"></script>
+
+  <!-- Core -->
+  <script src="./src/core/fallbacks.js"></script>
+  <script src="./src/core/data.js"></script>
+  <script src="./src/core/bootstrap.js"></script>
+
+  <!-- Modules -->
+  <script src="./src/modules/ui.js"></script>
+  <script src="./src/modules/auth.js"></script>
+  <script src="./src/modules/attendance.js"></script>
+  <script src="./src/modules/sales.js"></script>
+  <script src="./src/modules/leaves.js"></script>
+  <script src="./src/modules/chat.js"></script>
+  <script src="./src/modules/specs.js"></script>
+
+  <!-- Admin Modules -->
+  <script src="./src/modules/admin/dashboard.js"></script>
+  <script src="./src/modules/admin/employees.js"></script>
+  <script src="./src/modules/admin/admins.js"></script>
+  <script src="./src/modules/admin/branches.js"></script>
+  <script src="./src/modules/admin/targets.js"></script>
+  <script src="./src/modules/admin/reports.js"></script>
+  <script src="./src/modules/admin/visits.js"></script>
+  <script src="./src/modules/admin/display.js"></script>
+
 </body>
 </html>

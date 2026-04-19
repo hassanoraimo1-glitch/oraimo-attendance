@@ -919,39 +919,34 @@
   </div>
 </div>
 
-<!-- APP (module الوحيد) -->
-<script type<!-- APP -->
-<script type="module" src="./src/app.js"></script>
+<!-- 1️⃣ App entry point (ES module) -->
+    <script type="module" src="./src/app.js"></script>
 
-<!-- APP -->
-<script type="module" src="./src/app.js"></script>
+    <!-- 2️⃣ Core (بالترتيب المطلوب) -->
+    <script src="./src/core/fallbacks.js"></script>
+    <script src="./src/core/data.js"></script>
+    <script src="./src/core/bootstrap.js"></script>
 
-<!-- CORE -->
-<script src="./src/core/fallbacks.js"></script>
-<script src="./src/core/data.js"></script>
+    <!-- 3️⃣ UI utilities -->
+    <script src="./src/modules/ui.js"></script>
 
-<!-- UI -->
-<script src="./src/modules/ui.js"></script>
+    <!-- 4️⃣ Feature modules -->
+    <script src="./src/modules/auth.js"></script>
+    <script src="./src/modules/attendance.js"></script>
+    <script src="./src/modules/sales.js"></script>
+    <script src="./src/modules/leaves.js"></script>
+    <script src="./src/modules/chat.js"></script>
+    <script src="./src/modules/specs.js"></script>
 
-<!-- FEATURES -->
-<script src="./src/modules/auth.js"></script>
-<script src="./src/modules/attendance.js"></script>
-<script src="./src/modules/sales.js"></script>
-<script src="./src/modules/leaves.js"></script>
-<script src="./src/modules/chat.js"></script>
-<script src="./src/modules/specs.js"></script>
+    <!-- 5️⃣ Admin sub-modules -->
+    <script src="./src/modules/admin/dashboard.js"></script>
+    <script src="./src/modules/admin/employees.js"></script>
+    <script src="./src/modules/admin/admins.js"></script>
+    <script src="./src/modules/admin/branches.js"></script>
+    <script src="./src/modules/admin/targets.js"></script>
+    <script src="./src/modules/admin/reports.js"></script>
+    <script src="./src/modules/admin/visits.js"></script>
+    <script src="./src/modules/admin/display.js"></script>
 
-<!-- ADMIN -->
-<script src="./src/modules/admin/dashboard.js"></script>
-<script src="./src/modules/admin/employees.js"></script>
-<script src="./src/modules/admin/admins.js"></script>
-<script src="./src/modules/admin/branches.js"></script>
-<script src="./src/modules/admin/targets.js"></script>
-<script src="./src/modules/admin/reports.js"></script>
-<script src="./src/modules/admin/visits.js"></script>
-<script src="./src/modules/admin/display.js"></script>
-
-<!-- ✅ BOOTSTRAP لازم يكون آخر حاجة -->
-<script src="./src/core/bootstrap.js"></script>
 </body>
 </html>

@@ -3,12 +3,12 @@
 // ═══════════════════════════════════════════════════════════
 
 function showApp() {
-    if (!currentUser) return showPage('login-page');
+    if (!window.currentUser) return showPage('login-page');
     applyLang();
 
-    const role = currentUser.role;
+    const role = window.currentUser.role;
 
-    // إخفاء الزيارات عن الأدمن والمانجر والسوبر أدمن
+    // 1. إخفاء الزيارات عن أي حد مش Team Leader
     if (role !== 'team_leader') {
         document.querySelectorAll('.nav-item').forEach(item => {
             const text = (item.innerText || '').toLowerCase();
@@ -23,9 +23,11 @@ function showApp() {
     const isAdmin = ['superadmin', 'admin', 'manager', 'viewer', 'team_leader'].includes(role);
 
     if (isAdmin) {
-        if (document.getElementById('admin-name-top')) document.getElementById('admin-name-top').textContent = currentUser.name || 'Admin';
+        if (document.getElementById('admin-name-top')) {
+            document.getElementById('admin-name-top').textContent = window.currentUser.name || 'Admin';
+        }
         
-        // إظهار أيقونات الناف بار المسموحة
+        // ضبط أيقونات الـ Nav بار للأدمن
         document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n => {
             const oc = (n.getAttribute('onclick') || '');
             if (role === 'team_leader') {
@@ -39,19 +41,24 @@ function showApp() {
 
         showPage('admin-app');
 
-        // تحميل البيانات الأساسية
+        // تحميل البيانات الأساسية (الفروع والموديلات)
         if (typeof loadBranches === 'function') loadBranches(); 
         if (typeof loadAllEmployees === 'function') loadAllEmployees();
-        if (typeof renderProducts === 'function') renderProducts(); // تحميل الموديلات
+        
+        // 🚨 استدعاء إجباري لتحميل الموديلات (Specs)
+        if (typeof renderProducts === 'function') renderProducts();
 
     } else {
+        // واجهة الموظف
         showPage('emp-app');
         if (typeof loadEmpData === 'function') loadEmpData();
+        
+        // 🚨 استدعاء إجباري لتحميل الموديلات في المبيعات والـ Specs
         if (typeof renderProducts === 'function') renderProducts(); 
     }
 }
 
-// ── دالة تسجيل الدخول المحسنة ──
+// ── دالة تسجيل الدخول (مع تجاوز أخطاء الـ SQL) ──
 async function doLogin() {
     if (window._isSubmitting) return;
     const user = document.getElementById('login-user').value.trim();
@@ -65,12 +72,14 @@ async function doLogin() {
             window.currentUser = { role: 'superadmin', name: 'Hassan Hamed' };
         } else {
             const uname = encodeURIComponent(user);
+            // محاولة جلب الأدمن
             const admRes = await dbGet('admins', `?username=eq.${uname}&select=*`).catch(() => []);
             const admMatch = (admRes || []).find(r => r.password === pass);
             
             if (admMatch) {
                 window.currentUser = { ...admMatch, role: admMatch.role || 'admin' };
             } else {
+                // محاولة جلب الموظف
                 const empRes = await dbGet('employees', `?username=eq.${uname}&select=*`).catch(() => []);
                 const empMatch = (empRes || []).find(r => r.password === pass);
                 if (!empMatch) {
@@ -91,22 +100,15 @@ async function doLogin() {
     }
 }
 
-// ── دالة تسجيل الخروج (الإصدار الذي لا يفشل) ──
+// ── دالة تسجيل الخروج (حل مشكلة عدم الخروج) ──
 function doLogout() {
-    console.log("Logging out...");
-    localStorage.clear(); // مسح كل البيانات المخزنة
+    localStorage.clear(); 
+    sessionStorage.clear();
     window.currentUser = null;
     
-    // إعادة التوجيه لصفحة اللوجين فوراً قبل الريفرش
-    if (typeof showPage === 'function') {
-        showPage('login-page');
-    }
-    
-    // عمل ريفرش كامل لتنظيف الذاكرة
-    setTimeout(() => {
-        window.location.href = window.location.origin + window.location.pathname;
-    }, 100);
+    // توجيه فوري لصفحة الدخول
+    window.location.href = window.location.origin + window.location.pathname;
 }
 
-// جعل الدالة متاحة عالمياً
+// ربط الدالة بالنافذة لضمان عملها من أي مكان
 window.doLogout = doLogout;

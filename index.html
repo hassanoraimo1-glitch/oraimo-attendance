@@ -313,51 +313,22 @@
     <div id="display-history-list"></div>
   </div>
 
-  <div id="emp-visits" class="content" style="display:none">
-    <div class="sh">
-      <div class="sh-title">📸 زيارات الفروع</div>
-      <div id="emp-visits-count" style="color:var(--green);font-weight:800;font-size:12px">0 / 150</div>
-    </div>
-
-    <!-- Stats -->
-    <div class="visit-stats-row">
-      <div class="visit-stat"><div class="visit-stat-val" id="vis-done">0</div><div class="visit-stat-label">زيارة هذا الشهر</div></div>
-      <div class="visit-stat"><div class="visit-stat-val" style="color:var(--yellow)" id="vis-remain">150</div><div class="visit-stat-label">متبقي</div></div>
-      <div class="visit-stat"><div class="visit-stat-val" style="color:var(--blue)" id="vis-photos">0</div><div class="visit-stat-label">صورة مرفوعة</div></div>
-    </div>
-
-    <!-- New Visit Form -->
-    <div class="card card-glow">
-      <div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ تسجيل زيارة جديدة</div>
-      <div class="inp-grp">
-        <label>الفرع</label>
-        <select id="visit-branch-select"><option value="">-- اختر الفرع --</option></select>
-      </div>
-      <div class="inp-grp">
-        <label>ملاحظة (اختياري)</label>
-        <textarea id="visit-note-input" placeholder="حالة الديسبلاي، ملاحظات الفرع..." rows="2"
-          style="width:100%;padding:11px 14px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl;transition:.2s"></textarea>
-      </div>
-      <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">صور الديسبلاي (max 3)</label>
-      <div class="photo-previews" id="visit-photo-previews"></div>
-      <div class="photo-upload-zone" id="visit-upload-zone" onclick="showPhotoSourceModal('visit-photo-input')">
-        <input type="file" id="visit-photo-input" accept="image/*" style="display:none" onchange="addVisitPhoto(event)">
-        <div style="font-size:28px">📷</div>
-        <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور للزيارة</div>
-      </div>
-      <button class="btn btn-green" onclick="submitVisit()">✅ حفظ الزيارة</button>
-    </div>
-
-    <!-- Visit History -->
-    <div class="sh" style="margin-top:4px"><div class="sh-title">📋 زياراتي هذا الشهر</div></div>
-    <div id="visit-history-list"></div>
-  </div>
+    <!-- ❌ VISITS REMOVED COMPLETELY -->
 
   <!-- SPECS TAB (Employee) -->
   <div id="emp-specs" class="content" style="display:none">
-    <div class="sh"><div class="sh-title">📱 موديلات Oraimo</div></div>
-    <input class="product-search" id="specs-search" placeholder="🔍 ابحث عن موديل..." oninput="filterSpecs()" style="margin-bottom:12px">
+    <div class="sh">
+      <div class="sh-title">📱 موديلات Oraimo</div>
+    </div>
+
+    <input 
+      class="product-search" 
+      id="specs-search" 
+      placeholder="🔍 ابحث عن موديل..." 
+      oninput="filterSpecs()" 
+      style="margin-bottom:12px"
+    >
+
     <div id="specs-list"></div>
   </div>
 
@@ -365,76 +336,27 @@
   <div id="emp-chat" class="content" style="display:none">
     <div style="display:flex;flex-direction:column;height:calc(100vh - 130px)">
       <div style="font-size:14px;font-weight:800;margin-bottom:10px">💬 المحادثات</div>
+
       <!-- Chat with Admin -->
       <div class="card" onclick="openChat('admin','الإدارة')" style="cursor:pointer;display:flex;align-items:center;gap:12px;margin-bottom:8px">
-        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--red),#cc0000);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👑</div>
+        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--red),#cc0000);display:flex;align-items:center;justify-content:center;font-size:18px">👑</div>
         <div style="flex:1;text-align:right">
           <div style="font-size:14px;font-weight:700">الإدارة</div>
           <div style="font-size:11px;color:var(--muted)" id="last-msg-admin">اضغط للمحادثة</div>
         </div>
       </div>
+
       <!-- Group Chat -->
       <div class="card" onclick="openChat('group','B.tech team')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
-        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👥</div>
+        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:18px">👥</div>
         <div style="flex:1">
           <div style="font-size:14px;font-weight:700">B.tech team</div>
           <div style="font-size:11px;color:var(--muted)" id="last-msg-group">اضغط للمحادثة</div>
         </div>
       </div>
+
     </div>
   </div>
-
-  <div class="bottom-nav">
-    <div class="nav-item active" onclick="empTab('home',this)">
-      <div class="nav-icon">🏠</div><div class="nav-label" data-ar="الرئيسية" data-en="Home">الرئيسية</div>
-    </div>
-    <div class="nav-item" onclick="empTab('sales',this)">
-      <div class="nav-icon">🛒</div><div class="nav-label" data-ar="المبيعات" data-en="Sales">المبيعات</div>
-    </div>
-    <div class="nav-item" id="emp-display-nav" onclick="empTab('display',this)">
-      <div class="nav-icon">🖼️</div><div class="nav-label" data-ar="ديسبلاي" data-en="Display">ديسبلاي</div>
-    </div>
-    <div class="nav-item" onclick="empTab('specs',this)">
-      <div class="nav-icon">📱</div><div class="nav-label" data-ar="الموديلات" data-en="Models">الموديلات</div>
-    </div>
-    <div class="nav-item" onclick="empTab('chat',this)">
-      <div class="nav-icon">💬</div><div class="nav-label" data-ar="الشات" data-en="Chat">الشات</div>
-    </div>
-    <div class="nav-item" onclick="empTab('profile',this)">
-      <div class="nav-icon">👤</div><div class="nav-label" data-ar="الملف" data-en="Profile">الملف</div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════ ADMIN APP ═══════════════ -->
-<div id="admin-app" class="page">
-  <div class="topbar">
-    <div class="topbar-left">
-      <div class="topbar-logo" style="background:linear-gradient(135deg,#00C853,#007a2a);box-shadow:0 0 16px rgba(0,200,83,.3)">O</div>
-      <div>
-        <div class="topbar-brand">ORAIMO HR</div>
-        <div class="topbar-title" id="admin-name-top" data-ar="لوحة الإدارة" data-en="Dashboard">لوحة الإدارة</div>
-      </div>
-    </div>
-    <div class="topbar-right">
-      <button class="lang-btn" onclick="toggleLang()" id="lang-btn-adm"><span class="lang-flag">🌐</span><span id="lang-label-adm">ع</span></button>
-      <span class="role-chip badge" id="admin-role-chip">Admin</span>
-      <button class="icon-btn" onclick="doLogout()" title="خروج">🚪</button>
-    </div>
-  </div>
-
-  <!-- DASHBOARD -->
-  <div id="admin-dashboard" class="content">
-    <div id="dash-loader" style="display:none;visibility:hidden;align-items:center;justify-content:center;padding:40px;gap:10px;color:var(--muted);font-size:13px">
-      <div class="loader"></div> <span data-ar="جاري التحميل..." data-en="Loading...">جاري التحميل...</span>
-    </div>
-    <div id="dash-content" style="display:block">
-    <div class="stats-grid">
-      <div class="stat-card"><div class="stat-label" data-ar="حاضر اليوم" data-en="Present">حاضر اليوم</div><div class="stat-val" style="color:var(--green)" id="adm-present">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="غائب اليوم" data-en="Absent">غائب اليوم</div><div class="stat-val" style="color:var(--red);cursor:pointer" id="adm-absent" onclick="showAbsentEmployees()">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="مبيعات اليوم" data-en="Today Sales">مبيعات اليوم</div><div class="stat-val" style="color:var(--green);font-size:14px" id="adm-sales-today">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="مبيعات الشهر" data-en="Month Sales">مبيعات الشهر</div><div class="stat-val" style="color:var(--green);font-size:14px" id="adm-sales-month">0</div></div>
-    </div>
     <div class="sh"><div class="sh-title" data-ar="🏆 ترتيب الأداء" data-en="🏆 Performance">🏆 ترتيب الأداء</div></div>
     <div class="card" id="adm-performance-list"></div>
     <div class="sh" style="margin-top:12px"><div class="sh-title" data-ar="👥 فريق اليوم" data-en="👥 Today's Team">👥 فريق اليوم</div></div>

@@ -28,8 +28,7 @@ function fullSelfie(src) {
 // ═══════════════════════════════════════════════════════════
 function empTab(tab, el) {
   // ❌ تم حذف visits
-  const tabs = ['home', 'sales', 'display', 'profile', 'chat', 'specs'];
-
+const tabs = ['home', 'sales', 'visits', 'display', 'profile', 'chat', 'specs'];
   tabs.forEach(t => {
     const d = document.getElementById('emp-' + t);
     if (d) d.style.display = (t === tab) ? 'block' : 'none';

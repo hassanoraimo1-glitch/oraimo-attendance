@@ -95,3 +95,27 @@ async function saveEmployee(){
   }
 }
 async function deleteEmp(id){const ar=currentLang==='ar';if(!confirm(ar?'حذف الموظف؟ سيتم حذف جميع البيانات!':'Delete employee? All data will be removed!'))return;await dbDelete('employees',`?id=eq.${id}`);loadAllEmployees()}
+
+// ── BRANCH SELECT HELPER ──
+function populateBranchSelects(){
+  const branches = (allBranches||[]).map(b=>b.name||b).filter(Boolean);
+  const selects = ['emp-form-branch'];
+  selects.forEach(sid=>{
+    const sel=document.getElementById(sid);
+    if(!sel)return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">'+(currentLang==='ar'?'-- اختر الفرع --':'-- Select Branch --')+'</option>'+
+      branches.map(n=>`<option value="${n}">${n}</option>`).join('');
+    if(cur) sel.value=cur;
+  });
+}
+
+async function filterEmployeesForManager(){
+  try{
+    if(!currentUser?.id) return;
+    const teamRes=await dbGet('manager_teams',`?manager_id=eq.${currentUser.id}&select=employee_id`).catch(()=>[])||[];
+    const teamIds=teamRes.map(r=>r.employee_id);
+    if(teamIds.length) allEmployees=allEmployees.filter(e=>teamIds.includes(e.id));
+    renderEmployeesList();
+  }catch(e){console.warn('filterEmployeesForManager',e);}
+}

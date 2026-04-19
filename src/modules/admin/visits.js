@@ -101,6 +101,40 @@ async function loadVisitsTab(){
 }
 
 // ── VISITS ADMIN REPORT ──
+async function loadAdminVisitsReport(){
+  const el=document.getElementById('admin-visits-report-list');if(!el)return;
+  el.innerHTML='<div style="text-align:center;padding:20px"><div class="loader"></div></div>';
+  const ar=currentLang==='ar';
+  const pm=getPayrollMonth();
+  try{
+    // جلب كل الزيارات للشهر — للـ team_leader بس زياراته، للأدمن كلها
+    let query=`?visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`;
+    if(currentUser?.role==='team_leader'){
+      query=`?manager_id=eq.${currentUser.id}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`;
+    }
+    const visits=await dbGet('branch_visits',query).catch(()=>[])||[];
+    if(!visits.length){
+      el.innerHTML=`<div class="empty"><div class="empty-icon">📸</div>${ar?'لا توجد زيارات':'No visits'}</div>`;
+      return;
+    }
+    el.innerHTML=visits.map(v=>{
+      const photos=[v.photo1,v.photo2,v.photo3].filter(Boolean);
+      const who=v.manager_name||v.employee_name||ar?'موظف':'Employee';
+      return`<div class="visit-card">
+        <div class="visit-header">
+          <div>
+            <div class="visit-branch-name">🏪 ${v.branch_name}</div>
+            <div class="visit-meta">${v.visit_date} · ${who}</div>
+          </div>
+          <span class="badge badge-green">${photos.length} 📷</span>
+        </div>
+        ${v.note?`<div class="visit-note">📝 ${v.note}</div>`:''}
+        ${photos.length?`<div class="visit-photos-row">${photos.map(src=>`<img class="visit-photo" src="${src}" onclick="fullSelfie('${src}')">`).join('')}</div>`:''}
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML=`<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`;}
+}
+
 
 // ── CLEAR OLD VISIT PHOTOS (danger zone) ──
 async function clearOldVisitPhotos(){

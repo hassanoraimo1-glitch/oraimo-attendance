@@ -50,7 +50,7 @@
 
 
 // ── SPLASH & INIT ──
-async function initApp(){
+(async function initApp(){
   try {
     // Ensure chat modal is hidden on first paint
     const chatM = document.getElementById('chat-modal');
@@ -79,19 +79,12 @@ async function initApp(){
     setTimeout(hideSplash, 500);
 
   } catch (e) {
-    console.warn('[initApp] error:', e);
+    console.warn('initApp error:', e);
     const login = document.getElementById('login-page');
     if (login) login.style.display = 'flex';
     setTimeout(hideSplash, 500);
   }
-}
-
-// تشغيل initApp بعد تحميل الـ DOM كاملاً
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initApp);
-} else {
-  initApp();
-}
+})();
 
 function hideSplash(){
   const s = document.getElementById('splash');

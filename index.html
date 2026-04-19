@@ -922,40 +922,87 @@
 <script type="module" src="./src/app.js"></script>
 
 <script>
+  // تحميل legacy
   function loadLegacy() {
     if (window.__LEGACY_LOADED__) return;
 
     var s = document.createElement('script');
     s.src = './src/legacy.js';
+
     s.onload = function () {
       window.__LEGACY_LOADED__ = true;
 
-      // تهيئة التطبيق
+      // تهيئة الواجهة بعد التحميل
       initAppUI();
+
+      // تأكد إن doLogin موجود
+      if (typeof window.doLogin !== 'function') {
+        console.warn('doLogin not found in legacy.js');
+      }
     };
+
     document.body.appendChild(s);
   }
 
-  window.addEventListener('app:ready', loadLegacy, { once: true });
+  // استنى DOM يجهز بدل app:ready (أضمن)
+  window.addEventListener('DOMContentLoaded', function () {
+    loadLegacy();
+  });
 
-  setTimeout(loadLegacy, 2000);
+  // fallback
+  setTimeout(loadLegacy, 1500);
 
+  // تهيئة التطبيق
   function initAppUI() {
+    // اخفي كل الصفحات
     document.querySelectorAll('.page').forEach(p => {
       p.style.display = 'none';
     });
 
+    // اظهار صفحة اللوجين فقط
     const login = document.getElementById('login-page');
     if (login) login.style.display = 'block';
 
+    // اخفاء باقي التطبيقات
     const empApp = document.getElementById('emp-app');
     const adminApp = document.getElementById('admin-app');
 
     if (empApp) empApp.style.display = 'none';
     if (adminApp) adminApp.style.display = 'none';
   }
-</script>
 
+  // fallback لو المستخدم ضغط قبل تحميل legacy
+  function doLogin() {
+    if (typeof window.__REAL_DOLOGIN__ === 'function') {
+      return window.__REAL_DOLOGIN__();
+    }
+
+    // fallback بسيط مؤقت
+    const user = document.getElementById('login-user')?.value;
+    const pass = document.getElementById('login-pass')?.value;
+
+    if (!user || !pass) {
+      document.getElementById('login-err').textContent = 'ادخل البيانات';
+      return;
+    }
+
+    // تحويل مؤقت
+    showPage('emp-app');
+
+    setTimeout(() => {
+      if (typeof empTab === 'function') {
+        empTab('home');
+      }
+    }, 100);
+  }
+
+  // show page helper
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'block';
+  }
+</script>
   
 <!-- ═══════ CHAT MODAL - WhatsApp Style ═══════ -->
 <div id="chat-modal">

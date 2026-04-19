@@ -1,3 +1,20 @@
+
+// ── SAFE STORAGE (كوك كوك + restricted WebViews) ──
+(function(){
+  try{ localStorage.setItem('__test__','1'); localStorage.removeItem('__test__'); }
+  catch(e){
+    // localStorage محظور — نستخدم in-memory fallback
+    const _mem={};
+    window._safeLS={
+      getItem:k=>_mem[k]||null,
+      setItem:(k,v)=>{_mem[k]=v;},
+      removeItem:k=>{delete _mem[k];}
+    };
+    // Override localStorage calls
+    Object.defineProperty(window,'localStorage',{get:()=>window._safeLS});
+    console.warn('[auth] localStorage blocked, using in-memory storage');
+  }
+})();
 // ═══════════════════════════════════════════════════════════
 // modules/auth.js — Login, logout, app routing, clock
 // Provides globals: showApp, doLogin, doLogout, startClock
@@ -105,19 +122,16 @@ function showApp(){
 
 // ── BACK BUTTON HANDLING ──
 (function(){
+  // كوك كوك و بعض الـ WebViews بتعطل history.pushState
+  function safePush(){try{history.pushState(null,'',location.href);}catch(_){}}
   window.addEventListener('popstate', function(e) {
-    // If chat is open, close chat first
     const chatModal=document.getElementById('chat-modal');
-    if(chatModal&&chatModal.classList.contains('open')){closeChat();history.pushState(null,'',location.href);return;}
-    // If any modal is open, close it
+    if(chatModal&&chatModal.classList.contains('open')){if(typeof closeChat==='function')closeChat();safePush();return;}
     const openModal=document.querySelector('.modal-overlay.open');
-    if(openModal){openModal.classList.remove('open');history.pushState(null,'',location.href);return;}
-    // Always trap back — never let user leave the app while logged in
-    history.pushState(null,'',location.href);
+    if(openModal){openModal.classList.remove('open');safePush();return;}
+    safePush();
   });
-  // Push two states so the first back press is absorbed
-  history.pushState(null,'',location.href);
-  history.pushState(null,'',location.href);
+  try{history.pushState(null,'',location.href);history.pushState(null,'',location.href);}catch(_){}
 })();
 
 // ── AUTH ──

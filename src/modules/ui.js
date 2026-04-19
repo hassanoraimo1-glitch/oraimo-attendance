@@ -103,6 +103,15 @@ function adminTab(tab,el){
           if(hoursItem&&hoursItem.parentNode){
             hoursItem.parentNode.insertBefore(shiftSection,hoursItem.nextSibling);
           }
+          // افتح الـ accordion وحمّل البيانات فوراً
+          const body=document.getElementById('acc-shifts');
+          if(body){ body.style.display='block'; }
+          const arrow=document.getElementById('acc-shifts-arrow');
+          if(arrow){ arrow.classList.add('open'); arrow.textContent='▲'; }
+          loadShiftSettings();
+        }else{
+          // موجود بالفعل — تأكد إنه بيعرض البيانات
+          loadShiftSettings();
         }
       },100);
     }
@@ -131,8 +140,6 @@ function adminTab(tab,el){
 // ── TOASTS & MODALS + iOS TWEAKS ──
 function showErr(id,msg){const el=document.getElementById(id);if(el){el.textContent=msg;setTimeout(()=>el.textContent='',3000)}}
 function notify(msg,type='success'){
-  // Use window.notify from dom.js if available
-  if(window.notify && window.notify !== notify) { window.notify(msg,type); return; }
   const el=document.createElement('div');
   const bg=type==='error'?'#ff3b3b':type==='success'?'#00C853':'#2979FF';
   el.style.cssText='pointer-events:auto;background:'+bg+';color:'+(type==='success'?'#000':'#fff')+';padding:11px 18px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:toastIn .3s;font-family:Cairo,sans-serif;text-align:center';
@@ -482,3 +489,41 @@ function showPhotoSourceModal(inputId){
 }
 
 // ── SPECS (Models Database) ──
+
+
+// ── SPECS LIST ──
+let _allSpecs = [];
+function renderSpecsList(){
+  const el=document.getElementById('specs-list');if(!el)return;
+  _allSpecs=window.ORAIMO_SPECS||[];
+  if(!_allSpecs.length){el.innerHTML='<div class="empty"><div class="empty-icon">📱</div>لا توجد موديلات</div>';return;}
+  _renderFilteredSpecs(_allSpecs);
+}
+function filterSpecs(){
+  const q=(document.getElementById('specs-search')?.value||'').toLowerCase().trim();
+  const src=window.ORAIMO_SPECS||[];
+  _renderFilteredSpecs(q?src.filter(s=>s.name.toLowerCase().includes(q)||s.cat.toLowerCase().includes(q)):src);
+}
+function _renderFilteredSpecs(list){
+  const el=document.getElementById('specs-list');if(!el)return;
+  const ar=currentLang==='ar';
+  if(!list.length){el.innerHTML='<div class="empty"><div class="empty-icon">🔍</div>'+(ar?'لا توجد نتائج':'No results')+'</div>';return;}
+  el.innerHTML=list.map(s=>`
+    <div class="spec-card" style="background:var(--card);border-radius:16px;padding:16px;margin-bottom:10px;border:1.5px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <div style="width:44px;height:44px;border-radius:12px;background:${s.color||'#00C853'}22;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${s.img||'📱'}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:800;line-height:1.3">${s.name}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.cat||''}</div>
+        </div>
+        <div style="font-size:15px;font-weight:900;color:var(--green);flex-shrink:0">EGP ${(s.price||0).toLocaleString()}</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+        ${(s.specs||[]).map(sp=>`<span style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:10px;font-weight:600">${sp}</span>`).join('')}
+      </div>
+      ${(s.sell&&s.sell.length)?`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
+        <div style="font-size:10px;color:var(--green);font-weight:700;margin-bottom:5px">${ar?'💡 نقاط البيع':'💡 Selling Points'}</div>
+        ${s.sell.map(p=>`<div style="font-size:11px;color:var(--muted);margin-bottom:3px">• ${p}</div>`).join('')}
+      </div>`:''}
+    </div>`).join('');
+}

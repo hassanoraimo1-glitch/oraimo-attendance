@@ -908,7 +908,7 @@
     <div class="inp-grp">
       <label data-ar="نص التحذير" data-en="Warning Text">نص التحذير</label>
       <textarea id="warn-text" rows="3" style="width:100%;padding:11px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:'Cairo',sans-serif;font-size:13px;resize:none;outline:none;transition:.2s" placeholder="اكتب التحذير..."></textarea>
-    </div>
+</div>
     <div style="margin-bottom:12px">
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px" data-ar="قوالب سريعة:" data-en="Quick templates:">قوالب سريعة:</div>
       <div class="warn-tpl" onclick="setWarnTemplate(1)">⚠️ تحذير: تأخرت اليوم. يرجى الالتزام بمواعيد العمل.</div>
@@ -919,26 +919,29 @@
   </div>
 </div>
 
-<!-- App entry (module) — evaluates before DOMContentLoaded -->
+<!-- ✅ NEW SCRIPT SYSTEM (بديل legacy بالكامل) -->
 <script type="module" src="./src/app.js"></script>
-<!-- Legacy UI script — loaded after app.js is guaranteed to have run.
-     Module scripts block DOMContentLoaded, so by the time this fires,
-     all window.* globals from app.js are in place. -->
-<script>
-  window.addEventListener('app:ready', function() {
-    var s = document.createElement('script');
-    s.src = './src/legacy.js';
-    document.body.appendChild(s);
-  }, { once: true });
-  // Hard fallback
-  setTimeout(function() {
-    if (!window.__LEGACY_LOADED__) {
-      var s = document.createElement('script');
-      s.src = './src/legacy.js';
-      document.body.appendChild(s);
-    }
-  }, 3000);
-</script>
+
+<script src="./src/core/fallbacks.js"></script>
+<script src="./src/core/data.js"></script>
+<script src="./src/core/bootstrap.js"></script>
+
+<script src="./src/modules/ui.js"></script>
+<script src="./src/modules/auth.js"></script>
+<script src="./src/modules/attendance.js"></script>
+<script src="./src/modules/sales.js"></script>
+<script src="./src/modules/leaves.js"></script>
+<script src="./src/modules/chat.js"></script>
+<script src="./src/modules/specs.js"></script>
+
+<script src="./src/modules/admin/dashboard.js"></script>
+<script src="./src/modules/admin/employees.js"></script>
+<script src="./src/modules/admin/admins.js"></script>
+<script src="./src/modules/admin/branches.js"></script>
+<script src="./src/modules/admin/targets.js"></script>
+<script src="./src/modules/admin/reports.js"></script>
+<script src="./src/modules/admin/visits.js"></script>
+<script src="./src/modules/admin/display.js"></script>
 
 <!-- ═══════ CHAT MODAL - WhatsApp Style ═══════ -->
 <div id="chat-modal">

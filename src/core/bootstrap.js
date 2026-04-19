@@ -50,7 +50,7 @@
 
 
 // ── SPLASH & INIT ──
-(async function initApp(){
+document.addEventListener('DOMContentLoaded', async function initApp(){
   try {
     // Ensure chat modal is hidden on first paint
     const chatM = document.getElementById('chat-modal');

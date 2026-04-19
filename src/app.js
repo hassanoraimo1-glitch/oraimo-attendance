@@ -1,12 +1,5 @@
 // ────────────────────────────────────────────────────────────
-// APP ENTRY POINT  (v3)
-// ────────────────────────────────────────────────────────────
-// Third-pass fixes:
-//   • Global error handler no longer logs the full `Error` object,
-//     which could include sensitive context attached by libraries.
-//     We log only: message, source, line, column.
-//   • Quieter success logs.
-//   • `__APP_READY__` kept because legacy script polls for it.
+// APP ENTRY POINT  (v3 + FIX VISITS ACCESS)
 // ────────────────────────────────────────────────────────────
 
 import { state, loadUserFromStorage } from './state.js';
@@ -22,7 +15,8 @@ import { applyTheme, toggleTheme } from './utils/theme.js';
 import { exportToExcel, exportToPDF } from './utils/exports.js';
 import { DAYS_AR, DAYS_EN, ROLES } from './config.js';
 
-// ── Reactive accessors for state on `window` so legacy code stays in sync.
+
+// ── STATE BINDING
 Object.defineProperties(window, {
   currentUser:   { get: () => state.currentUser,   set: v => { state.currentUser = v; }, configurable: true },
   currentLang:   { get: () => state.currentLang,   set: v => { state.currentLang = v; }, configurable: true },
@@ -30,23 +24,22 @@ Object.defineProperties(window, {
   branches:      { get: () => state.branches,      set: v => { state.branches = v; },    configurable: true },
 });
 
-// ── Plain exposures (functions, constants).
+
+// ── GLOBAL FUNCTIONS
 Object.assign(window, {
   dbGet: db.get,
   dbPost: db.post,
-  // Legacy calls: dbPatch(table, body, query) → adapter flips to db.patch(table, query, body)
+
   dbPatch: async (table, body, query) => {
-    // Handle both calling conventions:
-    // New: dbPatch(table, query, body)  [if body is string it's actually query]
-    // Old: dbPatch(table, body, query)  [legacy.js convention]
     if (typeof body === 'string') {
-      // New convention: body is actually the query string, query is the data
       return db.patch(table, body, query);
     }
     return db.patch(table, query, body);
   },
+
   dbDel: db.delete,
-  dbDelete: db.delete,  // legacy.js alias
+  dbDelete: db.delete,
+
   safeFilterValue,
   invalidateCache,
   clearAllCache,
@@ -57,14 +50,17 @@ Object.assign(window, {
   fixNavDirection,
   applyTheme,
   toggleTheme,
+
   fmtDate,
   todayStr,
   fmtEGP,
   fmtTime,
   getPayrollMonth,
+
   DAYS_AR,
   DAYS_EN,
   ROLES,
+
   escapeHtml,
   safeHTML,
   debounce,
@@ -90,31 +86,58 @@ Object.assign(window, {
   exportToPDF,
 });
 
-// ── Bootstrap
+
+// ─────────────────────────────────────────
+// 🔒 التحكم في ظهور "الزيارات"
+// ─────────────────────────────────────────
+function controlVisitsAccess() {
+  const el = document.getElementById('nav-visits');
+  if (!el) return;
+
+  const user = window.currentUser;
+
+  // 👇 المسموح فقط manager (التيم ليدر)
+  if (!user || user.role !== 'manager') {
+    el.style.display = 'none';
+  } else {
+    el.style.display = 'flex';
+  }
+}
+
+
+// ── BOOTSTRAP
 loadUserFromStorage();
 applyTheme();
 applyLang();
 
-// Production-safe diagnostics: log only metadata, never the Error object
-// (which can carry request/response bodies depending on the library).
+
+// ── ERROR HANDLING
 window.addEventListener('error', e => {
   console.warn('[app] error:', e.message, `@ ${e.filename}:${e.lineno}:${e.colno}`);
 });
+
 window.addEventListener('unhandledrejection', e => {
   const msg = e.reason && e.reason.message ? e.reason.message : String(e.reason);
   console.warn('[app] unhandled rejection:', msg);
 });
 
+
+// ── APP READY
 window.__APP_READY__ = true;
 window.dispatchEvent(new Event('app:ready'));
 
-// Ensure chat modal never blocks startup
+
+// ── DOM READY
 document.addEventListener('DOMContentLoaded', () => {
   const chat = document.getElementById('chat-modal');
   if (chat) chat.style.display = 'none';
+
+  // 🔥 مهم
+  setTimeout(controlVisitsAccess, 300);
 });
 
-// Hide splash screen
+
+// ── SPLASH
 window.addEventListener('load', () => {
   setTimeout(() => {
     const splash = document.getElementById('splash');
@@ -125,6 +148,10 @@ window.addEventListener('load', () => {
 window.addEventListener('app:ready', () => {
   const splash = document.getElementById('splash');
   if (splash) splash.classList.add('hide');
+
+  // 🔥 مهم
+  setTimeout(controlVisitsAccess, 300);
 });
+
 
 export { state };

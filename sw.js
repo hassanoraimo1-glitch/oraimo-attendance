@@ -1,7 +1,7 @@
 // Service Worker for Oraimo HR PWA
 // This handles offline caching and push notifications
 
-const CACHE_NAME = 'oraimo-hr-v13';
+const CACHE_NAME = 'oraimo-hr-v12';
 const urlsToCache = [
   '/',
   '/index.html',

@@ -1,16 +1,14 @@
 // ═══════════════════════════════════════════════════════════
-// modules/auth.js — Login, logout, app routing, clock
-// Provides globals: showApp, doLogin, doLogout, startClock
-// Depends on: fallbacks.js (dbGet/dbPost, notify, applyLang)
+// modules/auth.js
 // ═══════════════════════════════════════════════════════════
 
 function showApp(){
   if(!currentUser)return showPage('login-page');
   applyLang();
 
-  // ── RESET كامل لكل الـ nav قبل أي role logic ──
+  // ── RESET: كل الـ nav مخفي أول ──
   document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{
-    n.style.display='none'; // ابدأ بكل حاجة مخفية
+    n.style.display='none';
     n.classList.remove('active');
   });
 
@@ -25,85 +23,69 @@ function showApp(){
                      currentUser.role.charAt(0).toUpperCase()+currentUser.role.slice(1);
     chip.className='role-chip badge role-'+currentUser.role;
 
-    // ── إظهار الـ nav items حسب الـ role بالظبط ──
-    const role = currentUser.role;
+    const role=currentUser.role;
 
-    if(role==='superadmin'||role==='admin'){
-      // Dashboard, Employees(hidden), Branches, Reports, Chat, Settings — NO Visits
+    // ── إظهار الـ nav حسب الـ role بالظبط ──
+    if(role==='superadmin'||role==='admin'||role==='viewer'||role==='manager'){
+      // كل حاجة ماعدا employees (في settings) وmaعدا visits
       document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{
         const oc=n.getAttribute('onclick')||'';
-        if(oc.includes("'employees'")) n.style.display='none'; // employees في settings
-        else n.style.display='';
-      });
-      document.getElementById('adm-visits-nav').style.display='none';
-    }
-    else if(role==='viewer'){
-      document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{
-        const oc=n.getAttribute('onclick')||'';
+        const id=n.id||'';
         if(oc.includes("'employees'")) n.style.display='none';
-        else n.style.display='';
+        else if(id==='adm-visits-nav') n.style.display='none'; // visits مخفي للـ admin
+        else n.style.display='flex';
       });
-      document.getElementById('adm-visits-nav').style.display='none';
-      document.getElementById('settings-nav-item').style.display='none';
-    }
-    else if(role==='manager'){
-      // Manager: نفس الـ admin — بدون visits
-      document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{
-        const oc=n.getAttribute('onclick')||'';
-        if(oc.includes("'employees'")) n.style.display='none';
-        else n.style.display='';
-      });
-      document.getElementById('adm-visits-nav').style.display='none';
     }
     else if(role==='team_leader'){
-      // Team Leader: Visits + Settings فقط — لا branches ولا reports
-      document.getElementById('adm-visits-nav').style.display='flex';
-      document.getElementById('settings-nav-item').style.display='flex';
-      // dashboard يظهر كمان
+      // team_leader: dashboard + visits + settings فقط
       document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{
         const oc=n.getAttribute('onclick')||'';
+        const id=n.id||'';
         if(oc.includes("'dashboard'")) n.style.display='flex';
-        if(oc.includes('reports')) n.style.display='none';
-        if(oc.includes("'branches'")) n.style.display='none';
-        if(oc.includes("'employees'")) n.style.display='none';
+        else if(id==='adm-visits-nav') n.style.display='flex';
+        else if(id==='settings-nav-item') n.style.display='flex';
+        else n.style.display='none';
       });
     }
 
-    // role-specific extras
+    // extras
     if(role==='superadmin') document.getElementById('admins-section').style.display='block';
     else document.getElementById('admins-section').style.display='none';
-    if(role==='viewer'){const b=document.getElementById('add-emp-btn');if(b)b.style.display='none';}
+    if(role==='viewer'){
+      const b=document.getElementById('add-emp-btn');if(b)b.style.display='none';
+      document.getElementById('settings-nav-item').style.display='none';
+    }
 
     showPage('admin-app');
 
-    // تهيئة الـ tab الأول الظاهر
     if(role==='team_leader'){
-      const vd=document.getElementById('admin-visits');
-      if(vd) vd.style.display='block';
+      // فتح visits tab مباشرة
       ['dashboard','employees','branches','reports','settings','chat'].forEach(t=>{
         const d=document.getElementById('admin-'+t);if(d)d.style.display='none';
       });
+      const vd=document.getElementById('admin-visits');if(vd)vd.style.display='block';
       document.getElementById('adm-visits-nav').classList.add('active');
       loadTLVisitsTab();
     } else {
-      const dashNav=document.querySelector('#admin-app .bottom-nav .nav-item:not([style*="none"])');
-      if(typeof adminTab==='function' && dashNav) adminTab('dashboard', dashNav);
-      else { const d=document.getElementById('admin-dashboard');if(d)d.style.display='block'; }
+      // فتح dashboard
+      ['employees','branches','reports','settings','visits','chat'].forEach(t=>{
+        const d=document.getElementById('admin-'+t);if(d)d.style.display='none';
+      });
+      const dd=document.getElementById('admin-dashboard');if(dd)dd.style.display='block';
+      const dashNav=document.querySelector('#admin-app .bottom-nav .nav-item[onclick*="dashboard"]');
+      if(dashNav){document.querySelectorAll('#admin-app .nav-item').forEach(n=>n.classList.remove('active'));dashNav.classList.add('active');}
       loadAdminDashboard();
     }
 
     loadAllEmployees();loadBranches();clearOldVisitPhotos();
-    if(role==='superadmin'||role==='admin') loadAdminsList();
-    setTimeout(fixNavDirection, 100);
+    if(role==='superadmin'||role==='admin')loadAdminsList();
+    setTimeout(fixNavDirection,100);
 
   }else{
     showPage('emp-app');
-    if(typeof empTab==='function'){
-      const homeNav=document.querySelector('#emp-app .nav-item');
-      empTab('home', homeNav);
-    } else {
-      const h=document.getElementById('emp-home');if(h)h.style.display='block';
-    }
+    const homeNav=document.querySelector('#emp-app .nav-item');
+    if(typeof empTab==='function'&&homeNav) empTab('home',homeNav);
+    else{const h=document.getElementById('emp-home');if(h)h.style.display='block';}
     document.getElementById('emp-name-top').textContent=currentUser.name;
     document.getElementById('profile-name').textContent=currentUser.name;
     document.getElementById('profile-branch').textContent=currentUser.branch||'';
@@ -111,29 +93,27 @@ function showApp(){
     document.getElementById('profile-dayoff').innerHTML=`<span class="badge badge-blue">${currentLang==='ar'?'الإجازة:':'Day Off:'} ${dayLabel||'-'}</span>`;
     loadEmpData();renderProducts();loadModelTargetAlert();
     const visNav=document.querySelector('#emp-app .nav-item[onclick*="visits"]');
-    if(visNav) visNav.style.display='none';
+    if(visNav)visNav.style.display='none';
   }
-
-  if(typeof registerOneSignalUser==='function') registerOneSignalUser();
-  setTimeout(fixNavDirection, 100);
+  if(typeof registerOneSignalUser==='function')registerOneSignalUser();
+  setTimeout(fixNavDirection,100);
 }
 
-// ── BACK BUTTON HANDLING ──
+// ── BACK BUTTON ──
 (function(){
-  window.addEventListener('popstate', function(e) {
+  window.addEventListener('popstate',function(){
     const chatModal=document.getElementById('chat-modal');
-    if(chatModal&&chatModal.classList.contains('open')){closeChat();history.pushState(null,'',location.href);return;}
+    if(chatModal&&chatModal.classList.contains('open')){if(typeof closeChat==='function')closeChat();history.pushState(null,'',location.href);return;}
     const openModal=document.querySelector('.modal-overlay.open');
     if(openModal){openModal.classList.remove('open');history.pushState(null,'',location.href);return;}
     history.pushState(null,'',location.href);
   });
-  history.pushState(null,'',location.href);
-  history.pushState(null,'',location.href);
+  try{history.pushState(null,'',location.href);history.pushState(null,'',location.href);}catch(_){}
 })();
 
-// ── AUTH ──
+// ── LOGIN ──
 async function doLogin(){
-  if(_isSubmitting) return;
+  if(_isSubmitting)return;
   const username=document.getElementById('login-user').value.trim();
   const pass=document.getElementById('login-pass').value.trim();
   const errEl=document.getElementById('login-err');
@@ -176,23 +156,19 @@ async function doLogin(){
 
 function doLogout(){
   if(videoStream){try{videoStream.getTracks().forEach(t=>t.stop());}catch(_){}videoStream=null;}
-  if(chatSubscription){
-    try{if(typeof chatSubscription==='function')chatSubscription();else clearInterval(chatSubscription);}catch(_){}
-    chatSubscription=null;
-  }
+  if(chatSubscription){try{if(typeof chatSubscription==='function')chatSubscription();else clearInterval(chatSubscription);}catch(_){}chatSubscription=null;}
   currentChat=null;
   localStorage.removeItem('oraimo_user');
   window.currentUser=null;
   _isSubmitting=false;
   allAdmins=[];allBranches=[];allEmployees=[];
-  managerTeamData={};
+  if(typeof managerTeamData!=='undefined')managerTeamData={};
   document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});
   const visNav=document.getElementById('adm-visits-nav');if(visNav)visNav.style.display='none';
   ['dashboard','employees','branches','reports','settings','visits','chat'].forEach(t=>{
     const d=document.getElementById('admin-'+t);if(d)d.style.display='none';
   });
   document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
-  ['add-emp-btn','add-emp-btn2'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='';});
   const lu=document.getElementById('login-user');if(lu)lu.value='';
   const lp=document.getElementById('login-pass');if(lp)lp.value='';
   const le=document.getElementById('login-err');if(le)le.textContent='';
@@ -209,5 +185,3 @@ function startClock(){
   }
   tick();setInterval(tick,1000);
 }
-
-// ── EMP DATA ──

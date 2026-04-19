@@ -919,25 +919,41 @@
   </div>
 </div>
 
-<!-- App entry (module) — evaluates before DOMContentLoaded -->
 <script type="module" src="./src/app.js"></script>
-<!-- Legacy UI script — loaded after app.js is guaranteed to have run.
-     Module scripts block DOMContentLoaded, so by the time this fires,
-     all window.* globals from app.js are in place. -->
+
 <script>
-  window.addEventListener('app:ready', function() {
+  function loadLegacy() {
+    if (window.__LEGACY_LOADED__) return;
+
     var s = document.createElement('script');
     s.src = './src/legacy.js';
+    s.onload = function () {
+      window.__LEGACY_LOADED__ = true;
+
+      // تهيئة التطبيق
+      initAppUI();
+    };
     document.body.appendChild(s);
-  }, { once: true });
-  // Hard fallback
-  setTimeout(function() {
-    if (!window.__LEGACY_LOADED__) {
-      var s = document.createElement('script');
-      s.src = './src/legacy.js';
-      document.body.appendChild(s);
-    }
-  }, 3000);
+  }
+
+  window.addEventListener('app:ready', loadLegacy, { once: true });
+
+  setTimeout(loadLegacy, 2000);
+
+  function initAppUI() {
+    document.querySelectorAll('.page').forEach(p => {
+      p.style.display = 'none';
+    });
+
+    const login = document.getElementById('login-page');
+    if (login) login.style.display = 'block';
+
+    const empApp = document.getElementById('emp-app');
+    const adminApp = document.getElementById('admin-app');
+
+    if (empApp) empApp.style.display = 'none';
+    if (adminApp) adminApp.style.display = 'none';
+  }
 </script>
 
 <!-- ═══════ CHAT MODAL - WhatsApp Style ═══════ -->

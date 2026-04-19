@@ -111,3 +111,4 @@ let selectedQty = 1;
 let _isSubmitting = false; // prevent double-submit
 const DAYS_AR = window.DAYS_AR;
 const DAYS_EN = window.DAYS_EN;
+

@@ -101,6 +101,7 @@ if(typeof window.DAYS_AR === 'undefined'){
 // ── GLOBAL STATE (declare all vars used before assignment) ──
 let allAdmins = [];
 let allBranches = [];
+let allEmployees = [];
 let workSettings = { start: '09:00', end: '18:00' };
 let videoStream = null;
 let capturedPhoto = null;

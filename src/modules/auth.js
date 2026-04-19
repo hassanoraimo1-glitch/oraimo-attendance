@@ -1,102 +1,94 @@
 // ═══════════════════════════════════════════════════════════
-// modules/auth.js - الموديول المعدل (إخفاء الزيارات عن الأدمن)
+// modules/auth.js - النسخة النهائية المحدثة لإخفاء الزيارات
 // ═══════════════════════════════════════════════════════════
 
 function showApp() {
     if (!currentUser) return showPage('login-page');
     applyLang();
 
-    // ── RESET: إخفاء كل الـ nav items أولاً لضمان عدم التداخل ──
+    // 1. تصفير الـ Navigation تماماً في البداية
     document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n => {
         n.style.display = 'none';
         n.classList.remove('active');
     });
 
-    const isAdmin = ['superadmin', 'admin', 'manager', 'viewer', 'team_leader'].includes(currentUser.role);
+    const role = currentUser.role;
+    const isAdmin = ['superadmin', 'admin', 'manager', 'viewer', 'team_leader'].includes(role);
 
     if (isAdmin) {
+        // تحديث الاسم والرتبة في الواجهة
         const nameTop = document.getElementById('admin-name-top');
         if (nameTop) nameTop.textContent = currentUser.name || 'Admin';
 
         const chip = document.getElementById('admin-role-chip');
         if (chip) {
-            chip.textContent = currentUser.role === 'superadmin' ? 'Super Admin' :
-                               currentUser.role === 'manager' ? 'Team Leader' :
-                               currentUser.role === 'team_leader' ? 'Team Leader' :
-                               currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
-            chip.className = 'role-chip badge role-' + currentUser.role;
+            chip.textContent = (role === 'manager' || role === 'team_leader') ? 'Team Leader' : role.charAt(0).toUpperCase() + role.slice(1);
+            chip.className = 'role-chip badge role-' + role;
         }
 
-        const role = currentUser.role;
+        // 2. التحكم الذكي في أيقونات الشريط السفلي (Navigation)
+        document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n => {
+            const id = (n.id || '').toLowerCase();
+            const oc = (n.getAttribute('onclick') || '').toLowerCase();
+            const label = (n.innerText || '').toLowerCase();
 
-        // ── التعديل الجوهري: التحكم في الظهور حسب الرتبة ──
-        if (role === 'superadmin' || role === 'admin' || role === 'viewer' || role === 'manager') {
-            // هؤلاء يظهر لهم كل شيء ماعدا "الزيارات" و"إدارة الموظفين" (لأنها في الإعدادات)
-            document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n => {
-                const id = n.id || '';
-                const oc = n.getAttribute('onclick') || '';
-                
-                // إخفاء الزيارات عن الأدمن (حتى لو كان سوبر أدمن)
-                if (id === 'adm-visits-nav' || oc.includes("'employees'")) {
-                    n.style.display = 'none';
+            // تعريف عنصر "الزيارات" بأكثر من وسيلة (ID، كود، أو نص)
+            const isVisits = id.includes('visits') || oc.includes('visits') || label.includes('زيارات') || label.includes('visits');
+
+            if (role === 'team_leader') {
+                // التيم ليدر يشوف: الزيارات، الداشبورد، الإعدادات
+                if (isVisits || id.includes('settings') || id.includes('chat') || oc.includes('dashboard')) {
+                    n.style.display = 'flex';
+                }
+            } else {
+                // الأدمن والمانجر والسوبر أدمن: يشوفوا كل شيء ماعدا "الزيارات"
+                if (isVisits) {
+                    n.style.display = 'none'; // إخفاء قسري للزيارات
+                } else if (oc.includes('employees')) {
+                    n.style.display = 'none'; // إخفاء الموظفين من الناف بار لأنها في الإعدادات
                 } else {
                     n.style.display = 'flex';
                 }
-            });
-        } 
-        else if (role === 'team_leader') {
-            // الـ Team Leader يرى فقط: الزيارات، الداشبورد، والإعدادات
-            document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n => {
-                const id = n.id || '';
-                const oc = n.getAttribute('onclick') || '';
-                if (id === 'adm-visits-nav' || id === 'settings-nav-item' || oc.includes("'dashboard'")) {
-                    n.style.display = 'flex';
-                } else {
-                    n.style.display = 'none';
-                }
-            });
-        }
-
-        // إظهار سيكشن الأدمنز للسوبر أدمن فقط
-        const adminSec = document.getElementById('admins-section');
-        if (adminSec) adminSec.style.display = (role === 'superadmin') ? 'block' : 'none';
-
-        if (role === 'viewer') {
-            const addBtn = document.getElementById('add-emp-btn'); if (addBtn) addBtn.style.display = 'none';
-            const setNav = document.getElementById('settings-nav-item'); if (setNav) setNav.style.display = 'none';
-        }
+            }
+        });
 
         showPage('admin-app');
 
-        // توجيه تلقائي
+        // 3. التوجيه التلقائي بعد تسجيل الدخول
         if (role === 'team_leader') {
-            // الـ TL يفتح على الزيارات فوراً
+            // التيم ليدر يفتح على صفحة الزيارات مباشرة
             document.querySelectorAll('#admin-app .page-content').forEach(p => p.style.display = 'none');
-            const vDiv = document.getElementById('admin-visits'); if (vDiv) vDiv.style.display = 'block';
-            const vNav = document.getElementById('adm-visits-nav'); if (vNav) vNav.classList.add('active');
+            const vDiv = document.getElementById('admin-visits');
+            if (vDiv) vDiv.style.display = 'block';
+            
+            // تمييز أيقونة الزيارات كأنها مفعلة
+            document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n => {
+                if ((n.id || '').includes('visits') || (n.getAttribute('onclick') || '').includes('visits')) {
+                    n.classList.add('active');
+                }
+            });
             if (typeof loadTLVisitsTab === 'function') loadTLVisitsTab();
         } else {
-            // باقي الأدمنز يفتحوا على الداشبورد
+            // الأدمن يفتح على لوحة التحكم (الداشبورد)
             document.querySelectorAll('#admin-app .page-content').forEach(p => p.style.display = 'none');
-            const dDiv = document.getElementById('admin-dashboard'); if (dDiv) dDiv.style.display = 'block';
+            const dDiv = document.getElementById('admin-dashboard');
+            if (dDiv) dDiv.style.display = 'block';
             const dNav = document.querySelector('#admin-app .bottom-nav .nav-item[onclick*="dashboard"]');
-            if (dNav) dNav.classList.add('active');
+            if (dNav) {
+                document.querySelectorAll('#admin-app .nav-item').forEach(nx => nx.classList.remove('active'));
+                dNav.classList.add('active');
+            }
             if (typeof loadAdminDashboard === 'function') loadAdminDashboard();
         }
 
-        // تحميل البيانات
+        // تحميل البيانات الأساسية
         if (typeof loadAllEmployees === 'function') loadAllEmployees();
         if (typeof loadBranches === 'function') loadBranches();
-        if (typeof loadAdminsList === 'function' && (role === 'superadmin' || role === 'admin')) loadAdminsList();
+        if (role === 'superadmin' && typeof loadAdminsList === 'function') loadAdminsList();
 
     } else {
-        // واجهة الموظف
+        // واجهة الموظف العادي
         showPage('emp-app');
-        const hNav = document.querySelector('#emp-app .nav-item');
-        if (typeof empTab === 'function' && hNav) empTab('home', hNav);
-        
-        document.getElementById('emp-name-top').textContent = currentUser.name;
-        document.getElementById('profile-name').textContent = currentUser.name;
         if (typeof loadEmpData === 'function') loadEmpData();
         if (typeof renderProducts === 'function') renderProducts();
     }
@@ -129,7 +121,7 @@ async function doLogin() {
 
         const uname = encodeURIComponent(user);
         
-        // فحص الأدمن
+        // فحص جدول الأدمن
         const admRes = await dbGet('admins', `?username=eq.${uname}&select=*`).catch(() => []);
         const admMatch = (admRes || []).find(r => r.password === pass);
         if (admMatch) {
@@ -139,7 +131,7 @@ async function doLogin() {
             showApp(); return;
         }
 
-        // فحص الموظف
+        // فحص جدول الموظفين
         const empRes = await dbGet('employees', `?username=eq.${uname}&select=*`).catch(() => []);
         const empMatch = (empRes || []).find(r => r.password === pass);
         if (!empMatch) { err.textContent = ar ? 'بيانات غير صحيحة' : 'Invalid credentials'; return; }

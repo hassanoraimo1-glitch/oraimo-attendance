@@ -27,37 +27,67 @@ function fullSelfie(src) {
 // NAVIGATION
 // ═══════════════════════════════════════════════════════════
 function empTab(tab, el) {
-  const tabs = ['home', 'sales', 'visits', 'display', 'profile', 'chat', 'specs'];
+  // ❌ تم حذف visits
+  const tabs = ['home', 'sales', 'display', 'profile', 'chat', 'specs'];
+
   tabs.forEach(t => {
     const d = document.getElementById('emp-' + t);
-    if (d) d.style.display = t === tab ? 'block' : 'none';
+    if (d) d.style.display = (t === tab) ? 'block' : 'none';
   });
-  document.querySelectorAll('#emp-app .nav-item').forEach(n => n.classList.remove('active'));
+
+  document.querySelectorAll('#emp-app .nav-item').forEach(n => 
+    n.classList.remove('active')
+  );
+
   if (el) el.classList.add('active');
 
-  if (tab === 'sales') { if (typeof renderProducts === 'function') renderProducts(); if (typeof loadTodaySales === 'function') loadTodaySales(); }
+  // ===== Actions =====
+  if (tab === 'sales') {
+    if (typeof renderProducts === 'function') renderProducts();
+    if (typeof loadTodaySales === 'function') loadTodaySales();
+  }
+
   if (tab === 'profile') {
     const nameEl = document.getElementById('profile-name');
     const branchEl = document.getElementById('profile-branch');
+
     if (nameEl) nameEl.textContent = currentUser?.name || '-';
     if (branchEl) branchEl.textContent = currentUser?.branch || '-';
+
     if (typeof loadEmpMonthlyReport === 'function') loadEmpMonthlyReport();
     if (typeof loadEmpDailyLog === 'function') loadEmpDailyLog();
-    loadProfilePhoto();
+    if (typeof loadProfilePhoto === 'function') loadProfilePhoto();
   }
-  if (tab === 'home' && typeof loadModelTargetAlert === 'function') loadModelTargetAlert();
-  if (tab === 'visits' && typeof loadVisitsTab === 'function') loadVisitsTab();
-  if (tab === 'display' && typeof loadDisplayTab === 'function') loadDisplayTab();
-  if (tab === 'specs' && typeof renderSpecsList === 'function') renderSpecsList();
+
+  if (tab === 'home' && typeof loadModelTargetAlert === 'function') {
+    loadModelTargetAlert();
+  }
+
+  if (tab === 'display' && typeof loadDisplayTab === 'function') {
+    loadDisplayTab();
+  }
+
+  if (tab === 'specs' && typeof renderSpecsList === 'function') {
+    renderSpecsList();
+  }
+
+  if (tab === 'chat' && typeof loadChats === 'function') {
+    loadChats();
+  }
 }
 
 function adminTab(tab, el) {
   const tabs = ['dashboard', 'employees', 'branches', 'reports', 'settings', 'visits', 'chat'];
+
   tabs.forEach(t => {
     const d = document.getElementById('admin-' + t);
-    if (d) d.style.display = t === tab ? 'block' : 'none';
+    if (d) d.style.display = (t === tab) ? 'block' : 'none';
   });
-  document.querySelectorAll('#admin-app .nav-item').forEach(n => n.classList.remove('active'));
+
+  document.querySelectorAll('#admin-app .nav-item').forEach(n => 
+    n.classList.remove('active')
+  );
+
   if (el) el.classList.add('active');
 
   if (tab === 'dashboard' && typeof loadAdminDashboard === 'function') loadAdminDashboard();
@@ -67,33 +97,50 @@ function adminTab(tab, el) {
   if (tab === 'chat' && typeof loadAdminChatList === 'function') loadAdminChatList();
 
   if (tab === 'settings') {
-    // Team leader: hide default sections and inject "My Team" only
+    // Team leader layout
     if (currentUser && currentUser.role === 'team_leader') {
       setTimeout(() => {
         document.querySelectorAll('#admin-settings .acc-item').forEach(item => {
           if (item.id !== 'tl-team-acc-item') item.style.display = 'none';
         });
+
         let tlSection = document.getElementById('tl-team-acc-item');
+
         if (!tlSection) {
           tlSection = document.createElement('div');
           tlSection.id = 'tl-team-acc-item';
           tlSection.className = 'acc-item';
+
           tlSection.innerHTML = `
             <div class="acc-hdr" onclick="toggleAcc('acc-tl-myteam')">
               <span>👥 فريقي</span>
               <span class="acc-arrow" id="acc-tl-myteam-arrow">▲</span>
             </div>
             <div class="acc-body" id="acc-tl-myteam" style="display:block">
-              <div style="font-size:12px;color:var(--muted);margin-bottom:10px">الموظفون المسجلون في فريقك</div>
-              <div id="tl-myteam-list"><div style="text-align:center;padding:16px"><div class="loader"></div></div></div>
-            </div>`;
+              <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+                الموظفون المسجلون في فريقك
+              </div>
+              <div id="tl-myteam-list">
+                <div style="text-align:center;padding:16px">
+                  <div class="loader"></div>
+                </div>
+              </div>
+            </div>
+          `;
+
           const settingsEl = document.getElementById('admin-settings');
           if (settingsEl) settingsEl.insertBefore(tlSection, settingsEl.firstChild);
         }
-        if (typeof loadTLMyTeamSettings === 'function') loadTLMyTeamSettings();
+
+        if (typeof loadTLMyTeamSettings === 'function') {
+          loadTLMyTeamSettings();
+        }
       }, 30);
-      return;
+
+      return; // ✅ مهم جدًا يفضل زي ما هو
     }
+  }
+}
 
     // Admin/superadmin: inject "Team Management" (Employees moved here from nav) + shifts
     setTimeout(() => {

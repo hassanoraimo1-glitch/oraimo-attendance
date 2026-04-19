@@ -1,6 +1,3 @@
-// state
-let selectedDayOff = -1;
-
 // ═══════════════════════════════════════════════════════════
 // modules/admin/employees.js — Employee list CRUD + report helpers
 // Provides globals: loadAllEmployees, renderEmployeesList,

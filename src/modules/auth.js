@@ -1,90 +1,86 @@
 // ═══════════════════════════════════════════════════════════
-// modules/auth.js - النسخة المصلحة لظهور الموديلات
+// modules/auth.js — Authentication & App Initialization
 // ═══════════════════════════════════════════════════════════
 
-async function showApp() {
-    if (!window.currentUser) return showPage('login-page');
-    applyLang();
-
-    const role = window.currentUser.role;
-
-    // 1. إخفاء الزيارات عن غير المختصين
-    if (role !== 'team_leader') {
-        document.querySelectorAll('.nav-item').forEach(item => {
-            const text = (item.innerText || '').toLowerCase();
-            if (text.includes('زيارات') || text.includes('visits')) item.remove(); 
-        });
-    }
-
-    const isAdmin = ['superadmin', 'admin', 'manager', 'viewer', 'team_leader'].includes(role);
-
-    if (isAdmin) {
-        if (document.getElementById('admin-name-top')) {
-            document.getElementById('admin-name-top').textContent = window.currentUser.name || 'Admin';
-        }
-        showPage('admin-app');
-
-        // جلب البيانات الأساسية
-        if (typeof loadBranches === 'function') loadBranches(); 
-        if (typeof loadAllEmployees === 'function') loadAllEmployees();
-        
-        // 🚨 محاولة جلب الموديلات مع تأخير بسيط لضمان استقرار الاتصال
-        setTimeout(() => {
-            if (typeof renderProducts === 'function') renderProducts();
-        }, 500);
-
-    } else {
-        showPage('emp-app');
-        if (typeof loadEmpData === 'function') loadEmpData();
-        
-        // 🚨 تحديث قائمة الموديلات للموظف (للمبيعات والـ Specs)
-        setTimeout(() => {
-            if (typeof renderProducts === 'function') renderProducts();
-        }, 500);
-    }
-}
-
-// ── دالة تسجيل الخروج ──
-function doLogout() {
-    localStorage.clear();
-    window.location.href = window.location.origin + window.location.pathname;
-}
-window.doLogout = doLogout;
+var currentUser = null;
 
 // ── دالة تسجيل الدخول ──
 async function doLogin() {
-    if (window._isSubmitting) return;
     const user = document.getElementById('login-user').value.trim();
     const pass = document.getElementById('login-pass').value.trim();
-    const err = document.getElementById('login-err');
+    const ar = (window.currentLang === 'ar');
 
-    window._isSubmitting = true;
+    if (!user || !pass) {
+        notify(ar ? 'برجاء إدخال البيانات' : 'Please enter credentials', 'error');
+        return;
+    }
+
     try {
-        if (user === 'admin' && pass === 'Oraimo@Admin2026') {
-            window.currentUser = { role: 'superadmin', name: 'Hassan Hamed' };
-        } else {
-            const uname = encodeURIComponent(user);
-            const admRes = await dbGet('admins', `?username=eq.${uname}&select=*`).catch(() => []);
-            const admMatch = (admRes || []).find(r => r.password === pass);
-            
-            if (admMatch) {
-                window.currentUser = { ...admMatch, role: admMatch.role || 'admin' };
-            } else {
-                const empRes = await dbGet('employees', `?username=eq.${uname}&select=*`).catch(() => []);
-                const empMatch = (empRes || []).find(r => r.password === pass);
-                if (!empMatch) {
-                    if(err) err.textContent = (currentLang === 'ar') ? 'بيانات غير صحيحة' : 'Invalid credentials';
-                    window._isSubmitting = false;
-                    return;
-                }
-                window.currentUser = { ...empMatch, role: empMatch.role || 'employee' };
-            }
+        // محاولة الدخول كمسؤول (Admins)
+        let res = await dbGet('admins', `?username=eq.${encodeURIComponent(user)}&password=eq.${encodeURIComponent(pass)}&select=*`);
+        
+        if (res && res.length > 0) {
+            currentUser = res[0];
+            localStorage.setItem('oraimo_user', JSON.stringify({type: 'admin', data: currentUser}));
+            showAdminApp();
+            return;
         }
-        localStorage.setItem('oraimo_user', JSON.stringify(window.currentUser));
-        showApp();
+
+        // محاولة الدخول كموظف (Employees)
+        res = await dbGet('employees', `?username=eq.${encodeURIComponent(user)}&password=eq.${encodeURIComponent(pass)}&select=*`);
+        
+        if (res && res.length > 0) {
+            currentUser = res[0];
+            localStorage.setItem('oraimo_user', JSON.stringify({type: 'employee', data: currentUser}));
+            showApp();
+        } else {
+            notify(ar ? 'بيانات الدخول غير صحيحة' : 'Invalid login', 'error');
+        }
     } catch (e) {
-        if(err) err.textContent = 'Connection Error';
-    } finally {
-        window._isSubmitting = false;
+        notify(ar ? 'خطأ في الاتصال' : 'Connection error', 'error');
+        console.error(e);
     }
 }
+
+// ── تشغيل تطبيق الموظف (المبيعات) ──
+async function showApp() {
+    if (typeof showPage === 'function') showPage('emp-app');
+    
+    // تحديث واجهة المستخدم بالاسم
+    const nameEl = document.getElementById('emp-nav-name');
+    if (nameEl) nameEl.textContent = currentUser.name;
+
+    // تشغيل موديول المبيعات فوراً
+    if (typeof renderProducts === 'function') {
+        await renderProducts(); 
+    }
+    
+    // تحميل مبيعات اليوم
+    if (typeof loadTodaySales === 'function') {
+        loadTodaySales();
+    }
+    
+    // فحص التارجت (إذا كان موجود في targets.js)
+    if (typeof loadModelTargetAlert === 'function') {
+        loadModelTargetAlert();
+    }
+}
+
+// ── تشغيل تطبيق الأدمن ──
+function showAdminApp() {
+    if (typeof showPage === 'function') showPage('admin-app');
+    if (typeof loadAdminDashboard === 'function') loadAdminDashboard();
+}
+
+// ── تسجيل الخروج ──
+function doLogout() {
+    localStorage.removeItem('oraimo_user');
+    currentUser = null;
+    if (typeof showPage === 'function') showPage('login-page');
+}
+
+// تصدير الدوال للعالم الخارجي
+window.doLogin = doLogin;
+window.showApp = showApp;
+window.showAdminApp = showAdminApp;
+window.doLogout = doLogout;

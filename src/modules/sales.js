@@ -5,14 +5,14 @@ let selectedQty = 1;
 
 async function renderProducts() {
     try {
-        const data = await dbGet('products', '?select=*&order=name').catch(()=>[]);
+        const data = await dbGet('products', '*');
         if (data && data.length > 0) {
             window.allProducts = data;
         } else {
-            window.allProducts = (window.PRODUCTS||[]).length ? window.PRODUCTS : [];
+            window.allProducts = (typeof PRODUCTS !== 'undefined') ? PRODUCTS : [];
         }
     } catch (e) {
-        window.allProducts = window.PRODUCTS || [];
+        window.allProducts = (typeof PRODUCTS !== 'undefined') ? PRODUCTS : [];
     }
     filteredProducts = [...(window.allProducts || [])];
     displayProducts();
@@ -41,16 +41,33 @@ function filterProducts() {
     displayProducts();
 }
 
-function selectProduct(name, price) {
-    selectedProduct = { name, price }; selectedQty = 1;
-    document.getElementById('selected-product-name').textContent = name;
-    document.getElementById('selected-product-price').textContent = price.toLocaleString();
-    document.getElementById('qty-val').textContent = 1;
-    document.getElementById('sale-total').textContent = price.toLocaleString() + ' EGP';
-    const w = document.getElementById('sale-form-wrap');
-    if (w) { w.style.display = 'flex'; w.style.alignItems = 'flex-end'; }
-}
+function displayProducts() {
+    const el = document.getElementById('product-list'); 
+    if (!el) return;
 
+    const ar = (window.currentLang === 'ar');
+
+    if (!filteredProducts || filteredProducts.length === 0) {
+        el.innerHTML = `<div style="padding:16px;text-align:center;color:var(--muted)">
+            ${ar ? 'لا توجد نتائج' : 'No results'}
+        </div>`;
+        return;
+    }
+
+    el.innerHTML = filteredProducts
+        .filter(p => p.price != null) // 🔥 يمنع أي منتج بدون سعر
+        .slice(0, 30)
+        .map(p => {
+            const price = Number(p.price) || 0;
+
+            return `
+                <div class="product-item" onclick="selectProduct('${p.name.replace(/'/g, "\\'")}', ${price})">
+                    <div class="product-name">${p.name}</div>
+                    <div class="product-price">${price.toLocaleString()} EGP</div>
+                </div>
+            `;
+        }).join('');
+}
 function changeQty(d) {
     selectedQty = Math.max(1, selectedQty + d);
     document.getElementById('qty-val').textContent = selectedQty;
@@ -68,8 +85,6 @@ async function submitSale() {
     try {
         await dbPost('sales', {
             employee_id: currentUser.id,
-            employee_name: currentUser.name || '',
-            branch: currentUser.branch || '',
             date: todayStr(),
             product_name: selectedProduct.name,
             unit_price: selectedProduct.price,

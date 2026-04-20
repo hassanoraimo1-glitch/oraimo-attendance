@@ -5,7 +5,7 @@ let selectedQty = 1;
 
 async function renderProducts() {
     try {
-        const data = await dbGet('products', '*');
+        const data = await dbGet('products', '?select=*&order=name');
         if (data && data.length > 0) {
             window.allProducts = data;
         } else {

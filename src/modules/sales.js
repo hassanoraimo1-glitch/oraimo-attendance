@@ -5,14 +5,14 @@ let selectedQty = 1;
 
 async function renderProducts() {
     try {
-        const data = await dbGet('products', '?select=*&order=name');
+        const data = await dbGet('products', '?select=*&order=name').catch(()=>[]);
         if (data && data.length > 0) {
             window.allProducts = data;
         } else {
-            window.allProducts = (typeof PRODUCTS !== 'undefined') ? PRODUCTS : [];
+            window.allProducts = (window.PRODUCTS||[]).length ? window.PRODUCTS : [];
         }
     } catch (e) {
-        window.allProducts = (typeof PRODUCTS !== 'undefined') ? PRODUCTS : [];
+        window.allProducts = window.PRODUCTS || [];
     }
     filteredProducts = [...(window.allProducts || [])];
     displayProducts();
@@ -68,6 +68,8 @@ async function submitSale() {
     try {
         await dbPost('sales', {
             employee_id: currentUser.id,
+            employee_name: currentUser.name || '',
+            branch: currentUser.branch || '',
             date: todayStr(),
             product_name: selectedProduct.name,
             unit_price: selectedProduct.price,

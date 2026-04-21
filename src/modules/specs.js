@@ -1,74 +1,138 @@
 // ═══════════════════════════════════════════════════════════
 // modules/specs.js — Oraimo models database UI (Specs tab)
-// Provides globals: filterSpecs, renderSpecsList, showSpecDetail
-// Depends on: ORAIMO_SPECS (from data.js)
 // ═══════════════════════════════════════════════════════════
 
 let filteredSpecs = [...ORAIMO_SPECS];
 
-function filterSpecs(){
-  const q=(document.getElementById('specs-search')?.value||'').toLowerCase();
-  filteredSpecs=q?ORAIMO_SPECS.filter(s=>s.name.toLowerCase().includes(q)||s.cat.includes(q)):ORAIMO_SPECS;
+// 1. تصفية المنتجات بناءً على البحث
+window.filterSpecs = function() {
+  const q = (document.getElementById('specs-search')?.value || '').toLowerCase();
+  filteredSpecs = q 
+    ? ORAIMO_SPECS.filter(s => 
+        s.name.toLowerCase().includes(q) || 
+        s.cat.toLowerCase().includes(q) || 
+        s.code.toLowerCase().includes(q)
+      ) 
+    : ORAIMO_SPECS;
   renderSpecsList();
-}
+};
 
-function renderSpecsList(){
-  const el=document.getElementById('specs-list');if(!el)return;
-  const ar=currentLang==='ar';
-  // Group by category
-  const cats={};
-  filteredSpecs.forEach(s=>{if(!cats[s.cat])cats[s.cat]=[];cats[s.cat].push(s);});
-  el.innerHTML=Object.entries(cats).map(([cat,items])=>`
-    <div style="margin-bottom:8px">
-      <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:1px;margin-bottom:8px;padding:4px 0;border-bottom:1px solid var(--border)">${cat}</div>
-      ${items.map(s=>`
-        <div class="spec-card" onclick="showSpecDetail('${s.name.replace(/'/g,"\\'")}')" style="background:linear-gradient(145deg,#15151c,#0d0d13);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px;margin-bottom:8px;cursor:pointer;transition:.15s;position:relative;overflow:hidden">
-          <div style="position:absolute;top:0;right:0;width:3px;height:100%;background:${s.color};border-radius:0 16px 16px 0"></div>
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:48px;height:48px;border-radius:14px;background:${s.color}22;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;border:1px solid ${s.color}44">${s.img}</div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:ltr">${s.name.replace('Oraimo ','')}</div>
-              <div style="font-size:13px;color:${s.color};font-weight:900;margin-top:2px">EGP ${s.price.toLocaleString()}</div>
-            </div>
-            <div style="font-size:20px;color:var(--muted)">›</div>
+// 2. رندر القائمة الرئيسية للمواصفات
+window.renderSpecsList = function() {
+  const el = document.getElementById('specs-list');
+  if (!el) return;
+  
+  const lang = typeof currentLang !== 'undefined' ? currentLang : 'ar';
+  
+  // تجميع المنتجات حسب الفئة
+  const cats = {};
+  filteredSpecs.forEach(s => {
+    if (!cats[s.cat]) cats[s.cat] = [];
+    cats[s.cat].push(s);
+  });
+
+  if (filteredSpecs.length === 0) {
+    el.innerHTML = `<div style="text-align:center; padding:40px; opacity:0.5;">${lang === 'ar' ? 'لا توجد نتائج مطابقة' : 'No results found'}</div>`;
+    return;
+  }
+
+  el.innerHTML = Object.entries(cats).map(([cat, items]) => `
+    <div style="margin-bottom:20px">
+      <div style="font-size:12px; font-weight:800; color:var(--muted); letter-spacing:1px; margin-bottom:10px; padding:4px 0; border-bottom:1px solid var(--border); text-transform:uppercase;">
+        ${cat}
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+        ${items.map(s => `
+          <div class="spec-card" onclick="showSpecDetail('${s.name.replace(/'/g, "\\'")}')" 
+               style="background:var(--card-bg); padding:15px; border-radius:12px; border:1px solid var(--border); cursor:pointer; position:relative; overflow:hidden;">
+            <div style="position:absolute; left:0; top:0; bottom:0; width:4px; background:${s.color || 'var(--accent)'}"></div>
+            <div style="font-weight:bold; font-size:15px; margin-bottom:4px;">${s.name}</div>
+            <div style="font-size:11px; opacity:0.6;">${s.code}</div>
           </div>
-        </div>`).join('')}
-    </div>`).join('');
-}
-
-function showSpecDetail(name){
-  const s=ORAIMO_SPECS.find(x=>x.name===name);if(!s)return;
-  const ar=currentLang==='ar';
-  const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(8px)';
-  overlay.innerHTML=`<div style="background:linear-gradient(160deg,#15151c,#0a0a10);border-radius:24px 24px 0 0;padding:24px 20px;width:100%;max-height:88vh;overflow-y:auto;border-top:3px solid ${s.color};box-shadow:0 -20px 60px rgba(0,0,0,.6)">
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
-      <div style="width:64px;height:64px;border-radius:18px;background:${s.color}22;display:flex;align-items:center;justify-content:center;font-size:32px;border:2px solid ${s.color}44;flex-shrink:0">${s.img}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:800;direction:ltr;overflow:hidden;text-overflow:ellipsis">${s.name.replace('Oraimo ','')}</div>
-        <div style="font-size:20px;font-weight:900;color:${s.color};margin-top:2px">EGP ${s.price.toLocaleString()}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.cat}</div>
+        `).join('')}
       </div>
     </div>
+  `).join('');
+};
 
-    <div style="background:rgba(255,255,255,.03);border-radius:16px;padding:16px;margin-bottom:14px;border:1px solid rgba(255,255,255,.06)">
-      <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:1px;margin-bottom:12px">📋 المواصفات الرئيسية</div>
-      ${s.specs.map(spec=>`<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
-        <span style="color:${s.color};font-size:14px;margin-top:2px;flex-shrink:0">✓</span>
-        <span style="font-size:13px;line-height:1.5">${spec}</span>
-      </div>`).join('')}
+// 3. عرض تفاصيل المنتج في مودال (الهيكل الجديد)
+window.showSpecDetail = function(name) {
+  const s = ORAIMO_SPECS.find(x => x.name === name);
+  if (!s) return;
+
+  const lang = typeof currentLang !== 'undefined' ? currentLang : 'ar';
+
+  const modalHtml = `
+    <div style="padding:10px; color:var(--text); font-family:inherit;">
+      
+      <div style="text-align:center; margin-bottom:25px; padding-bottom:15px; border-bottom:1px solid var(--border)">
+        <div style="display:inline-block; padding:5px 15px; border-radius:20px; background:${s.color}15; color:${s.color}; font-size:11px; font-weight:800; margin-bottom:10px; text-transform:uppercase;">
+          ${s.cat}
+        </div>
+        <div style="font-size:22px; font-weight:900; color:var(--text); line-height:1.2;">${s.name}</div>
+        <div style="font-size:13px; opacity:0.6; margin-top:5px;">Model: ${s.code}</div>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <div style="font-size:13px; font-weight:800; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+          <span style="color:${s.color}">🛠️</span> ${lang === 'ar' ? 'المواصفات التقنية' : 'Technical Specs'}
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr; gap:8px;">
+          ${Object.entries(s.specs).map(([key, val]) => `
+            <div style="background:var(--card-bg); padding:10px 15px; border-radius:10px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:11px; opacity:0.5; text-transform:capitalize;">${key.replace('_', ' ')}</span>
+              <span style="font-size:13px; font-weight:600;">${val[lang]}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px; background:${s.color}08; border-radius:15px; padding:15px; border:1px dashed ${s.color}44;">
+        <div style="font-size:13px; font-weight:800; margin-bottom:12px; color:${s.color};">
+          🏆 ${lang === 'ar' ? 'نقاط البيع القوية' : 'Strong Selling Points'}
+        </div>
+        ${s.sell.map(pt => `
+          <div style="display:flex; align-items:flex-start; gap:10px; margin-bottom:8px; font-size:13px; line-height:1.4;">
+            <span style="color:${s.color}; font-weight:bold;">•</span>
+            <span>${pt[lang]}</span>
+          </div>
+        `).join('')}
+      </div>
+
+      ${s.compare ? `
+        <div style="background:#ff44440a; border-radius:15px; padding:15px; border:1px solid #ff444422;">
+          <div style="font-size:13px; font-weight:800; margin-bottom:12px; color:#ff4444; display:flex; justify-content:space-between;">
+            <span>⚔️ ${lang === 'ar' ? 'ضد المنافس' : 'Vs Competitor'}</span>
+            <span style="font-size:11px; padding:2px 8px; background:#ff444422; border-radius:5px;">${s.compare.model}</span>
+          </div>
+          
+          <div style="font-size:12px; margin-bottom:10px; padding:8px; background:rgba(0,0,0,0.2); border-radius:8px;">
+            <b style="color:#ff4444">${lang === 'ar' ? 'سعر المنافس:' : 'Comp. Price:'}</b> ${s.compare.price[lang]}
+          </div>
+
+          ${s.compare.points.map(p => `
+            <div style="display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:6px;">
+              <span style="color:#4CAF50">✅</span>
+              <span>${p[lang]}</span>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+
+      <button class="btn" onclick="closeModal()" style="width:100%; margin-top:20px; background:var(--border); color:var(--text); border:none;">
+        ${lang === 'ar' ? 'إغلاق' : 'Close'}
+      </button>
     </div>
+  `;
 
-    <div style="background:${s.color}11;border-radius:16px;padding:16px;margin-bottom:20px;border:1px solid ${s.color}33">
-      <div style="font-size:12px;font-weight:800;color:${s.color};letter-spacing:1px;margin-bottom:12px">🏆 نقاط البيع الأقوى</div>
-      ${s.sell.map((pt,i)=>`<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;padding:8px;background:rgba(255,255,255,.03);border-radius:10px">
-        <span style="background:${s.color};color:#000;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;margin-top:1px">${i+1}</span>
-        <span style="font-size:13px;line-height:1.5">${pt}</span>
-      </div>`).join('')}
-    </div>
-
-    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:14px;background:linear-gradient(135deg,${s.color},${s.color}99);border:none;border-radius:16px;color:#000;font-family:Cairo,sans-serif;font-size:15px;font-weight:800;cursor:pointer">${ar?'إغلاق':'Close'}</button>
-  </div>`;
-  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
-  document.body.appendChild(overlay);
-}
+  if (typeof showModal === 'function') {
+    showModal(modalHtml);
+  } else {
+    // Fallback if showModal is not global
+    const detailEl = document.getElementById('spec-detail-content');
+    if (detailEl) {
+      detailEl.innerHTML = modalHtml;
+      document.getElementById('spec-detail-overlay').style.display = 'flex';
+    }
+  }
+};

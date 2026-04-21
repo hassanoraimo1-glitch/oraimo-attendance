@@ -49,7 +49,7 @@
   }
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./src/styles/main.css">
+<link rel="stylesheet" href="./main.css">
 </head>
 <body>
 
@@ -916,6 +916,26 @@
       <div class="warn-tpl" onclick="setWarnTemplate(3)">📋 تذكير: الالتزام بالمواعيد أو سيحتسب غياباً.</div>
     </div>
     <button class="btn btn-green" onclick="sendWarning()" data-ar="📤 إرسال التحذير" data-en="📤 Send Warning">📤 إرسال التحذير</button>
+  </div>
+</div>
+
+<!-- ═══════════════ CHAT MODAL ═══════════════ -->
+<div id="chat-modal">
+  <!-- Chat Header -->
+  <div class="chat-header-bar">
+    <button class="chat-back-btn" onclick="closeChat()">&#8594;</button>
+    <div class="chat-header-avatar">💬</div>
+    <div class="chat-header-info">
+      <div class="chat-header-title" id="chat-title">المحادثة</div>
+      <div class="chat-header-status">متصل</div>
+    </div>
+  </div>
+  <!-- Messages -->
+  <div id="chat-messages"></div>
+  <!-- Input Bar -->
+  <div class="chat-input-bar">
+    <input type="text" id="chat-input" placeholder="اكتب رسالة..." onkeydown="if(event.key==='Enter')sendMessage()" autocomplete="off" autocorrect="off" spellcheck="false">
+    <button class="chat-send-btn" onclick="sendMessage()">&#9654;</button>
   </div>
 </div>
 

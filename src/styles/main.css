@@ -1183,75 +1183,11 @@ body{background:linear-gradient(180deg,#05050a 0%,#0a0a12 100%)!important;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
 /* MODAL */
-/* ═══════════════════════════════════
-   MODAL SYSTEM (FIXED + SMOOTH + NO BUGS)
-═══════════════════════════════════ */
-
-/* منع الاسكرول */
-body.modal-open {
-  overflow: hidden !important;
-  height: 100vh !important;
-  touch-action: none !important;
-}
-
-/* الخلفية */
-.modal-overlay {
-  position: fixed !important;
-  inset: 0 !important;
-  background: rgba(0,0,0,.75) !important;
-  backdrop-filter: blur(6px) !important;
-  z-index: 8000 !important;
-  display: flex !important;
-  align-items: flex-end !important;
-
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .25s ease;
-}
-
-/* حالة الفتح */
-.modal-overlay.open {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-/* شكل المودال */
-.modal {
-  background: linear-gradient(145deg,#15151c,#0a0a10) !important;
-  border-radius: 22px 22px 0 0 !important;
-  padding: 22px 18px !important;
-  width: 100% !important;
-  max-height: 85vh !important;
-  overflow-y: auto !important;
-
-  border-top: 2px solid rgba(0,200,83,.3) !important;
-  box-shadow: 0 -20px 60px rgba(0,0,0,.6) !important;
-
-  transform: translateY(60px);
-  transition: transform .3s ease;
-}
-
-/* أنيميشن */
-.modal-overlay.open .modal {
-  transform: translateY(0);
-}
-
-/* عنوان */
-.modal h2 {
-  font-size: 16px !important;
-  font-weight: 900 !important;
-  margin-bottom: 16px !important;
-}
-
-/* زر الإغلاق */
-.modal-close {
-  position: absolute !important;
-  top: 10px !important;
-  left: 12px !important;
-  font-size: 20px !important;
-  cursor: pointer !important;
-  color: #888 !important;
-}
+.modal-overlay{position:fixed!important;inset:0!important;background:rgba(0,0,0,.8)!important;backdrop-filter:blur(8px)!important;z-index:1000!important;display:none!important;align-items:flex-end!important;}
+.modal-overlay.open{display:flex!important;}
+.modal{background:linear-gradient(145deg,#15151c,#0a0a10)!important;border-radius:24px 24px 0 0!important;padding:24px 20px!important;width:100%!important;max-height:90vh!important;overflow-y:auto!important;border-top:2px solid rgba(0,200,83,.3)!important;box-shadow:0 -20px 60px rgba(0,0,0,.6)!important;}
+.modal h2{font-size:17px!important;font-weight:900!important;margin-bottom:18px!important;}
+.modal-close{float:left!important;font-size:20px!important;cursor:pointer!important;color:#666!important;padding:4px!important;}
 
 /* SH */
 .sh{display:flex!important;justify-content:space-between!important;align-items:center!important;margin-bottom:12px!important;}

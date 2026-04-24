@@ -56,7 +56,7 @@ body{
 }
 
 /* ── iOS SCROLL LOCK ── */
-body.modal-open{overflow:hidden;width:100%;height:100%}
+body.modal-open{overflow:hidden;position:fixed;width:100%;height:100%}
 
 /* ── SAFE AREA ── */
 html{
@@ -512,7 +512,7 @@ tr:last-child td{border-bottom:none}
 /* ── PERF BARS ── */
 .perf-bar-wrap{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .perf-rank{width:22px;font-size:11px;font-weight:800;color:var(--muted);text-align:center;flex-shrink:0}
-.perf-name{width:80px;font-size:11px;font-weight:600;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.perf-name{min-width:80px;max-width:140px;font-size:11px;font-weight:600;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .perf-bar-bg{flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
 .perf-bar-fill{height:100%;border-radius:4px;transition:width .7s ease}
 .perf-val{font-size:10px;font-weight:700;color:var(--green);flex-shrink:0;min-width:55px;text-align:left;direction:ltr}

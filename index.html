@@ -752,15 +752,17 @@
 
   <!-- ADMIN CHAT TAB -->
   <div id="admin-chat" class="content" style="display:none">
-    <div style="font-size:14px;font-weight:800;margin-bottom:12px">💬 المحادثات</div>
-    <!-- Group Chat -->
-    <div class="card" onclick="openChat('group','B.tech team')" style="cursor:pointer;display:flex;align-items:center;gap:12px;margin-bottom:8px">
-      <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👥</div>
-      <div><div style="font-size:14px;font-weight:700">B.tech team</div><div style="font-size:11px;color:var(--muted)">جميع الموظفين</div></div>
+    <div class="chat-list-header">
+      <div>
+        <div class="chat-list-title" data-ar="المحادثات" data-en="Chats">المحادثات</div>
+        <div class="chat-list-subtitle" data-ar="آخر الرسائل لكل محادثة" data-en="Latest message for each conversation">آخر الرسائل لكل محادثة</div>
+      </div>
+      <div class="chat-list-total" id="chat-list-total">0</div>
     </div>
-    <!-- Individual chats -->
-    <div style="font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 8px">محادثات فردية</div>
-    <div id="admin-chat-list"></div>
+    <div class="chat-list-search-wrap">
+      <input type="text" id="chat-list-search" class="chat-list-search" data-ar-ph="ابحث باسم الموظف..." data-en-ph="Search employee..." placeholder="ابحث باسم الموظف..." oninput="loadAdminChatList()">
+    </div>
+    <div id="admin-chat-list" class="chat-list-modern"></div>
   </div>
 
   <div class="bottom-nav">
@@ -949,18 +951,22 @@
 
 <!-- FEATURES -->
 <script src="./src/modules/auth.js"></script>
+<script src="./src/modules/attendance.ui.js"></script>
 <script src="./src/modules/attendance.js"></script>
 <script src="./src/modules/sales.js"></script>
 <script src="./src/modules/leaves.js"></script>
+<script src="./src/modules/chat.ui.js"></script>
 <script src="./src/modules/chat.js"></script>
 <script src="./src/modules/specs.js"></script>
 
 <!-- ADMIN -->
+<script src="./src/modules/admin/admin.ui.js"></script>
 <script src="./src/modules/admin/dashboard.js"></script>
 <script src="./src/modules/admin/employees.js"></script>
 <script src="./src/modules/admin/admins.js"></script>
 <script src="./src/modules/admin/branches.js"></script>
 <script src="./src/modules/admin/targets.js"></script>
+<script src="./src/modules/admin/reports.ui.js"></script>
 <script src="./src/modules/admin/reports.js"></script>
 <script src="./src/modules/admin/visits.js"></script>
 <script src="./src/modules/admin/display.js"></script>

@@ -16,9 +16,9 @@
       ]
     }
   ],
-  "rewrites": [
-    { "source": "/", "destination": "/index.html" },
-    { "source": "/app", "destination": "/index.html" },
-    { "source": "/app/:path*", "destination": "/index.html" }
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/app(?:/.*)?", "dest": "/index.html" },
+    { "src": "/$", "dest": "/index.html" }
   ]
 }

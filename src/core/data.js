@@ -53,31 +53,7 @@ const PRODUCTS=[
 ].map(x=>({name:x.n,price:x.p}));
 
 
-// ── BACK BUTTON — منع الخروج من التطبيق ──
-(function(){
-  history.pushState({app:true}, '', location.href);
-  window.addEventListener('popstate', function() {
-    // دايماً ارجع للتطبيق
-    history.pushState({app:true}, '', location.href);
-    // لو الشات مفتوح اقفله
-    const chatModal = document.getElementById('chat-modal');
-    if(chatModal && chatModal.classList.contains('open')){
-      closeChat(); return;
-    }
-    // لو أي modal مفتوح اقفله
-    const openModal = document.querySelector('.modal-overlay.open');
-    if(openModal){
-      openModal.classList.remove('open');
-      document.body.classList.remove('modal-open');
-      return;
-    }
-    // لو الكاميرا مفتوحة اقفلها
-    const camModal = document.getElementById('camera-modal');
-    if(camModal && camModal.classList.contains('open')){
-      closeCamera(); return;
-    }
-  });
-})();
+// ── BACK BUTTON — handled in bootstrap.js ──
 
 // ── SPLASH & INIT ──
 (async function initApp(){

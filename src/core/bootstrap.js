@@ -54,14 +54,12 @@ function _runInitApp(){
   try {
     const chatM = document.getElementById('chat-modal');
     if (chatM) { chatM.style.display = 'none'; chatM.classList.remove('open'); }
-
     if (typeof applyLang === 'function')  applyLang();
     if (typeof applyTheme === 'function') applyTheme();
     if (typeof startClock === 'function') startClock();
-
-    let saved = null;
-    try { saved = localStorage.getItem('oraimo_user'); } catch(_){}
-    if (!saved) try { saved = sessionStorage.getItem('oraimo_user'); } catch(_){}
+    let saved=null;
+    try{saved=localStorage.getItem('oraimo_user');}catch(_){}
+    if(!saved) try{saved=sessionStorage.getItem('oraimo_user');}catch(_){}
     if (saved) {
       try {
         window.currentUser = JSON.parse(saved);

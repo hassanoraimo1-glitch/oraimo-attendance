@@ -28,17 +28,58 @@ function _to12HourLabel(hhmm) {
   return `${h12}:${String(m).padStart(2, '0')} ${suffix}`;
 }
 
-function _addHoursToHHMM(hhmm, hoursToAdd = 8) {
-  if (!hhmm || typeof hhmm !== 'string') return '';
-  const parts = hhmm.split(':');
-  if (parts.length < 2) return '';
-  const h = Number(parts[0]);
-  const m = Number(parts[1]);
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return '';
-  const total = (h * 60 + m + Math.round(hoursToAdd * 60)) % (24 * 60);
-  const nh = Math.floor(total / 60);
-  const nm = total % 60;
-  return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`;
+let _workCountdownTimer = null;
+
+function _clearWorkCountdown() {
+  if (_workCountdownTimer) {
+    clearInterval(_workCountdownTimer);
+    _workCountdownTimer = null;
+  }
+}
+
+function _startWorkCountdown(checkInHHMM, lateMinutes = 0) {
+  const status = document.getElementById('attend-status');
+  if (!status) return;
+  _clearWorkCountdown();
+
+  const parts = String(checkInHHMM || '').split(':');
+  if (parts.length < 2) {
+    status.textContent = `${currentLang === 'ar' ? 'دخل الساعة' : 'In at'} ${_to12HourLabel(checkInHHMM)}`;
+    return;
+  }
+  const inH = Number(parts[0]);
+  const inM = Number(parts[1]);
+  if (!Number.isFinite(inH) || !Number.isFinite(inM)) {
+    status.textContent = `${currentLang === 'ar' ? 'دخل الساعة' : 'In at'} ${_to12HourLabel(checkInHHMM)}`;
+    return;
+  }
+
+  const baseInMin = inH * 60 + inM;
+  const shiftSeconds = 8 * 60 * 60;
+
+  const render = () => {
+    const ar = currentLang === 'ar';
+    const now = new Date();
+    const nowSec = (now.getHours() * 60 + now.getMinutes()) * 60 + now.getSeconds();
+    let remaining = shiftSeconds - (nowSec - baseInMin * 60);
+    if (!Number.isFinite(remaining)) remaining = 0;
+    if (remaining < 0) remaining = 0;
+
+    const hh = Math.floor(remaining / 3600);
+    const mm = Math.floor((remaining % 3600) / 60);
+    const ss = remaining % 60;
+    const countdown = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+
+    status.textContent =
+      `${ar ? 'دخل الساعة' : 'In at'} ${_to12HourLabel(checkInHHMM)}` +
+      `${lateMinutes > 0 ? (ar ? ` (تأخر ${lateMinutes} د)` : ` (${lateMinutes}m late)`) : ''}` +
+      `${ar ? ` • المتبقي: ${countdown}` : ` • Remaining: ${countdown}`}`;
+
+    if (remaining <= 0) _clearWorkCountdown();
+  };
+
+  render();
+  _workCountdownTimer = setInterval(render, 1000);
 }
 
 // Helper: ensure shift-info element exists on the home screen.
@@ -135,18 +176,16 @@ function updateAttendBtn(record) {
     btn.classList.add('checked-in');
     if (iconEl) iconEl.textContent = '🔴';
     if (labelEl) labelEl.textContent = ar ? 'تسجيل خروج' : 'Check Out';
-    const expectedOut = _addHoursToHHMM(record.check_in, 8);
-    if (status) status.textContent =
-      `${ar ? 'دخل الساعة' : 'In at'} ${_to12HourLabel(record.check_in)}` +
-      `${record.late_minutes > 0 ? (ar ? ' (تأخر ' + record.late_minutes + ' د)' : ' (' + record.late_minutes + 'm late)') : ''}` +
-      `${expectedOut ? (ar ? ` • الخروج المتوقع: ${_to12HourLabel(expectedOut)}` : ` • Expected out: ${_to12HourLabel(expectedOut)}`) : ''}`;
+    _startWorkCountdown(record.check_in, record.late_minutes || 0);
   } else if (record && record.check_out) {
+    _clearWorkCountdown();
     btn.classList.remove('checked-in');
     if (iconEl) iconEl.textContent = '✅';
     if (labelEl) labelEl.textContent = ar ? 'تم' : 'Done';
     btn.onclick = null;
     if (status) status.textContent = `${ar ? 'دخول' : 'In'}: ${_to12HourLabel(record.check_in)} – ${ar ? 'خروج' : 'Out'}: ${_to12HourLabel(record.check_out)}`;
   } else {
+    _clearWorkCountdown();
     btn.classList.remove('checked-in');
     if (iconEl) iconEl.textContent = '🟢';
     if (labelEl) labelEl.textContent = ar ? 'تسجيل دخول' : 'Check In';

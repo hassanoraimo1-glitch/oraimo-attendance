@@ -25,13 +25,12 @@ async function openChat(chatType, title) {
   const titleEl = document.getElementById('chat-title');
   if (titleEl) titleEl.textContent = title;
   const modal = document.getElementById('chat-modal');
-  if (!modal) { console.error('[chat] #chat-modal not found in DOM'); return; }
+  if (!modal) return;
   modal.removeAttribute('style');
   modal.classList.add('open');
   document.body.classList.add('modal-open');
   await loadMessages();
   subscribeToMessages();
-  // Scroll after messages are rendered
   requestAnimationFrame(() => {
     const msgs = document.getElementById('chat-messages');
     if (msgs) msgs.scrollTop = msgs.scrollHeight;
@@ -58,8 +57,8 @@ async function loadMessages() {
   if (currentChat === 'group') {
     query += '&chat_type=eq.group';
   } else if (currentChat === 'admin') {
-    // employee viewing "admin" chat → their private thread with admins
-    query += `&chat_type=eq.private&sender_id=eq.${currentUser.id}`;
+    // employee viewing admin chat → show messages they sent AND received
+    query += `&chat_type=eq.private&or=(sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id})`;
   } else {
     // admin viewing a specific employee
     const empId = currentChat;

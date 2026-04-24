@@ -10,13 +10,59 @@
 // ── SELFIE VIEWERS (viewSelfie + fullSelfie) ──
 function viewSelfie(name,selfieIn,selfieOut,mapLink){
   const ar=currentLang==='ar';
-  document.getElementById('selfie-view-title').textContent=name;
-  document.getElementById('selfie-view-content').innerHTML=`<div style="text-align:center">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">${ar?'صورة تسجيل الدخول':'Check-in photo'}</div>
-    <img src="${selfieIn}" style="width:180px;height:180px;border-radius:14px;object-fit:cover;border:2px solid var(--green);cursor:pointer" onclick="fullSelfie('${selfieIn}')">
-    ${selfieOut?`<div style="font-size:12px;color:var(--muted);margin:10px 0 8px">${ar?'صورة تسجيل الخروج':'Check-out photo'}</div><img src="${selfieOut}" style="width:180px;height:180px;border-radius:14px;object-fit:cover;border:2px solid var(--blue);cursor:pointer" onclick="fullSelfie('${selfieOut}')">`:'' }
-    ${mapLink?`<div style="margin-top:14px"><a href="${mapLink}" target="_blank" style="color:var(--green);font-size:13px;text-decoration:none;font-weight:700">📍 ${ar?'فتح في خرائط جوجل':'Open in Google Maps'}</a></div>`:`<div style="color:var(--muted);font-size:12px;margin-top:12px">📍 ${ar?'لم يتم تسجيل الموقع':'No location recorded'}</div>`}
-    </div>`;
+  const titleEl=document.getElementById('selfie-view-title');
+  if(titleEl) titleEl.textContent=String(name||'');
+
+  const content=document.getElementById('selfie-view-content');
+  if(!content) { openModal('selfie-view-modal'); return; }
+  content.textContent='';
+
+  const wrap=document.createElement('div');
+  wrap.style.textAlign='center';
+
+  const labelIn=document.createElement('div');
+  labelIn.style.cssText='font-size:12px;color:var(--muted);margin-bottom:8px';
+  labelIn.textContent=ar?'صورة تسجيل الدخول':'Check-in photo';
+  wrap.appendChild(labelIn);
+
+  const imgIn=document.createElement('img');
+  imgIn.src=String(selfieIn||'');
+  imgIn.style.cssText='width:180px;height:180px;border-radius:14px;object-fit:cover;border:2px solid var(--green);cursor:pointer';
+  imgIn.addEventListener('click',()=>fullSelfie(String(selfieIn||'')));
+  wrap.appendChild(imgIn);
+
+  if(selfieOut){
+    const labelOut=document.createElement('div');
+    labelOut.style.cssText='font-size:12px;color:var(--muted);margin:10px 0 8px';
+    labelOut.textContent=ar?'صورة تسجيل الخروج':'Check-out photo';
+    wrap.appendChild(labelOut);
+
+    const imgOut=document.createElement('img');
+    imgOut.src=String(selfieOut||'');
+    imgOut.style.cssText='width:180px;height:180px;border-radius:14px;object-fit:cover;border:2px solid var(--blue);cursor:pointer';
+    imgOut.addEventListener('click',()=>fullSelfie(String(selfieOut||'')));
+    wrap.appendChild(imgOut);
+  }
+
+  const linkWrap=document.createElement('div');
+  linkWrap.style.marginTop='14px';
+  const safeMapLink=(typeof mapLink==='string' && /^https?:\/\/(www\.)?maps\.google\.com\/\?q=/.test(mapLink)) ? mapLink : '';
+  if(safeMapLink){
+    const a=document.createElement('a');
+    a.href=safeMapLink;
+    a.target='_blank';
+    a.rel='noopener noreferrer';
+    a.style.cssText='color:var(--green);font-size:13px;text-decoration:none;font-weight:700';
+    a.textContent=`📍 ${ar?'فتح في خرائط جوجل':'Open in Google Maps'}`;
+    linkWrap.appendChild(a);
+  } else {
+    const noLoc=document.createElement('div');
+    noLoc.style.cssText='color:var(--muted);font-size:12px;margin-top:12px';
+    noLoc.textContent=`📍 ${ar?'لم يتم تسجيل الموقع':'No location recorded'}`;
+    linkWrap.appendChild(noLoc);
+  }
+  wrap.appendChild(linkWrap);
+  content.appendChild(wrap);
   openModal('selfie-view-modal');
 }
 function fullSelfie(src){document.getElementById('selfie-fs-img').src=src;document.getElementById('selfie-fullscreen').classList.add('open')}
@@ -151,8 +197,8 @@ function notify(msg,type='success'){
   container.appendChild(el);
   setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),300);},3000);
 }
-function openModal(id){document.getElementById(id).classList.add('open')}
-function closeModal(id){document.getElementById(id).classList.remove('open')}
+function openModal(id){const el=document.getElementById(id);if(el)el.classList.add('open')}
+function closeModal(id){const el=document.getElementById(id);if(el)el.classList.remove('open')}
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
 let lastTap=0;
 document.addEventListener('touchend',e=>{const now=Date.now();if(now-lastTap<300)e.preventDefault();lastTap=now},{passive:false});
@@ -200,7 +246,7 @@ function showAbsentEmployees() {
     <div style="font-size:16px;font-weight:800;color:var(--red);margin-bottom:14px">😴 ${ar?'الغائبون اليوم':'Absent Today'} (${absentList.length})</div>
     ${absentList.length === 0 ? `<div style="text-align:center;color:var(--muted);padding:20px">${ar?'لا يوجد غياب':'No absences'}</div>` :
     absentList.map(emp => `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div class="emp-avatar" style="width:36px;height:36px;font-size:13px">${emp.name[0].toUpperCase()}</div>
+      <div class="emp-avatar" style="width:36px;height:36px;font-size:13px">${((emp.name||'?')[0]||'?').toUpperCase()}</div>
       <div><div style="font-size:13px;font-weight:700">${emp.name}</div><div style="font-size:11px;color:var(--muted)">${emp.branch||'-'}</div></div>
     </div>`).join('')}
     <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px">${ar?'إغلاق':'Close'}</button>
@@ -283,7 +329,7 @@ function loadSettingsEmpList(){
   if(allEmployees.length===0){el.innerHTML='<div class="empty"><div class="empty-icon">👥</div>No employees</div>';return}
   el.innerHTML=allEmployees.map(emp=>`
     <div class="emp-card">
-      <div class="emp-avatar" style="overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:emp.name[0].toUpperCase()}</div>
+      <div class="emp-avatar" style="overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:( (emp.name||'?')[0]||'?').toUpperCase()}</div>
       <div class="emp-info"><div class="emp-name">${emp.name}</div><div class="emp-branch">${emp.branch||'-'}</div></div>
       <div class="emp-actions">
         <button class="action-btn edit" onclick="openEditEmp(${emp.id})">✏️</button>
@@ -406,7 +452,7 @@ async function loadTLMyTeamSettings(){
           :`<span class="badge badge-green" style="font-size:9px">${ar?'حاضر':'In'} ${att.check_in}${att.late_minutes>0?' ⚠️':''}</span>`)
         :`<span class="badge badge-yellow" style="font-size:9px;background:rgba(255,59,59,.15);color:var(--red)">${ar?'غائب':'Absent'}</span>`;
       return `<div class="emp-card" style="margin-bottom:8px">
-        <div class="emp-avatar" style="overflow:hidden;flex-shrink:0">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:(emp.name[0]||'?').toUpperCase()}</div>
+        <div class="emp-avatar" style="overflow:hidden;flex-shrink:0">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:(((emp.name||'?')[0])||'?').toUpperCase()}</div>
         <div class="emp-info" style="flex:1;min-width:0">
           <div class="emp-name">${emp.name}</div>
           <div class="emp-branch" style="font-size:10px">${shiftLabel} ${emp.branch?'· '+emp.branch:''}</div>

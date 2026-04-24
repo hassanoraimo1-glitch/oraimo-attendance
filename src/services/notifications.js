@@ -76,17 +76,23 @@ export async function registerOneSignalUser() {
 
   for (let attempt = 0; attempt < MAX_REGISTER_RETRIES; attempt++) {
     try {
+      let granted = false;
       try {
         const perm = await window.OneSignal.Notifications.permission;
-        if (!perm) await window.OneSignal.Notifications.requestPermission();
-      } catch (_) {
-        await window.OneSignal.Notifications.requestPermission().catch(() => {});
+        granted = !!perm;
+      } catch (_) {}
+      if (!granted) {
+        try {
+          const asked = await window.OneSignal.Notifications.requestPermission();
+          granted = !!asked;
+        } catch (_) {}
       }
+      if (!granted) throw new Error('push permission denied');
 
+      try { await window.OneSignal.login(String(user.id)); } catch (_) {}
       await window.OneSignal.User.addTag('user_id', String(user.id));
       await window.OneSignal.User.addTag('name', String(user.name || ''));
       await window.OneSignal.User.addTag('role', String(user.role || 'employee'));
-      try { await window.OneSignal.login(String(user.id)); } catch (_) {}
 
       lastRegisteredUserId = String(user.id);
       console.log('[notifications] registered:', user.name);

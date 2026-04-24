@@ -107,3 +107,55 @@ var selectedQty = 1;
 var _isSubmitting = false;
 var DAYS_AR = window.DAYS_AR;
 var DAYS_EN = window.DAYS_EN;
+
+// ── NOTIFICATIONS FALLBACK (app.js ES module may not load) ──
+if (typeof window.sendPushNotification !== 'function') {
+  window.sendPushNotification = async function(title, message, targetUserId) {
+    if (!title || !message) return;
+    try {
+      const SUPA_URL = 'https://lmszelfnosejdemxhodm.supabase.co';
+      const SUPA_KEY = 'sb_publishable_HCOQxXf5sEyulaPkqlSEzg_IK7elCQb';
+      await fetch(SUPA_URL + '/functions/v1/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + SUPA_KEY, apikey: SUPA_KEY },
+        body: JSON.stringify({ title: String(title).slice(0,120), message: String(message).slice(0,300), target_user_id: targetUserId ? String(targetUserId) : null })
+      });
+    } catch(e) { console.warn('[notif fallback]', e.message); }
+  };
+}
+
+if (typeof window.registerOneSignalUser !== 'function') {
+  window.registerOneSignalUser = async function() {
+    const user = window.currentUser;
+    if (!user || !user.id) return;
+    // Wait for SDK (max 15s)
+    for (let i = 0; i < 10; i++) {
+      if (window.OneSignal && window.OneSignal.Notifications) break;
+      await new Promise(r => setTimeout(r, 1500));
+    }
+    if (!window.OneSignal || !window.OneSignal.Notifications) return;
+    try {
+      const perm = await window.OneSignal.Notifications.permission;
+      if (!perm) await window.OneSignal.Notifications.requestPermission().catch(()=>{});
+      await window.OneSignal.User.addTag('user_id', String(user.id));
+      await window.OneSignal.User.addTag('name', String(user.name || ''));
+      await window.OneSignal.User.addTag('role', String(user.role || 'employee'));
+      try { await window.OneSignal.login(String(user.id)); } catch(_){}
+    } catch(e) { console.warn('[onesignal fallback]', e.message); }
+  };
+}
+
+// ── REALTIME CHAT FALLBACK ──
+if (typeof window.chatSubscribeRealtime !== 'function') {
+  window.chatSubscribeRealtime = async function(onNew) {
+    try {
+      const mod = await import('https://esm.sh/@supabase/supabase-js@2?bundle');
+      const client = mod.createClient('https://lmszelfnosejdemxhodm.supabase.co', 'sb_publishable_HCOQxXf5sEyulaPkqlSEzg_IK7elCQb');
+      const channel = client.channel('messages-realtime').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => { if (onNew) onNew(payload.new); }).subscribe();
+      return function unsub() { try { client.removeChannel(channel); } catch(_){} };
+    } catch(e) {
+      console.warn('[realtime fallback]', e.message);
+      throw e;
+    }
+  };
+}

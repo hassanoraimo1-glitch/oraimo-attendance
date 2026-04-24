@@ -1,7 +1,7 @@
 // Service Worker for Oraimo HR PWA
 // This handles offline caching and push notifications
 
-const CACHE_NAME = 'oraimo-hr-v12';
+const CACHE_NAME = 'oraimo-hr-v13';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -45,40 +45,63 @@ self.addEventListener('activate', event => {
   return self.clients.claim();
 });
 
-// Fetch event - serve from cache first, then network
+// Fetch event strategy:
+// - Navigations: network-first with cached index fallback
+// - Static assets (style/script/image/font): cache-first
+// - API/external requests: passthrough
 self.addEventListener('fetch', event => {
+  const req = event.request;
+  const url = new URL(req.url);
+  const isSameOrigin = url.origin === self.location.origin;
+  const isExternal = req.url.includes('supabase') || req.url.includes('onesignal') || req.url.includes('googleapis');
+
+  if (!isSameOrigin || isExternal) {
+    return;
+  }
+
+  const isNavigation = req.mode === 'navigate';
+  if (isNavigation) {
+    event.respondWith(
+      fetch(req)
+        .then(response => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put('/index.html', responseToCache));
+          }
+          return response;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
+  const dest = req.destination || '';
+  const isStaticAsset = ['style', 'script', 'image', 'font'].includes(dest);
+
+  if (!isStaticAsset) {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
+    caches.match(req).then(cached => {
+      if (cached) return cached;
+
+      return fetch(req).then(response => {
+        if (!response || response.status !== 200 || response.type !== 'basic') {
           return response;
         }
-        // Clone the request
-        const fetchRequest = event.request.clone();
-        
-        return fetch(fetchRequest).then(response => {
-          // Check if valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-          
-          // Clone the response
-          const responseToCache = response.clone();
-          
-          caches.open(CACHE_NAME)
-            .then(cache => {
-              // Don't cache external API calls or OneSignal
-              if (!event.request.url.includes('supabase') && 
-                  !event.request.url.includes('onesignal') &&
-                  !event.request.url.includes('googleapis')) {
-                cache.put(event.request, responseToCache);
-              }
-            });
-          
-          return response;
-        });
-      })
+
+        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+        const expectsHtml = dest === 'document';
+        const gotHtml = contentType.includes('text/html');
+        // Protect against caching HTML into JS/CSS/image requests.
+        if (!expectsHtml && gotHtml) return response;
+
+        const responseToCache = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(req, responseToCache));
+        return response;
+      });
+    })
   );
 });
 

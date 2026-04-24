@@ -59,14 +59,17 @@ function _runInitApp(){
     if (typeof applyTheme === 'function') applyTheme();
     if (typeof startClock === 'function') startClock();
 
-    const saved = localStorage.getItem('oraimo_user');
+    let saved = null;
+    try { saved = localStorage.getItem('oraimo_user'); } catch(_){}
+    if (!saved) try { saved = sessionStorage.getItem('oraimo_user'); } catch(_){}
     if (saved) {
       try {
         window.currentUser = JSON.parse(saved);
         if (typeof showApp === 'function') showApp();
         else showPage('login-page');
       } catch (e) {
-        localStorage.removeItem('oraimo_user');
+        try{localStorage.removeItem('oraimo_user');}catch(_){}
+        try{sessionStorage.removeItem('oraimo_user');}catch(_){}
         showPage('login-page');
       }
     } else {
@@ -80,8 +83,6 @@ function _runInitApp(){
     hideSplash();
   }
 }
-
-// Wait for ALL scripts to load (showApp is in auth.js which loads after bootstrap.js)
 if (document.readyState === 'complete') _runInitApp();
 else window.addEventListener('load', _runInitApp);
 

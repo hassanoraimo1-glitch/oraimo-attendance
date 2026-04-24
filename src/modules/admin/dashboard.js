@@ -58,7 +58,7 @@ async function loadAdminDashboard(){
           const att=todayAtt&&todayAtt.find(a=>a.employee_id===emp.id);
           const mapLink=att&&att.location_lat?`https://maps.google.com/?q=${att.location_lat},${att.location_lng}`:null;
           return`<div class="emp-card">
-            <div class="emp-avatar" style="overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:emp.name[0].toUpperCase()}</div>
+            <div class="emp-avatar" style="overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:((emp.name||'?')[0]||'?').toUpperCase()}</div>
             <div class="emp-info">
               <div class="emp-name">${emp.name}</div><div class="emp-branch">${emp.branch||'-'}</div>
               ${att?`<div style="font-size:10px;color:var(--green);margin-top:2px">${ar?'دخول':'In'}: ${att.check_in}${att.late_minutes>0?(ar?' (تأخر '+att.late_minutes+' د)':' ('+att.late_minutes+'m late)'):''} ${att.check_out?(ar?'· خروج: ':'· Out: ')+att.check_out:''}</div>`:''}

@@ -233,8 +233,7 @@ async function loadDisplayReport(){
       <div style="font-size:14px;font-weight:800;margin-bottom:10px">👤 ${name} <span class="badge badge-blue">${recs.length} يوم</span></div>
       ${recs.map(r=>{
         const photos=[r.photo1,r.photo2,r.photo3].filter(Boolean);
-        const isViewer=currentUser.role==='viewer';
-        return`<div class="visit-card" style="margin-bottom:8px"><div class="visit-header"><div><div class="visit-branch-name">🗓️ ${r.photo_date}</div><div class="visit-meta">${r.branch||''}</div></div><div style="display:flex;gap:6px;align-items:center"><span class="badge badge-blue">${photos.length} 📷</span>${!isViewer?`<button onclick="deleteDisplayPhoto(${r.id})" style="background:var(--red);color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:Cairo,sans-serif">🗑️</button>`:''}</div></div>${r.note?`<div class="visit-note">📝 ${r.note}</div>`:''}<div class="visit-photos-row">${photos.map(src=>`<img class="visit-photo" src="${src}" onclick="fullSelfie('${src}')">`).join('')}</div></div>`;
+        return`<div class="visit-card" style="margin-bottom:8px"><div class="visit-header"><div><div class="visit-branch-name">🗓️ ${r.photo_date}</div><div class="visit-meta">${r.branch||''}</div></div><div style="display:flex;gap:6px;align-items:center"><span class="badge badge-blue">${photos.length} 📷</span>${currentUser.role!=='viewer'?`<button onclick="deleteDisplayPhoto(${r.id})" style="background:var(--red);color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:Cairo,sans-serif">🗑️</button>`:''}</div></div>${r.note?`<div class="visit-note">📝 ${r.note}</div>`:''}<div class="visit-photos-row">${photos.map(src=>`<img class="visit-photo" src="${src}" onclick="fullSelfie('${src}')">`).join('')}</div></div>`;
       }).join('')}
     </div>`).join('');
 }
@@ -250,3 +249,4 @@ async function deleteDisplayPhoto(id){
 }
 
 // tlVisitPhotos moved to modules/admin/visits.js
+

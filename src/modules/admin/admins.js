@@ -79,7 +79,7 @@ async function openManagerTeam(managerId, managerName) {
     el.innerHTML = allEmployees.map(emp => `
       <div class="team-emp-row">
         <div style="display:flex;align-items:center;gap:10px">
-          <div class="emp-avatar" style="width:32px;height:32px;font-size:12px">${emp.name[0].toUpperCase()}</div>
+          <div class="emp-avatar" style="width:32px;height:32px;font-size:12px">${((emp.name||'?')[0]||'?').toUpperCase()}</div>
           <div>
             <div style="font-size:13px;font-weight:700">${emp.name}</div>
             <div style="font-size:11px;color:var(--muted)">${emp.branch||'-'}</div>

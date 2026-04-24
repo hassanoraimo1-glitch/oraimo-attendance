@@ -16,10 +16,40 @@ async function loadAdminsList(){
 function renderAdminsList(){
   const el=document.getElementById('admins-list');if(!el)return;
   if(allAdmins.length===0){el.innerHTML=`<div style="color:var(--muted);font-size:12px">${currentLang==='ar'?'لا يوجد مسؤولون':'No admins'}</div>`;return}
-  el.innerHTML=allAdmins.map(a=>`<div class="emp-card"><div class="emp-avatar" style="background:var(--blue)">👑</div><div class="emp-info"><div class="emp-name">${a.name}</div><div class="emp-branch">${a.username}</div></div><span class="badge ${a.role==='admin'?'badge-blue':a.role==='manager'?'badge-purple':'badge-yellow'}">${a.role==='manager'?'Team Leader':a.role}</span><div class="emp-actions">${a.role==='manager'?`<button class="action-btn view" onclick="openManagerTeam(${a.id},'${a.name}')">👥 فريق</button>`:''}<button class="action-btn del" onclick="deleteAdmin(${a.id})">🗑️</button></div></div>`).join('');
+  el.innerHTML=allAdmins.map(a=>`<div class="emp-card"><div class="emp-avatar" style="background:var(--blue)">👑</div><div class="emp-info"><div class="emp-name">${a.name}</div><div class="emp-branch">${a.username}</div></div><span class="badge ${a.role==='admin'?'badge-blue':a.role==='manager'?'badge-purple':'badge-yellow'}">${a.role==='manager'?'Team Leader':a.role}</span><div class="emp-actions">${a.role==='manager'?`<button class="action-btn view" onclick="openManagerTeam(${a.id},'${a.name}')">👥 فريق</button>`:''}<button class="action-btn edit" onclick="openEditAdmin(${a.id})">✏️</button><button class="action-btn del" onclick="deleteAdmin(${a.id})">🗑️</button></div></div>`).join('');
 }
 function openAddAdmin(){document.getElementById('admin-modal-title').textContent=currentLang==='ar'?'إضافة مسؤول':'Add Admin';document.getElementById('edit-admin-id').value='';document.getElementById('admin-form-name').value='';document.getElementById('admin-form-username').value='';document.getElementById('admin-form-pass').value='';document.getElementById('admin-pass-group').style.display='block';openModal('add-admin-modal')}
-async function saveAdmin(){const name=document.getElementById('admin-form-name').value.trim(),username=document.getElementById('admin-form-username').value.trim(),pass=document.getElementById('admin-form-pass').value.trim(),role=document.getElementById('admin-form-role').value;const ar=currentLang==='ar';if(!name||!username||!pass)return notify(ar?'أكمل جميع الحقول':'Fill all fields','error');try{await dbPost('admins',{name,username,password:pass,role});notify(ar?'تمت الإضافة ✅':'Added ✅','success');closeModal('add-admin-modal');loadAdminsList()}catch(e){notify('Error','error')}}
+function openEditAdmin(id){
+  const adm=allAdmins.find(a=>a.id===id);if(!adm)return;
+  document.getElementById('admin-modal-title').textContent=currentLang==='ar'?'تعديل المسؤول':'Edit Admin';
+  document.getElementById('edit-admin-id').value=id;
+  document.getElementById('admin-form-name').value=adm.name;
+  document.getElementById('admin-form-username').value=adm.username;
+  document.getElementById('admin-form-pass').value='';
+  document.getElementById('admin-pass-group').style.display='none';
+  document.getElementById('admin-form-role').value=adm.role||'admin';
+  openModal('add-admin-modal');
+}
+async function saveAdmin(){
+  const editId=document.getElementById('edit-admin-id').value;
+  const name=document.getElementById('admin-form-name').value.trim();
+  const username=document.getElementById('admin-form-username').value.trim();
+  const pass=document.getElementById('admin-form-pass').value.trim();
+  const role=document.getElementById('admin-form-role').value;
+  const ar=currentLang==='ar';
+  if(!name||!username)return notify(ar?'أدخل الاسم واسم المستخدم':'Enter name and username','error');
+  if(!editId&&!pass)return notify(ar?'أدخل كلمة المرور':'Enter password','error');
+  try{
+    if(editId){
+      const data={name,username,role};
+      if(pass) data.password=pass;
+      await dbPatch('admins',data,`?id=eq.${editId}`);
+    } else {
+      await dbPost('admins',{name,username,password:pass,role});
+    }
+    notify(ar?'تم الحفظ ✅':'Saved ✅','success');closeModal('add-admin-modal');loadAdminsList();
+  }catch(e){notify((ar?'خطأ: ':'Error: ')+(e.message||'Unknown'),'error')}
+}
 async function deleteAdmin(id){
   const ar=currentLang==='ar';
   // Prevent deleting the hardcoded superadmin
@@ -102,4 +132,3 @@ async function filterEmployeesForManager() {
 }
 
 // displayPhotos moved to modules/admin/display.js
-

@@ -75,193 +75,31 @@ const Q1_STORES = [{"store": "B.ONLINE", "jan": 197623, "feb": 113359, "mar_actu
 const ORAIMO_MODELS = [
 
 {
-name:"Oraimo TWS OTW-625",
-specs:{
-bluetooth:{ar:"بلوتوث 5.3",en:"Bluetooth 5.3"},
-battery:{ar:"36 ساعة تشغيل",en:"36 Hours Playtime"},
-mic:{ar:"4 مايك ENC",en:"4-Mic ENC"},
-driver:{ar:"13 مم",en:"13mm Driver"},
-waterproof:{ar:"IPX5",en:"IPX5 Water Resistant"},
-fast_charge:{ar:"10 دقائق = 140 دقيقة",en:"10min = 140min play"}
-},
-sell:[
-{ar:"أفضل مكالمات في الفئة",en:"Best call quality in class"},
-{ar:"بطارية أقوى من المنافسين",en:"Stronger battery than competitors"},
-{ar:"Bass قوي جدًا",en:"Powerful bass"},
-{ar:"Gaming mode بدون تأخير",en:"Low latency gaming mode"}
-],
-compare:{
-model:"Anker R50i",
-price:{ar:"حوالي 1100 جنيه",en:"≈1100 EGP"},
-points:[
-{ar:"36 ساعة مقابل 30",en:"36h vs 30h"},
-{ar:"4 مايك vs 2",en:"4 mics vs 2"},
-{ar:"شحن أسرع",en:"Faster charging"}
-]
-}
-},
-
-{
-name:"Oraimo TWS OTW324",
-specs:{
-bluetooth:{ar:"بلوتوث 5.2",en:"Bluetooth 5.2"},
-battery:{ar:"28 ساعة تشغيل",en:"28 Hours Playtime"},
-mic:{ar:"2 مايك ENC",en:"2-Mic ENC"},
-driver:{ar:"10 مم",en:"10mm Driver"},
-waterproof:{ar:"IPX4",en:"IPX4 Water Resistant"},
-fast_charge:{ar:"10 دقائق = 120 دقيقة",en:"10min = 120min play"}
-},
-sell:[
-{ar:"أفضل اختيار اقتصادي",en:"Best budget choice"},
-{ar:"صوت عالي وواضح",en:"Loud and clear sound"},
-{ar:"قيمة مقابل سعر ممتازة",en:"Great value for money"},
-{ar:"مناسب للاستخدام اليومي",en:"Perfect for daily use"}
-],
-compare:{
-model:"Realme Buds T100",
-price:{ar:"حوالي 700 جنيه",en:"≈700 EGP"},
-points:[
-{ar:"صوت أعلى",en:"Louder sound"},
-{ar:"ثبات أفضل",en:"Better stability"},
-{ar:"تصميم أقوى",en:"More durable design"}
-]
-}
-},
-
-{
-name:"Oraimo TWS OTW323SP",
-specs:{
-bluetooth:{ar:"بلوتوث 5.3",en:"Bluetooth 5.3"},
-battery:{ar:"24 ساعة تشغيل",en:"24 Hours Playtime"},
-mic:{ar:"2 مايك",en:"Dual Mic"},
-driver:{ar:"10 مم",en:"10mm Driver"},
-waterproof:{ar:"IPX4",en:"IPX4"},
-fast_charge:{ar:"15 دقيقة = 90 دقيقة",en:"15min = 90min play"}
-},
-sell:[
-{ar:"أفضل للألعاب",en:"Best for gaming"},
-{ar:"Latency منخفض جدًا",en:"Ultra low latency"},
-{ar:"تصميم خفيف",en:"Lightweight design"},
-{ar:"سعر اقتصادي",en:"Affordable price"}
-],
-compare:{
-model:"Lenovo GM2 Pro",
-price:{ar:"حوالي 600 جنيه",en:"≈600 EGP"},
-points:[
-{ar:"Latency أقل",en:"Lower latency"},
-{ar:"بطارية أفضل",en:"Better battery"},
-{ar:"راحة أعلى",en:"More comfort"}
-]
-}
-},
-
-{
-name:"Oraimo Smart Watch 6N OSW-8000N",
-specs:{
-bluetooth:{ar:"بلوتوث + إشعارات",en:"Bluetooth + Notifications"},
-battery:{ar:"7 أيام استخدام",en:"7 Days Battery"},
-mic:{ar:"—",en:"—"},
-driver:{ar:"شاشة كبيرة HD",en:"Large HD Display"},
-waterproof:{ar:"IP67",en:"IP67"},
-fast_charge:{ar:"شحن سريع",en:"Fast Charging"}
-},
-sell:[
-{ar:"شاشة كبيرة وواضحة",en:"Large clear display"},
-{ar:"بطارية قوية",en:"Strong battery"},
-{ar:"مناسب للرياضة",en:"Good for fitness"},
-{ar:"سهل الاستخدام",en:"Easy to use"}
-],
-compare:{
-model:"Xiaomi Mi Watch Lite",
-price:{ar:"حوالي 1200 جنيه",en:"≈1200 EGP"},
-points:[
-{ar:"شاشة أكبر",en:"Bigger display"},
-{ar:"بطارية أطول",en:"Longer battery"},
-{ar:"سعر أقل",en:"Better price"}
-]
-}
-},
-
-{
-name:"Oraimo Power Bank OPB-7100Q",
-specs:{
-bluetooth:{ar:"—",en:"—"},
-battery:{ar:"10000mAh",en:"10000mAh"},
-mic:{ar:"—",en:"—"},
-driver:{ar:"18W Fast Charge",en:"18W Fast Charge"},
-waterproof:{ar:"حماية ذكية",en:"Smart Protection"},
-fast_charge:{ar:"شحن سريع",en:"Fast Charging"}
-},
-sell:[
-{ar:"سعر ممتاز",en:"Great price"},
-{ar:"حجم صغير",en:"Compact size"},
-{ar:"آمن على الموبايل",en:"Safe charging"},
-{ar:"سهل الحمل",en:"Portable"}
-],
-compare:{
-model:"Anker 10K",
-price:{ar:"حوالي 900 جنيه",en:"≈900 EGP"},
-points:[
-{ar:"سعر أقل",en:"Lower price"},
-{ar:"نفس الأداء",en:"Same performance"},
-{ar:"أخف وزن",en:"Lighter"}
-]
-}
-},
-
-{
 name:"Oraimo Smart Watch OSW-805",
 specs:{
-bluetooth:{ar:"إشعارات",en:"Notifications"},
-battery:{ar:"5-7 أيام",en:"5-7 Days"},
-mic:{ar:"—",en:"—"},
-driver:{ar:"شاشة HD",en:"HD Display"},
-waterproof:{ar:"IP67",en:"IP67"},
-fast_charge:{ar:"—",en:"—"}
+bluetooth:{ar:"إشعارات ذكية",en:"Smart Notifications"},
+battery:{ar:"5-7 أيام استخدام",en:"5-7 Days Usage"},
+mic:{ar:"بدون مكالمات",en:"No Calling"},
+driver:{ar:"شاشة HD 1.69 بوصة",en:"1.69\" HD Display"},
+waterproof:{ar:"IP67 مقاوم للماء",en:"IP67 Water Resistant"},
+fast_charge:{ar:"شحن خلال ساعتين",en:"2 Hours Charging"}
 },
 sell:[
-{ar:"تصميم شيك",en:"Stylish design"},
-{ar:"خفيف ومريح",en:"Lightweight"},
-{ar:"مناسب يوميًا",en:"Daily use"},
-{ar:"سعر مناسب",en:"Affordable"}
+{ar:"تصميم أنيق مناسب لكل الأذواق",en:"Stylish design for all tastes"},
+{ar:"بطارية تعيش أيام بدون شحن",en:"Long-lasting battery"},
+{ar:"خفيف ومريح في الاستخدام اليومي",en:"Lightweight for daily use"},
+{ar:"أفضل قيمة مقابل السعر",en:"Best value for money"}
 ],
 compare:{
 model:"Realme Watch 2",
 price:{ar:"حوالي 1000 جنيه",en:"≈1000 EGP"},
 points:[
-{ar:"تصميم أفضل",en:"Better design"},
-{ar:"راحة أعلى",en:"More comfort"},
-{ar:"سهولة استخدام",en:"Easier use"}
+{ar:"تصميم شيك أكثر",en:"More premium design"},
+{ar:"راحة في اللبس لفترات طويلة",en:"More comfortable wear"},
+{ar:"واجهة استخدام أسهل",en:"Easier UI"}
 ]
 }
 },
-
-{
-name:"Oraimo OCD 152C Cable",
-specs:{
-bluetooth:{ar:"—",en:"—"},
-battery:{ar:"—",en:"—"},
-mic:{ar:"—",en:"—"},
-driver:{ar:"Fast Charging",en:"Fast Charging"},
-waterproof:{ar:"متين",en:"Durable"},
-fast_charge:{ar:"شحن سريع",en:"Fast Charging"}
-},
-sell:[
-{ar:"متين جدًا",en:"Highly durable"},
-{ar:"شحن سريع",en:"Fast charging"},
-{ar:"طول مناسب",en:"Good length"},
-{ar:"سعر اقتصادي",en:"Affordable"}
-],
-compare:{
-model:"Baseus Cable",
-price:{ar:"حوالي 200 جنيه",en:"≈200 EGP"},
-points:[
-{ar:"متانة أعلى",en:"More durable"},
-{ar:"سعر أفضل",en:"Better price"},
-{ar:"نفس السرعة",en:"Same speed"}
-]
-}
-}
 
 ];
 

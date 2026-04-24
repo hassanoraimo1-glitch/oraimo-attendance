@@ -23,15 +23,16 @@ async function loadAdminDashboard(){
     const present=todayAtt?todayAtt.length:0;
     document.getElementById('adm-present').textContent=present;
     window._todayPresentIds=(todayAtt||[]).map(a=>a.employee_id);
+    window._todayAtt=todayAtt||[];
     document.getElementById('adm-absent').textContent=Math.max(0,allEmployees.length-present);
-    // Yesterday stats
+    // Yesterday
     const yestDate=new Date(Date.now()-86400000).toISOString().split('T')[0];
-    const yestAtt=await dbGet('attendance',`?date=eq.${yestDate}&select=employee_id`).catch(()=>[]);
-    const yestPresent=(yestAtt||[]).length;
-    const yestAbsEl=document.getElementById('adm-absent-yesterday');
-    const yestPresEl=document.getElementById('adm-present-yesterday');
-    if(yestPresEl) yestPresEl.textContent=yestPresent;
-    if(yestAbsEl) yestAbsEl.textContent=Math.max(0,allEmployees.length-yestPresent);
+    const yestAtt=await dbGet('attendance',`?date=eq.${yestDate}&select=*`).catch(()=>[])||[];
+    window._yestAtt=yestAtt;
+    window._yestPresentIds=yestAtt.map(a=>a.employee_id);
+    const yp=document.getElementById('adm-present-yest'),ya=document.getElementById('adm-absent-yest');
+    if(yp) yp.textContent=yestAtt.length;
+    if(ya) ya.textContent=Math.max(0,allEmployees.length-yestAtt.length);
     const presentEl=document.getElementById('adm-present');
     if(presentEl){presentEl.style.cursor='pointer';presentEl.onclick=function(){showPresentEmployees(todayAtt||[]);};}
     const[todaySales,monthSales]=await Promise.all([dbGet('sales',`?date=eq.${today}&select=total_amount,employee_id`),dbGet('sales',`?date=gte.${pm.start}&date=lte.${pm.end}&select=total_amount,employee_id,product_name`)]);
@@ -98,4 +99,36 @@ async function renderPerformanceRanking(monthSales){
     <div class="perf-name">${e.name}</div>
     <div class="perf-bar-bg"><div class="perf-bar-fill" style="width:${e.sales>0?Math.max(4,Math.round(e.sales/maxSales*100)):0}%;background:${i===0?'var(--gold)':i===1?'var(--silver)':i===2?'var(--bronze)':'var(--green)'}"></div></div>
     <div class="perf-val">EGP ${fmtEGP(e.sales)}</div></div>`).join('');
+}
+
+function showAttList(type,day){
+  const ar=currentLang==='ar';
+  const isToday=day==='today';
+  const attData=isToday?(window._todayAtt||[]):(window._yestAtt||[]);
+  const presentIds=attData.map(a=>a.employee_id);
+  const empMap={};(allEmployees||[]).forEach(e=>{empMap[e.id]=e;});
+  const isPresent=type==='present';
+  const list=isPresent
+    ?attData.map(a=>({emp:empMap[a.employee_id]||{name:String(a.employee_id)},att:a}))
+    :allEmployees.filter(e=>!presentIds.includes(e.id)).map(e=>({emp:e,att:null}));
+  const color=isPresent?'var(--green)':'var(--red)';
+  const icon=isPresent?'✅':'😴';
+  const titleAr=isPresent?(isToday?'الحاضرون اليوم':'حاضرون أمس'):(isToday?'الغائبون اليوم':'غائبون أمس');
+  const titleEn=isPresent?(isToday?'Present Today':'Present Yesterday'):(isToday?'Absent Today':'Absent Yesterday');
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
+  overlay.innerHTML=`<div style="background:var(--card);border-radius:22px 22px 0 0;padding:22px 18px;width:100%;max-height:70vh;overflow-y:auto;border-top:2px solid ${color}">
+    <div style="font-size:16px;font-weight:800;color:${color};margin-bottom:14px">${icon} ${ar?titleAr:titleEn} (${list.length})</div>
+    ${list.length===0?`<div style="text-align:center;color:var(--muted);padding:20px">${ar?'لا يوجد':'None'}</div>`:
+    list.map(item=>{
+      const e=item.emp,a=item.att;
+      const detail=a?`${ar?'دخول':'In'}: ${a.check_in||'-'}${a.late_minutes>0?' · ⚠️'+a.late_minutes+(ar?'د':'m'):''}${a.check_out?(ar?' · خروج: ':' · Out: ')+a.check_out:''}`:(e.branch||'-');
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div class="emp-avatar" style="width:36px;height:36px;font-size:13px;overflow:hidden">${e.profile_photo?`<img src="${e.profile_photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:(e.name||'?')[0].toUpperCase()}</div>
+        <div style="flex:1"><div style="font-size:13px;font-weight:700">${e.name||'?'}</div><div style="font-size:11px;color:var(--muted)">${detail}</div></div>
+      </div>`;}).join('')}
+    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px">${ar?'إغلاق':'Close'}</button>
+  </div>`;
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  document.body.appendChild(overlay);
 }

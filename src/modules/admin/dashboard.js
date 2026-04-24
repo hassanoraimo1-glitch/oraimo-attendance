@@ -1,9 +1,8 @@
 // ═══════════════════════════════════════════════════════════
 // modules/admin/dashboard.js — Admin dashboard (home) + perf ranking
-// Provides globals: loadAdminDashboard, renderPerformanceRanking
+// Provides globals: loadAdminDashboard, renderPerformanceRanking, showAttList
 // ═══════════════════════════════════════════════════════════
 
-// ── ADMIN DASHBOARD ──
 async function loadAdminDashboard(){
   const loader=document.getElementById('dash-loader');
   const dashC=document.getElementById('dash-content');
@@ -13,14 +12,13 @@ async function loadAdminDashboard(){
     const today=todayStr(),pm=getPayrollMonth(),ar=currentLang==='ar';
     const yestDate=new Date(Date.now()-86400000).toISOString().split('T')[0];
 
-    // Fire ALL queries in parallel
     const [allEmp, todayAtt, yestAtt, todaySales, monthSales, leaves] = await Promise.all([
-      dbGet('employees','?select=*'),
-      dbGet('attendance',`?date=eq.${today}&select=*`),
+      dbGet('employees','?select=*').catch(()=>[]),
+      dbGet('attendance',`?date=eq.${today}&select=*`).catch(()=>[]),
       dbGet('attendance',`?date=eq.${yestDate}&select=*`).catch(()=>[]),
-      dbGet('sales',`?date=eq.${today}&select=total_amount,employee_id`),
-      dbGet('sales',`?date=gte.${pm.start}&date=lte.${pm.end}&select=total_amount,employee_id,product_name`),
-      dbGet('leave_requests','?status=eq.pending&select=*')
+      dbGet('sales',`?date=eq.${today}&select=total_amount,employee_id`).catch(()=>[]),
+      dbGet('sales',`?date=gte.${pm.start}&date=lte.${pm.end}&select=total_amount,employee_id,product_name`).catch(()=>[]),
+      dbGet('leave_requests','?status=eq.pending&select=*').catch(()=>[])
     ]);
 
     allEmployees=allEmp||[];
@@ -30,27 +28,26 @@ async function loadAdminDashboard(){
       else allEmployees=[];
     }
 
-    // Today stats
     const present=(todayAtt||[]).length;
     window._todayAtt=todayAtt||[];
     window._todayPresentIds=(todayAtt||[]).map(a=>a.employee_id);
     document.getElementById('adm-present').textContent=present;
     document.getElementById('adm-absent').textContent=Math.max(0,allEmployees.length-present);
 
-    // Yesterday stats
     window._yestAtt=yestAtt||[];
     window._yestPresentIds=(yestAtt||[]).map(a=>a.employee_id);
-    const yp=document.getElementById('adm-present-yest'),ya=document.getElementById('adm-absent-yest');
+    const yp=document.getElementById('adm-present-yest');
+    const ya=document.getElementById('adm-absent-yest');
     if(yp) yp.textContent=(yestAtt||[]).length;
     if(ya) ya.textContent=Math.max(0,allEmployees.length-(yestAtt||[]).length);
 
-    // Sales
     let todayTotal=0,monthTotal=0;
-    (todaySales||[]).forEach(s=>todayTotal+=s.total_amount);(monthSales||[]).forEach(s=>monthTotal+=s.total_amount);
+    (todaySales||[]).forEach(s=>todayTotal+=s.total_amount);
+    (monthSales||[]).forEach(s=>monthTotal+=s.total_amount);
     document.getElementById('adm-sales-today').textContent='EGP '+fmtEGP(todayTotal);
     document.getElementById('adm-sales-month').textContent='EGP '+fmtEGP(monthTotal);
     renderPerformanceRanking(monthSales||[]);
-    // Hide loader, show content
+
     applyLang();
     const el=document.getElementById('adm-emp-today');
     if(el){
@@ -75,7 +72,6 @@ async function loadAdminDashboard(){
         }).join('');
       }
     }
-    const leaves=await dbGet('leave_requests','?status=eq.pending&select=*');
     const lel=document.getElementById('adm-leave-requests');
     if(lel){
       if(!leaves||leaves.length===0){lel.innerHTML=`<div style="color:var(--muted);font-size:12px;padding:8px">${ar?'لا توجد طلبات معلقة':'No pending requests'}</div>`;}
@@ -92,14 +88,13 @@ async function loadAdminDashboard(){
           </div>`).join('');
       }
     }
-  }catch(e){console.error(e)}
+  }catch(e){console.error('[dashboard]',e)}
 }
 
 async function renderPerformanceRanking(monthSales){
   const el=document.getElementById('adm-performance-list');const ar=currentLang==='ar';
   if(!el||allEmployees.length===0){if(el)el.innerHTML=`<div class="empty"><div class="empty-icon">📊</div>${ar?'لا توجد بيانات':'No data'}</div>`;return}
   const salesByEmp={};monthSales.forEach(s=>{salesByEmp[s.employee_id]=(salesByEmp[s.employee_id]||0)+s.total_amount});
-  // Filter out team leaders from performance ranking
   const empsOnly=allEmployees.filter(e=>e.role!=='team_leader');
   const ranked=empsOnly.map(e=>({...e,sales:salesByEmp[e.id]||0})).sort((a,b)=>b.sales-a.sales);
   const maxSales=ranked[0]?.sales||1;const medals=['🥇','🥈','🥉'];

@@ -1,196 +1,305 @@
 // ═══════════════════════════════════════════════════════════
-// modules/auth.js — Login, logout, app routing, clock
-// Provides globals: showApp, doLogin, doLogout, startClock
-// Depends on: fallbacks.js (dbGet/dbPost, notify, applyLang)
+// modules/attendance.js — Attendance, selfie, camera, daily log
+// Provides globals: loadEmpData, updateAttendBtn, handleAttendClick,
+//   confirmAttendance, openCamera, closeCamera, capturePhoto,
+//   renderAttendHistory, loadEmpWarnings, loadEmpDailyLog, loadEmpMonthlyReport
 // ═══════════════════════════════════════════════════════════
 
-function showApp(){
-  if(!currentUser)return showPage('login-page');
-  applyLang();
-  // employees nav hidden via role logic below
-  // ALWAYS reset nav state first to prevent bleed from previous session
-  document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});
-  const visNavReset=document.getElementById('adm-visits-nav');
-  if(visNavReset) visNavReset.style.display='none';
-  document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
-  ['add-emp-btn','add-emp-btn2'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='';});
-  document.getElementById('admins-section').style.display='none';
-  // Make first nav item active
-  const firstNav=document.querySelector('#admin-app .bottom-nav .nav-item');
-  if(firstNav) firstNav.classList.add('active');
+// Helper: get shift time strings (used both for display and for late calc)
+function _getShiftTimes(shift, dayOfWeek) {
+  const isThurFri = (dayOfWeek === 4 || dayOfWeek === 5);
+  if (shift === 'evening') {
+    return isThurFri
+      ? { start: '15:00', end: '23:00', labelAr: '🌙 مسائي: 3م – 11م', labelEn: '🌙 Evening: 3PM–11PM' }
+      : { start: '14:00', end: '22:00', labelAr: '🌙 مسائي: 2م – 10م', labelEn: '🌙 Evening: 2PM–10PM' };
+  }
+  return { start: '10:00', end: '18:00', labelAr: '🌅 صباحي: 10ص – 6م', labelEn: '🌅 Morning: 10AM–6PM' };
+}
 
-  const isAdmin=['superadmin','admin','manager','viewer','team_leader'].includes(currentUser.role);
-  if(isAdmin){
-    document.getElementById('admin-name-top').textContent=currentUser.name||'Admin';
-    const chip=document.getElementById('admin-role-chip');
-    chip.textContent=currentUser.role==='superadmin'?'Super Admin':currentUser.role==='manager'?'Team Leader':currentUser.role==='team_leader'?'Team Leader':currentUser.role.charAt(0).toUpperCase()+currentUser.role.slice(1);
-    chip.className='role-chip badge role-'+currentUser.role;
-    if(currentUser.role==='viewer')document.getElementById('settings-nav-item').style.display='none';
-    if(currentUser.role==='superadmin')document.getElementById('admins-section').style.display='block';
-    if(currentUser.role==='viewer'){const b=document.getElementById('add-emp-btn');if(b)b.style.display='none'}
-    showPage('admin-app');
-    // تأكد إن الـ dashboard tab ظاهر
-    const dashNav=document.querySelector('#admin-app .bottom-nav .nav-item');
-    if(typeof adminTab==='function' && dashNav){
-      adminTab('dashboard', dashNav);
+function _to12HourLabel(hhmm) {
+  if (!hhmm || typeof hhmm !== 'string') return '-';
+  const parts = hhmm.split(':');
+  if (parts.length < 2) return hhmm;
+  const h = Number(parts[0]);
+  const m = Number(parts[1]);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return hhmm;
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const h12 = ((h + 11) % 12) + 1;
+  return `${h12}:${String(m).padStart(2, '0')} ${suffix}`;
+}
+
+function _addHoursToHHMM(hhmm, hoursToAdd = 8) {
+  if (!hhmm || typeof hhmm !== 'string') return '';
+  const parts = hhmm.split(':');
+  if (parts.length < 2) return '';
+  const h = Number(parts[0]);
+  const m = Number(parts[1]);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return '';
+  const total = (h * 60 + m + Math.round(hoursToAdd * 60)) % (24 * 60);
+  const nh = Math.floor(total / 60);
+  const nm = total % 60;
+  return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`;
+}
+
+// Helper: ensure shift-info element exists on the home screen.
+// Injects it above the attend button if missing.
+function _ensureShiftInfoEl() {
+  let el = document.getElementById('emp-shift-info');
+  if (el) return el;
+  const attendBtn = document.getElementById('attend-btn');
+  if (!attendBtn) return null;
+  el = document.createElement('div');
+  el.id = 'emp-shift-info';
+  el.style.cssText = 'font-size:12px;font-weight:700;color:var(--green);text-align:center;padding:8px 12px;margin:0 0 12px;background:rgba(0,200,83,.08);border:1px solid rgba(0,200,83,.2);border-radius:12px;direction:rtl';
+  attendBtn.parentNode.insertBefore(el, attendBtn);
+  return el;
+}
+
+async function loadEmpData() {
+  if (!currentUser) return;
+  try {
+    const today = todayStr(), pm = getPayrollMonth();
+
+    // ── Today's attendance ──
+    const todayAtt = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`).catch(() => []);
+    updateAttendBtn(todayAtt && todayAtt.length > 0 ? todayAtt[0] : null);
+
+    // ── Month's attendance & stats ──
+    const monthAtt = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`).catch(() => []);
+    const attCountEl = document.getElementById('emp-attend-count'); if (attCountEl) attCountEl.textContent = (monthAtt || []).length;
+    let lateTotal = 0; (monthAtt || []).forEach(a => { lateTotal += (a.late_minutes || 0); });
+    const lateEl = document.getElementById('emp-late-total'); if (lateEl) lateEl.textContent = lateTotal + (currentLang === 'ar' ? ' د' : 'm');
+
+    // ── Month's sales ──
+    const monthSales = await dbGet('sales', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`).catch(() => []);
+    let salesTotal = 0; (monthSales || []).forEach(s => { salesTotal += s.total_amount; });
+    const salesEl = document.getElementById('emp-sales-total'); if (salesEl) salesEl.textContent = 'EGP ' + fmtEGP(salesTotal);
+
+    // ── Target & K Model ──
+    const mon = pm.start.substring(0, 7);
+    const targetRes = await dbGet('targets', `?employee_id=eq.${currentUser.id}&month=eq.${mon}&select=*`).catch(() => []);
+    const target = targetRes && targetRes.length > 0 ? targetRes[0].amount : 0;
+    const kmodel = targetRes && targetRes.length > 0 ? targetRes[0].kmodel_amount : 0;
+    const achEl = document.getElementById('target-achieved'); if (achEl) achEl.textContent = 'EGP ' + fmtEGP(salesTotal);
+    const goalEl = document.getElementById('target-goal'); if (goalEl) goalEl.textContent = (currentLang === 'ar' ? 'التارجت: ' : 'Target: ') + 'EGP ' + fmtEGP(target);
+    const pct = target > 0 ? Math.min(100, Math.round(salesTotal / target * 100)) : 0;
+    const fillEl = document.getElementById('target-fill'); if (fillEl) fillEl.style.width = pct + '%';
+    const pctEl = document.getElementById('target-pct'); if (pctEl) pctEl.textContent = pct + '%';
+    const kr = document.getElementById('kmodel-row');
+    if (kmodel > 0 && kr) {
+      kr.style.display = 'block';
+      const kpct = Math.min(100, Math.round(salesTotal / kmodel * 100));
+      const kf = document.getElementById('kmodel-fill'); if (kf) kf.style.width = kpct + '%';
+      const kp = document.getElementById('kmodel-pct'); if (kp) kp.textContent = kpct + '%';
+    } else if (kr) kr.style.display = 'none';
+
+    // ── Absent days ──
+    const startD = new Date(pm.start), endD = new Date(Math.min(new Date(pm.end), new Date()));
+    let absent = 0;
+    for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
+      if (d.getDay() === currentUser.day_off) continue;
+      const ds = fmtDate(new Date(d));
+      if (!(monthAtt || []).find(a => a.date === ds)) absent++;
+    }
+    const absEl = document.getElementById('emp-absent-count'); if (absEl) absEl.textContent = absent;
+
+    // ── Charts ──
+    if (typeof renderDailySalesGrid === 'function') renderDailySalesGrid(monthSales, pm);
+    if (typeof renderEmpPerfChart === 'function') renderEmpPerfChart(monthSales, pm);
+
+    // ── Recent attendance + warnings + today sales ──
+    const recent = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&order=date.desc&limit=7&select=*`).catch(() => []);
+    renderAttendHistory(recent);
+    loadEmpWarnings();
+    if (typeof loadTodaySales === 'function') loadTodaySales();
+
+    // ── SHIFT LABEL ON HOME (the fix) ──
+    const shiftInfoEl = _ensureShiftInfoEl();
+    if (shiftInfoEl) {
+      const ar = currentLang === 'ar';
+      const dow = new Date().getDay();
+      const shift = currentUser.shift || 'morning';
+      const { labelAr, labelEn } = _getShiftTimes(shift, dow);
+      shiftInfoEl.textContent = ar ? labelAr : labelEn;
+    }
+  } catch (e) { console.error('[loadEmpData]', e); }
+}
+
+function updateAttendBtn(record) {
+  const btn = document.getElementById('attend-btn'), status = document.getElementById('attend-status');
+  if (!btn) return;
+  const ar = currentLang === 'ar';
+  const iconEl = btn.querySelector('.attend-icon');
+  const labelEl = btn.querySelector('.attend-label');
+  if (record && record.check_in && !record.check_out) {
+    btn.classList.add('checked-in');
+    if (iconEl) iconEl.textContent = '🔴';
+    if (labelEl) labelEl.textContent = ar ? 'تسجيل خروج' : 'Check Out';
+    const expectedOut = _addHoursToHHMM(record.check_in, 8);
+    if (status) status.textContent =
+      `${ar ? 'دخل الساعة' : 'In at'} ${_to12HourLabel(record.check_in)}` +
+      `${record.late_minutes > 0 ? (ar ? ' (تأخر ' + record.late_minutes + ' د)' : ' (' + record.late_minutes + 'm late)') : ''}` +
+      `${expectedOut ? (ar ? ` • الخروج المتوقع: ${_to12HourLabel(expectedOut)}` : ` • Expected out: ${_to12HourLabel(expectedOut)}`) : ''}`;
+  } else if (record && record.check_out) {
+    btn.classList.remove('checked-in');
+    if (iconEl) iconEl.textContent = '✅';
+    if (labelEl) labelEl.textContent = ar ? 'تم' : 'Done';
+    btn.onclick = null;
+    if (status) status.textContent = `${ar ? 'دخول' : 'In'}: ${_to12HourLabel(record.check_in)} – ${ar ? 'خروج' : 'Out'}: ${_to12HourLabel(record.check_out)}`;
+  } else {
+    btn.classList.remove('checked-in');
+    if (iconEl) iconEl.textContent = '🟢';
+    if (labelEl) labelEl.textContent = ar ? 'تسجيل دخول' : 'Check In';
+    if (status) status.textContent = ar ? 'لم يتم تسجيل حضور اليوم' : 'No attendance recorded today';
+  }
+}
+
+function handleAttendClick() {
+  const btn = document.getElementById('attend-btn');
+  if (!btn) return;
+  const iconEl = btn.querySelector('.attend-icon');
+  if (iconEl && iconEl.textContent === '✅') return;
+  attendMode = btn.classList.contains('checked-in') ? 'out' : 'in';
+  const ar = currentLang === 'ar';
+  const titleEl = document.getElementById('selfie-modal-title');
+  const camLabelEl = document.getElementById('camera-label');
+  if (titleEl) titleEl.textContent = attendMode === 'in' ? (ar ? 'تأكيد تسجيل الدخول' : 'Confirm Check In') : (ar ? 'تأكيد تسجيل الخروج' : 'Confirm Check Out');
+  if (camLabelEl) camLabelEl.textContent = attendMode === 'in' ? (ar ? '📸 التقط سيلفي للدخول' : '📸 Take selfie to check in') : (ar ? '📸 التقط سيلفي للخروج' : '📸 Take selfie to check out');
+
+  if (!navigator.geolocation) { notify(ar ? '⚠️ جهازك لا يدعم تحديد الموقع' : '⚠️ Geolocation not supported', 'error'); return; }
+  notify(ar ? '📍 جاري تحديد موقعك...' : '📍 Getting your location...', 'info');
+  btn.style.pointerEvents = 'none';
+  navigator.geolocation.getCurrentPosition(
+    pos => { capturedLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude }; btn.style.pointerEvents = ''; openCamera(); },
+    err => {
+      capturedLocation = null; btn.style.pointerEvents = '';
+      if (err.code === 1) notify(ar ? '❌ افتح الإعدادات ← Safari ← الموقع وافعّله' : '❌ Settings → Safari → Location → Allow', 'error');
+      else notify(ar ? '❌ تعذر تحديد الموقع، حاول مرة أخرى' : '❌ Location failed, try again', 'error');
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
+
+function renderAttendHistory(records) {
+  const el = document.getElementById('emp-attend-history'); if (!el) return;
+  const ar = currentLang === 'ar';
+  if (!records || records.length === 0) { el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div>${ar ? 'لا توجد سجلات' : 'No records'}</div>`; return; }
+  el.innerHTML = records.map(r => `<div class="history-item">
+    <div class="hist-top"><div class="hist-name">${r.date}</div>
+    <span class="badge ${r.late_minutes > 0 ? 'badge-yellow' : 'badge-green'}">${r.late_minutes > 0 ? r.late_minutes + (ar ? ' د تأخير' : 'm late') : (ar ? 'في الوقت' : 'On time')}</span></div>
+    <div style="display:flex;justify-content:space-between">
+      <div class="hist-meta">${ar ? 'دخول' : 'In'}: ${_to12HourLabel(r.check_in)}</div>
+      <div class="hist-meta">${ar ? 'خروج' : 'Out'}: ${_to12HourLabel(r.check_out)}</div>
+    </div></div>`).join('');
+}
+
+async function loadEmpWarnings() {
+  try {
+    const warns = await dbGet('warnings', `?employee_id=eq.${currentUser.id}&order=created_at.desc&limit=5&select=*`);
+    const card = document.getElementById('emp-warnings-card'), list = document.getElementById('emp-warnings-list');
+    if (!warns || warns.length === 0) { if (card) card.style.display = 'none'; return; }
+    if (card) card.style.display = 'block';
+    if (list) list.innerHTML = warns.map(w => `<div class="perm-card" style="border-color:var(--yellow)">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span class="badge badge-yellow">${currentLang === 'ar' ? 'تحذير' : 'Warning'}</span>
+        <span style="font-size:10px;color:var(--muted)">${(w.created_at || '').substring(0, 10)}</span>
+      </div><div style="font-size:12px">${w.message}</div></div>`).join('');
+  } catch (e) { console.warn('[loadEmpWarnings]', e); }
+}
+
+async function loadEmpDailyLog() {
+  const pm = getPayrollMonth(); const ar = currentLang === 'ar';
+  const att = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*&order=date.desc`).catch(() => []) || [];
+  const el = document.getElementById('emp-daily-log'); if (!el) return;
+  if (att.length === 0) { el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div>${ar ? 'لا توجد سجلات' : 'No records'}</div>`; return; }
+  el.innerHTML = `<div class="table-wrap"><table>
+    <tr><th>${ar ? 'التاريخ' : 'Date'}</th><th>${ar ? 'دخول' : 'In'}</th><th>${ar ? 'خروج' : 'Out'}</th><th>${ar ? 'تأخير' : 'Late'}</th></tr>
+    ${att.map(a => `<tr><td>${a.date}</td><td>${_to12HourLabel(a.check_in)}</td><td>${_to12HourLabel(a.check_out)}</td>
+      <td>${a.late_minutes > 0 ? `<span class="badge badge-yellow">${a.late_minutes}${ar ? 'د' : 'm'}</span>` : '<span class="badge badge-green">✓</span>'}</td></tr>`).join('')}
+  </table></div>`;
+}
+
+async function loadEmpMonthlyReport() {
+  const pm = getPayrollMonth(); const ar = currentLang === 'ar';
+  const [att, sales] = await Promise.all([
+    dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`).catch(() => []),
+    dbGet('sales', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`).catch(() => [])
+  ]);
+  let salesTotal = 0; (sales || []).forEach(s => salesTotal += s.total_amount);
+  let lateTotal = 0; (att || []).forEach(a => lateTotal += (a.late_minutes || 0));
+  const el = document.getElementById('monthly-report-emp'); if (!el) return;
+  const rows = ar ? [['أيام الحضور', (att || []).length + ' أيام', 'var(--green)'], ['دقائق التأخير', lateTotal + ' د', 'var(--yellow)'], ['إجمالي المبيعات', 'EGP ' + salesTotal.toLocaleString(), 'var(--green)'], ['عدد المعاملات', (sales || []).length, 'var(--text)']]
+    : [['Attendance', (att || []).length + ' days', 'var(--green)'], ['Late', lateTotal + 'm', 'var(--yellow)'], ['Total Sales', 'EGP ' + salesTotal.toLocaleString(), 'var(--green)'], ['Transactions', (sales || []).length, 'var(--text)']];
+  el.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${pm.label}</div>` + rows.map(([l, v, c]) => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--muted)">${l}</span><span style="font-size:13px;font-weight:700;color:${c}">${v}</span></div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// CAMERA
+// ═══════════════════════════════════════════════════════════
+async function openCamera() {
+  try {
+    const constraints = { video: { facingMode: { ideal: 'user' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false };
+    videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const video = document.getElementById('video');
+    video.srcObject = videoStream;
+    video.setAttribute('playsinline', ''); video.setAttribute('autoplay', ''); video.muted = true;
+    await video.play().catch(() => { });
+    document.getElementById('camera-modal').classList.add('open');
+  } catch (e) {
+    try {
+      videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const video = document.getElementById('video');
+      video.srcObject = videoStream; video.setAttribute('playsinline', ''); video.muted = true;
+      await video.play().catch(() => { });
+      document.getElementById('camera-modal').classList.add('open');
+    } catch (e2) {
+      notify((currentLang === 'ar' ? '❌ خطأ في الكاميرا: ' : '❌ Camera error: ') + e2.message, 'error');
+    }
+  }
+}
+function closeCamera() { if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; } const m = document.getElementById('camera-modal'); if (m) m.classList.remove('open'); }
+function capturePhoto() {
+  const video = document.getElementById('video'), canvas = document.getElementById('canvas');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d'); ctx.translate(canvas.width, 0); ctx.scale(-1, 1); ctx.drawImage(video, 0, 0);
+  capturedPhoto = canvas.toDataURL('image/jpeg', 0.65); closeCamera();
+  document.getElementById('selfie-preview-img').src = capturedPhoto;
+  document.getElementById('selfie-modal').classList.add('open');
+  document.getElementById('confirm-attend-btn').disabled = false;
+  const ar = currentLang === 'ar';
+  const locStatusEl = document.getElementById('location-status');
+  if (locStatusEl) {
+    if (capturedLocation) locStatusEl.innerHTML = `✅ ${ar ? 'تم تحديد الموقع' : 'Location found'} — <a href="https://maps.google.com/?q=${capturedLocation.lat},${capturedLocation.lng}" target="_blank" style="color:var(--green)">${ar ? 'عرض' : 'View'}</a>`;
+    else locStatusEl.textContent = ar ? '⚠️ لم يتم تحديد الموقع' : '⚠️ Location unavailable';
+  }
+}
+
+async function confirmAttendance() {
+  const today = todayStr(), now = new Date(), timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+  const ar = currentLang === 'ar';
+  try {
+    const todayAtt = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`).catch(() => []);
+    if (attendMode === 'in') {
+      const dow = now.getDay();
+      const { start: shiftStart } = _getShiftTimes(currentUser.shift || 'morning', dow);
+      const [wh, wm] = shiftStart.split(':').map(Number), [ah, am] = timeStr.split(':').map(Number);
+      const lateMin = Math.max(0, (ah * 60 + am) - (wh * 60 + wm));
+      await dbPost('attendance', {
+        employee_id: currentUser.id, date: today, check_in: timeStr,
+        late_minutes: lateMin, selfie_in: capturedPhoto,
+        location_lat: capturedLocation?.lat, location_lng: capturedLocation?.lng
+      });
+      notify(ar ? 'تم تسجيل الدخول ✅' : 'Checked in ✅', 'success');
     } else {
-      const d=document.getElementById('admin-dashboard');
-      if(d) d.style.display='block';
+      if (todayAtt && todayAtt.length > 0) {
+        await dbPatch('attendance', { check_out: timeStr, selfie_out: capturedPhoto }, `?employee_id=eq.${currentUser.id}&date=eq.${today}`);
+        notify(ar ? 'تم تسجيل الخروج ✅' : 'Checked out ✅', 'success');
+      }
     }
-    loadAdminDashboard();loadAllEmployees();loadBranches();clearOldVisitPhotos();
-    if(currentUser.role==='superadmin'||currentUser.role==='admin')loadAdminsList();
-    // Reset all nav items to visible for admin/superadmin
-    if(currentUser.role==='superadmin'||currentUser.role==='admin'||currentUser.role==='viewer'){
-      document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>n.style.display='');
-      document.getElementById('adm-visits-nav').style.display='none';
-    }
-    if(currentUser.role==='manager'){
-      // Manager: لا visits nav — visits للـ team_leader بس
-    }
-  setTimeout(fixNavDirection, 100);
-  if(currentUser.role==='team_leader'){
-      // Team leader: visits + employees + settings (for team mgmt), hide branches/reports
-      setTimeout(()=>{
-        // show visits nav
-        const admVisNav=document.getElementById('adm-visits-nav');
-        if(admVisNav) admVisNav.style.display='flex';
-        // show settings nav (team leader manages their team there)
-        const settingsNavEl=document.getElementById('settings-nav-item');
-        if(settingsNavEl) settingsNavEl.style.display='flex';
-        // hide branches nav
-        const branchesNavEl=document.getElementById('adm-branches-nav');
-        if(branchesNavEl) branchesNavEl.style.display='none';
-        // hide reports nav
-        document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{
-          const oc=n.getAttribute('onclick')||'';
-          if(oc.includes('reports')) n.style.display='none';
-        });
-        // hide add employee button
-        ['add-emp-btn','add-emp-btn2'].forEach(id=>{
-          const el=document.getElementById(id);
-          if(el) el.style.display='none';
-        });
-        // auto-navigate to visits tab
-        const visNavEl=document.getElementById('adm-visits-nav');
-        if(visNavEl){
-          document.querySelectorAll('#admin-app .nav-item').forEach(n=>n.classList.remove('active'));
-          visNavEl.classList.add('active');
-          ['dashboard','employees','branches','reports','settings'].forEach(t=>{
-            const d=document.getElementById('admin-'+t);if(d)d.style.display='none';
-          });
-          const vd=document.getElementById('admin-visits');
-          if(vd) vd.style.display='block';
-          loadTLVisitsTab();
-        }
-      },200);
-    }
-  }else{
-    showPage('emp-app');
-    // تأكد إن الـ home tab ظاهر
-    if(typeof empTab==='function'){
-      const homeNav=document.querySelector('#emp-app .nav-item');
-      empTab('home', homeNav);
-    } else {
-      const h=document.getElementById('emp-home');
-      if(h) h.style.display='block';
-    }
-    document.getElementById('emp-name-top').textContent=currentUser.name;
-    document.getElementById('profile-name').textContent=currentUser.name;
-    document.getElementById('profile-branch').textContent=currentUser.branch||'';
-    const dayLabel=currentLang==='ar'?DAYS_AR[currentUser.day_off]:DAYS_EN[currentUser.day_off];
-    document.getElementById('profile-dayoff').innerHTML=`<span class="badge badge-blue">${currentLang==='ar'?'الإجازة:':'Day Off:'} ${dayLabel||'-'}</span>`;
-    loadEmpData();renderProducts();loadModelTargetAlert();
-    // Hide visits tab (team leaders only via admin app)
-    const visNav=document.querySelector('#emp-app .nav-item[onclick*=\"visits\"]');
-    if(visNav) visNav.style.display='none';
-  }
-  // Register OneSignal for ALL users (admin + employees) & fix nav direction
-  if(typeof registerOneSignalUser==='function') registerOneSignalUser();
-  setTimeout(fixNavDirection, 100);
-}
-
-// ── BACK BUTTON — handled in bootstrap.js ──
-
-// ── AUTH ──
-function _saveUser(u){try{localStorage.setItem('oraimo_user',JSON.stringify(u));}catch(_){try{sessionStorage.setItem('oraimo_user',JSON.stringify(u));}catch(_){}}}
-
-async function doLogin(){
-  if(_isSubmitting) return;
-  const username=(document.getElementById('login-user').value||'').trim().replace(/[\u200B-\u200D\uFEFF]/g,'');
-  const pass=(document.getElementById('login-pass').value||'').trim();
-  const errEl=document.getElementById('login-err');
-  const btn=document.querySelector('#login-page .btn-green');
-  const ar=currentLang==='ar';
-  if(!username||!pass){errEl.textContent=ar?'أدخل بيانات الدخول':'Enter your credentials';return;}
-  _isSubmitting=true;
-  if(btn){btn.disabled=true;btn.textContent=ar?'جاري الدخول...':'Signing in...';}
-  errEl.textContent='';
-  try{
-    if(username==='admin'&&pass==='Oraimo@Admin2026'){
-      window.currentUser={role:'superadmin',name:'Super Admin'};
-      _saveUser(window.currentUser);showApp();return;
-    }
-    const uname=encodeURIComponent(username);
-    let admRes;try{admRes=await dbGet('admins',`?username=eq.${uname}&select=*`);}catch(_){admRes=[];}
-    const admMatch=(admRes||[]).find(r=>r.password===pass);
-    if(admMatch){
-      window.currentUser={...admMatch,role:admMatch.role||'admin'};delete window.currentUser.password;
-      _saveUser(window.currentUser);showApp();return;
-    }
-    let empRes;try{empRes=await dbGet('employees',`?username=eq.${uname}&select=*`);}catch(_){empRes=[];}
-    const empMatch=(empRes||[]).find(r=>r.password===pass);
-    if(!empMatch){errEl.textContent=ar?'بيانات دخول غير صحيحة':'Invalid credentials';return;}
-    window.currentUser={...empMatch,role:empMatch.role||'employee'};delete window.currentUser.password;
-    _saveUser(window.currentUser);showApp();
-  }catch(e){
-    console.error('[login]',e);
-    errEl.textContent=ar?'خطأ في الاتصال، حاول مرة أخرى':'Connection error, try again';
-  }finally{
-    _isSubmitting=false;
-    if(btn){btn.disabled=false;btn.textContent=ar?'تسجيل الدخول':'Sign In';}
+    closeModal('selfie-modal');
+    loadEmpData();
+  } catch (e) {
+    console.error('[confirmAttendance]', e);
+    notify((ar ? 'خطأ: ' : 'Error: ') + e.message, 'error');
   }
 }
-function doLogout(){
-  // Stop any active camera
-  if(videoStream){try{videoStream.getTracks().forEach(t=>t.stop());}catch(_){}videoStream=null;}
-  // Stop chat polling
-  if(chatSubscription){
-    try{if(typeof chatSubscription==='function')chatSubscription();else clearInterval(chatSubscription);}catch(_){}
-    chatSubscription=null;
-  }
-  currentChat=null;
-  // Clear session — مش بنعمل reload عشان التطبيق يفضل شغال
-  try{localStorage.removeItem('oraimo_user');}catch(_){}
-  try{sessionStorage.removeItem('oraimo_user');}catch(_){}
-  window.currentUser=null;
-  _isSubmitting=false;
-  allAdmins=[];allBranches=[];allEmployees=[];
-  managerTeamData={};
-  // Reset admin nav
-  document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});
-  const visNav=document.getElementById('adm-visits-nav');if(visNav)visNav.style.display='none';
-  // Reset tabs
-  ['dashboard','employees','branches','reports','settings','visits'].forEach(t=>{
-    const d=document.getElementById('admin-'+t);if(d)d.style.display='none';
-  });
-  document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
-  ['add-emp-btn','add-emp-btn2'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='';});
-  // Clear login form
-  const lu=document.getElementById('login-user');if(lu)lu.value='';
-  const lp=document.getElementById('login-pass');if(lp)lp.value='';
-  const le=document.getElementById('login-err');if(le)le.textContent='';
-  showPage('login-page');
-}
-
-// ── CLOCK ──
-function startClock(){
-  function tick(){
-    const now=new Date(),locale=currentLang==='ar'?'ar-EG':'en-US';
-    const el=document.getElementById('live-clock'),del=document.getElementById('live-date');
-    if(el)el.textContent=now.toLocaleTimeString(locale,{hour:'numeric',minute:'2-digit',hour12:true});
-    if(del)del.textContent=now.toLocaleDateString(locale,{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  }
-  tick();setInterval(tick,1000);
-}
-
-// ── EMP DATA ──

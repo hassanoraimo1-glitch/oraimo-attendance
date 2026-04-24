@@ -1,134 +1,106 @@
-// ═══════════════════════════════════════════════════════════
-// modules/admin/admins.js — Admin users CRUD + manager team mgmt
-// Provides globals: loadAdminsList, renderAdminsList, openAddAdmin,
-//   saveAdmin, deleteAdmin, openManagerTeam, saveManagerTeam,
-//   getManagerTeamIds, filterEmployeesForManager
-// ═══════════════════════════════════════════════════════════
-
-// ── ADMINS CRUD ──
-// ── ADMINS ──
-async function loadAdminsList(){
-  try{
-    allAdmins=await dbGet('admins','?select=*&order=name').catch(()=>[])||[];
-    renderAdminsList();
-  }catch(e){console.warn('loadAdminsList:',e);}
-}
-function renderAdminsList(){
-  const el=document.getElementById('admins-list');if(!el)return;
-  if(allAdmins.length===0){el.innerHTML=`<div style="color:var(--muted);font-size:12px">${currentLang==='ar'?'لا يوجد مسؤولون':'No admins'}</div>`;return}
-  el.innerHTML=allAdmins.map(a=>`<div class="emp-card"><div class="emp-avatar" style="background:var(--blue)">👑</div><div class="emp-info"><div class="emp-name">${a.name}</div><div class="emp-branch">${a.username}</div></div><span class="badge ${a.role==='admin'?'badge-blue':a.role==='manager'?'badge-purple':'badge-yellow'}">${a.role==='manager'?'Team Leader':a.role}</span><div class="emp-actions">${a.role==='manager'?`<button class="action-btn view" onclick="openManagerTeam(${a.id},'${a.name}')">👥 فريق</button>`:''}<button class="action-btn edit" onclick="openEditAdmin(${a.id})">✏️</button><button class="action-btn del" onclick="deleteAdmin(${a.id})">🗑️</button></div></div>`).join('');
-}
-function openAddAdmin(){document.getElementById('admin-modal-title').textContent=currentLang==='ar'?'إضافة مسؤول':'Add Admin';document.getElementById('edit-admin-id').value='';document.getElementById('admin-form-name').value='';document.getElementById('admin-form-username').value='';document.getElementById('admin-form-pass').value='';document.getElementById('admin-pass-group').style.display='block';openModal('add-admin-modal')}
-function openEditAdmin(id){
-  const adm=allAdmins.find(a=>a.id===id);if(!adm)return;
-  document.getElementById('admin-modal-title').textContent=currentLang==='ar'?'تعديل المسؤول':'Edit Admin';
-  document.getElementById('edit-admin-id').value=id;
-  document.getElementById('admin-form-name').value=adm.name;
-  document.getElementById('admin-form-username').value=adm.username;
-  document.getElementById('admin-form-pass').value='';
-  document.getElementById('admin-pass-group').style.display='none';
-  document.getElementById('admin-form-role').value=adm.role||'admin';
-  openModal('add-admin-modal');
-}
-async function saveAdmin(){
-  const editId=document.getElementById('edit-admin-id').value;
-  const name=document.getElementById('admin-form-name').value.trim();
-  const username=document.getElementById('admin-form-username').value.trim();
-  const pass=document.getElementById('admin-form-pass').value.trim();
-  const role=document.getElementById('admin-form-role').value;
-  const ar=currentLang==='ar';
-  if(!name||!username)return notify(ar?'أدخل الاسم واسم المستخدم':'Enter name and username','error');
-  if(!editId&&!pass)return notify(ar?'أدخل كلمة المرور':'Enter password','error');
-  try{
-    if(editId){
-      const data={name,username,role};
-      if(pass) data.password=pass;
-      await dbPatch('admins',data,`?id=eq.${editId}`);
-    } else {
-      await dbPost('admins',{name,username,password:pass,role});
-    }
-    notify(ar?'تم الحفظ ✅':'Saved ✅','success');closeModal('add-admin-modal');loadAdminsList();
-  }catch(e){notify((ar?'خطأ: ':'Error: ')+(e.message||'Unknown'),'error')}
-}
-async function deleteAdmin(id){
-  const ar=currentLang==='ar';
-  // Prevent deleting the hardcoded superadmin
-  if(String(id)==='superadmin'||!id){notify(ar?'لا يمكن حذف المسؤول الرئيسي':'Cannot delete main admin','error');return;}
-  if(!confirm(ar?'حذف المسؤول؟':'Delete admin?'))return;
-  try{await dbDelete('admins',`?id=eq.${id}`);notify(ar?'تم الحذف':'Deleted','success');loadAdminsList();}
-  catch(e){notify('Error: '+e.message,'error');}
-}
-
-// ── WARNINGS ──
-
-// ── MANAGER TEAM MANAGEMENT ──
-// Module state (was in legacy.js lines 1820-1821)
-let editingManagerId = null;
-let managerTeamData = {}; // cache: managerId -> [empId,...]
-
-async function openManagerTeam(managerId, managerName) {
-  editingManagerId = managerId;
-  document.getElementById('manager-team-title').textContent = '👥 فريق: ' + managerName;
-  document.getElementById('manager-team-subtitle').textContent = 'اختر الموظفين التابعين لهذا التيم ليدر';
-  // load existing team
-  const existing = await dbGet('manager_teams', `?manager_id=eq.${managerId}&select=employee_id`).catch(()=>[]) || [];
-  const assignedIds = existing.map(r => r.employee_id);
-  const el = document.getElementById('manager-team-list');
-  if (!allEmployees.length) { el.innerHTML = '<div class="empty">لا يوجد موظفون</div>'; }
-  else {
-    el.innerHTML = allEmployees.map(emp => `
-      <div class="team-emp-row">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div class="emp-avatar" style="width:32px;height:32px;font-size:12px">${((emp.name||'?')[0]||'?').toUpperCase()}</div>
-          <div>
-            <div style="font-size:13px;font-weight:700">${emp.name}</div>
-            <div style="font-size:11px;color:var(--muted)">${emp.branch||'-'}</div>
-          </div>
-        </div>
-        <input type="checkbox" class="team-check" data-emp-id="${emp.id}" ${assignedIds.includes(emp.id)?'checked':''}>
-      </div>
-    `).join('');
+// Admin UI layer (phase 1): dashboard rendering only.
+// Separates templates from admin business logic.
+(function initAdminUI(global) {
+  function esc(s) {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
-  openModal('manager-team-modal');
-}
 
-async function saveManagerTeam() {
-  if (!editingManagerId) return;
-  const ar = currentLang === 'ar';
-  const checks = document.querySelectorAll('#manager-team-list .team-check');
-  const selectedIds = Array.from(checks).filter(c=>c.checked).map(c=>parseInt(c.dataset.empId));
-  try {
-    // delete existing
-    await dbDelete('manager_teams', `?manager_id=eq.${editingManagerId}`);
-    // insert new
-    for (const empId of selectedIds) {
-      await dbPost('manager_teams', {manager_id: editingManagerId, employee_id: empId});
+  function renderDashboardEmployees(opts) {
+    const { container, employees, todayAtt, isViewer, isArabic, emptyText } = opts;
+    if (!container) return;
+    if (!employees || !employees.length) {
+      container.innerHTML = `<div class="empty"><div class="empty-icon">👥</div>${esc(emptyText)}</div>`;
+      return;
     }
-    managerTeamData[editingManagerId] = selectedIds;
-    notify(ar ? 'تم حفظ الفريق ✅' : 'Team saved ✅', 'success');
-    closeModal('manager-team-modal');
-  } catch(e) { notify('Error: ' + e.message, 'error'); }
-}
+    container.innerHTML = employees.map((emp) => {
+      const att = (todayAtt || []).find((a) => a.employee_id === emp.id);
+      const mapLink = att && att.location_lat ? `https://maps.google.com/?q=${att.location_lat},${att.location_lng}` : null;
+      const mapLinkSafe = mapLink ? esc(mapLink) : '';
+      return `<div class="emp-card admin-card-row">
+        <div class="emp-avatar admin-avatar" style="overflow:hidden">${emp.profile_photo ? `<img src="${esc(emp.profile_photo)}" style="width:100%;height:100%;object-fit:cover">` : esc(((emp.name || '?')[0] || '?').toUpperCase())}</div>
+        <div class="emp-info">
+          <div class="emp-name">${esc(emp.name)}</div><div class="emp-branch">${esc(emp.branch || '-')}</div>
+          ${att ? `<div class="admin-emp-meta">${isArabic ? 'دخول' : 'In'}: ${esc(att.check_in)}${att.late_minutes > 0 ? (isArabic ? ` (تأخر ${att.late_minutes} د)` : ` (${att.late_minutes}m late)`) : ''} ${att.check_out ? (isArabic ? '· خروج: ' : '· Out: ') + esc(att.check_out) : ''}</div>` : ''}
+          ${mapLink ? `<a href="${mapLinkSafe}" target="_blank" class="admin-map-link">📍 ${isArabic ? 'عرض الموقع' : 'View Location'}</a>` : att ? `<div class="admin-emp-meta">📍 ${isArabic ? 'لا يوجد موقع' : 'No location'}</div>` : ''}
+        </div>
+        <div class="admin-emp-actions">
+          <span class="badge ${att ? (att.check_out ? 'badge-blue' : 'badge-green') : 'badge-red'}">${att ? (att.check_out ? (isArabic ? 'غادر' : 'Left') : (isArabic ? 'حاضر' : 'Present')) : (isArabic ? 'غائب' : 'Absent')}</span>
+          ${att && att.selfie_in ? `<img src="${esc(att.selfie_in)}" class="selfie-preview" onclick="viewSelfie('${esc(emp.name)}','${esc(att.selfie_in)}','${esc(att.selfie_out || '')}','${mapLinkSafe}')">` : ''}
+          ${!isViewer ? `<button class="action-btn warn" onclick="openWarnModal(${emp.id},'${esc(emp.name)}')">⚠️</button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
 
-async function getManagerTeamIds() {
-  // returns employee IDs managed by current user (if team leader)
-  if (!currentUser || (currentUser.role !== 'manager' && currentUser.role !== 'team_leader')) return null;
-  if (managerTeamData[currentUser.id]) return managerTeamData[currentUser.id];
-  const res = await dbGet('manager_teams', `?manager_id=eq.${currentUser.id}&select=employee_id`).catch(()=>[]) || [];
-  const ids = res.map(r => r.employee_id);
-  managerTeamData[currentUser.id] = ids;
-  return ids;
-}
+  function renderPendingLeaves(opts) {
+    const { container, leaves, isViewer, isArabic, emptyText } = opts;
+    if (!container) return;
+    if (!leaves || !leaves.length) {
+      container.innerHTML = `<div class="admin-empty-inline">${esc(emptyText)}</div>`;
+      return;
+    }
+    container.innerHTML = leaves.map((l) => `<div class="perm-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:700">${esc(l.employee_name)}</div>
+        <span class="badge ${l.leave_type === 'vacation' ? 'badge-blue' : 'badge-yellow'}">${l.leave_type === 'vacation' ? (isArabic ? 'إجازة' : 'Vacation') : (isArabic ? 'إذن' : 'Permission')}</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${esc(l.reason)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${l.leave_type === 'vacation' ? ((isArabic ? 'تاريخ: ' : 'Date: ') + esc(l.leave_date || '')) : ((isArabic ? 'المدة: ' : 'Duration: ') + Number(l.duration_minutes || 0) + (isArabic ? ' د' : ' min'))}</div>
+      ${!isViewer ? `<div style="display:flex;gap:8px"><button class="perm-btn approve" onclick="respondLeave(${l.id},'approved')">✅ ${isArabic ? 'موافقة' : 'Approve'}</button><button class="perm-btn reject" onclick="respondLeave(${l.id},'rejected')">❌ ${isArabic ? 'رفض' : 'Reject'}</button></div>` : ''}
+    </div>`).join('');
+  }
 
-// Filter employees list for team leader - only show their team
-async function filterEmployeesForManager() {
-  if (!currentUser || (currentUser.role !== 'manager' && currentUser.role !== 'team_leader')) return;
-  const teamIds = await getManagerTeamIds();
-  if (!teamIds) return;
-  // filter allEmployees to only team members
-  allEmployees = allEmployees.filter(e => teamIds.includes(e.id));
-  renderEmployeesList();
-  populateReportSelect();
-}
+  function renderPerformance(opts) {
+    const { container, ranked, isArabic } = opts;
+    if (!container) return;
+    if (!ranked || !ranked.length) {
+      container.innerHTML = `<div class="empty"><div class="empty-icon">📊</div>${isArabic ? 'لا توجد بيانات' : 'No data'}</div>`;
+      return;
+    }
+    const medals = ['🥇', '🥈', '🥉'];
+    const maxSales = ranked[0]?.sales || 1;
+    container.innerHTML = ranked.map((e, i) => `<div class="perf-bar-wrap">
+      <div class="perf-rank">${medals[i] || `#${i + 1}`}</div>
+      <div class="perf-name">${esc(e.name)}</div>
+      <div class="perf-bar-bg"><div class="perf-bar-fill" style="width:${e.sales > 0 ? Math.max(4, Math.round(e.sales / maxSales * 100)) : 0}%;background:${i === 0 ? 'var(--gold)' : i === 1 ? 'var(--silver)' : i === 2 ? 'var(--bronze)' : 'var(--green)'}"></div></div>
+      <div class="perf-val">EGP ${esc(global.fmtEGP ? global.fmtEGP(e.sales) : e.sales)}</div>
+    </div>`).join('');
+  }
 
-// displayPhotos moved to modules/admin/display.js
+  function showAttendanceOverlay(opts) {
+    const { list, isPresent, isToday, isArabic } = opts;
+    const color = isPresent ? 'var(--green)' : 'var(--red)';
+    const icon = isPresent ? '✅' : '😴';
+    const titleAr = isPresent ? (isToday ? 'الحاضرون اليوم' : 'حاضرون أمس') : (isToday ? 'الغائبون اليوم' : 'غائبون أمس');
+    const titleEn = isPresent ? (isToday ? 'Present Today' : 'Present Yesterday') : (isToday ? 'Absent Today' : 'Absent Yesterday');
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
+    overlay.innerHTML = `<div style="background:var(--card);border-radius:22px 22px 0 0;padding:22px 18px;width:100%;max-height:70vh;overflow-y:auto;border-top:2px solid ${color}">
+      <div style="font-size:16px;font-weight:800;color:${color};margin-bottom:14px">${icon} ${isArabic ? titleAr : titleEn} (${list.length})</div>
+      ${list.length === 0 ? `<div style="text-align:center;color:var(--muted);padding:20px">${isArabic ? 'لا يوجد' : 'None'}</div>` :
+        list.map((item) => {
+          const e = item.emp, a = item.att;
+          const detail = a ? `${isArabic ? 'دخول' : 'In'}: ${a.check_in || '-'}${a.late_minutes > 0 ? ' · ⚠️' + a.late_minutes + (isArabic ? 'د' : 'm') : ''}${a.check_out ? (isArabic ? ' · خروج: ' : ' · Out: ') + a.check_out : ''}` : (e.branch || '-');
+          return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+            <div class="emp-avatar" style="width:36px;height:36px;font-size:13px;overflow:hidden">${e.profile_photo ? `<img src="${esc(e.profile_photo)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : esc((e.name || '?')[0].toUpperCase())}</div>
+            <div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(e.name || '?')}</div><div style="font-size:11px;color:var(--muted)">${esc(detail)}</div></div>
+          </div>`;
+        }).join('')}
+      <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px">${isArabic ? 'إغلاق' : 'Close'}</button>
+    </div>`;
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+  }
+
+  global.AdminUI = {
+    renderDashboardEmployees,
+    renderPendingLeaves,
+    renderPerformance,
+    showAttendanceOverlay,
+  };
+})(window);
+

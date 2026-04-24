@@ -187,7 +187,7 @@ function startClock(){
   function tick(){
     const now=new Date(),locale=currentLang==='ar'?'ar-EG':'en-US';
     const el=document.getElementById('live-clock'),del=document.getElementById('live-date');
-    if(el)el.textContent=now.toLocaleTimeString(locale,{hour12:false});
+    if(el)el.textContent=now.toLocaleTimeString(locale,{hour:'numeric',minute:'2-digit',hour12:true});
     if(del)del.textContent=now.toLocaleDateString(locale,{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   }
   tick();setInterval(tick,1000);

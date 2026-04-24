@@ -431,6 +431,8 @@
     <div id="dash-content" style="display:block">
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-label" data-ar="حاضر اليوم" data-en="Present">حاضر اليوم</div><div class="stat-val" style="color:var(--green)" id="adm-present">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="حضور أمس" data-en="Present Yesterday">حضور أمس</div><div class="stat-val" style="color:var(--green)" id="adm-present-yesterday">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="غائب أمس" data-en="Absent Yesterday">غائب أمس</div><div class="stat-val" style="color:var(--red)" id="adm-absent-yesterday">0</div></div>
       <div class="stat-card"><div class="stat-label" data-ar="غائب اليوم" data-en="Absent">غائب اليوم</div><div class="stat-val" style="color:var(--red);cursor:pointer" id="adm-absent" onclick="showAbsentEmployees()">0</div></div>
       <div class="stat-card"><div class="stat-label" data-ar="مبيعات اليوم" data-en="Today Sales">مبيعات اليوم</div><div class="stat-val" style="color:var(--green);font-size:14px" id="adm-sales-today">0</div></div>
       <div class="stat-card"><div class="stat-label" data-ar="مبيعات الشهر" data-en="Month Sales">مبيعات الشهر</div><div class="stat-val" style="color:var(--green);font-size:14px" id="adm-sales-month">0</div></div>
@@ -783,26 +785,6 @@
     <div class="nav-item" id="settings-nav-item" onclick="adminTab('settings',this)">
       <div class="nav-icon">⚙️</div><div class="nav-label" data-ar="الإعدادات" data-en="Settings">الإعدادات</div>
     </div>
-  </div>
-</div>
-
-<!-- ═══════════════ CHAT MODAL (full-screen) ═══════════════ -->
-<div id="chat-modal">
-  <!-- Header -->
-  <div class="chat-header-bar">
-    <button class="chat-back-btn" onclick="closeChat()">←</button>
-    <div class="chat-header-avatar">💬</div>
-    <div class="chat-header-info">
-      <div class="chat-header-title" id="chat-title">المحادثة</div>
-      <div class="chat-header-status" data-ar="متصل الآن" data-en="Online">متصل الآن</div>
-    </div>
-  </div>
-  <!-- Messages -->
-  <div id="chat-messages"></div>
-  <!-- Input -->
-  <div class="chat-input-bar">
-    <input type="text" id="chat-input" placeholder="اكتب رسالة..." data-ar-ph="اكتب رسالة..." data-en-ph="Type a message..." onkeydown="if(event.key==='Enter')sendMessage()">
-    <button class="chat-send-btn" onclick="sendMessage()">➤</button>
   </div>
 </div>
 

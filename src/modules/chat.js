@@ -57,7 +57,6 @@ async function loadMessages() {
   if (currentChat === 'group') {
     query += '&chat_type=eq.group';
   } else if (currentChat === 'admin') {
-    // employee viewing admin chat → show messages they sent AND received
     query += `&chat_type=eq.private&or=(sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id})`;
   } else {
     // admin viewing a specific employee

@@ -24,6 +24,14 @@ async function loadAdminDashboard(){
     document.getElementById('adm-present').textContent=present;
     window._todayPresentIds=(todayAtt||[]).map(a=>a.employee_id);
     document.getElementById('adm-absent').textContent=Math.max(0,allEmployees.length-present);
+    // Yesterday stats
+    const yestDate=new Date(Date.now()-86400000).toISOString().split('T')[0];
+    const yestAtt=await dbGet('attendance',`?date=eq.${yestDate}&select=employee_id`).catch(()=>[]);
+    const yestPresent=(yestAtt||[]).length;
+    const yestAbsEl=document.getElementById('adm-absent-yesterday');
+    const yestPresEl=document.getElementById('adm-present-yesterday');
+    if(yestPresEl) yestPresEl.textContent=yestPresent;
+    if(yestAbsEl) yestAbsEl.textContent=Math.max(0,allEmployees.length-yestPresent);
     const presentEl=document.getElementById('adm-present');
     if(presentEl){presentEl.style.cursor='pointer';presentEl.onclick=function(){showPresentEmployees(todayAtt||[]);};}
     const[todaySales,monthSales]=await Promise.all([dbGet('sales',`?date=eq.${today}&select=total_amount,employee_id`),dbGet('sales',`?date=gte.${pm.start}&date=lte.${pm.end}&select=total_amount,employee_id,product_name`)]);

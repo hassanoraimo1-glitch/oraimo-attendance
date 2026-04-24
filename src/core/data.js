@@ -53,7 +53,31 @@ const PRODUCTS=[
 ].map(x=>({name:x.n,price:x.p}));
 
 
-// ── BACK BUTTON — handled in bootstrap.js ──
+// ── BACK BUTTON — منع الخروج من التطبيق ──
+(function(){
+  history.pushState({app:true}, '', location.href);
+  window.addEventListener('popstate', function() {
+    // دايماً ارجع للتطبيق
+    history.pushState({app:true}, '', location.href);
+    // لو الشات مفتوح اقفله
+    const chatModal = document.getElementById('chat-modal');
+    if(chatModal && chatModal.classList.contains('open')){
+      closeChat(); return;
+    }
+    // لو أي modal مفتوح اقفله
+    const openModal = document.querySelector('.modal-overlay.open');
+    if(openModal){
+      openModal.classList.remove('open');
+      document.body.classList.remove('modal-open');
+      return;
+    }
+    // لو الكاميرا مفتوحة اقفلها
+    const camModal = document.getElementById('camera-modal');
+    if(camModal && camModal.classList.contains('open')){
+      closeCamera(); return;
+    }
+  });
+})();
 
 // ── SPLASH & INIT ──
 (async function initApp(){
@@ -74,132 +98,40 @@ const Q1_STORES = [{"store": "B.ONLINE", "jan": 197623, "feb": 113359, "mar_actu
 
 // ── ORAIMO SPECS DATABASE (21 models) ──
 const ORAIMO_SPECS = [
-  {
-    name:"Oraimo Smart Watch OSW-850H",price:6906,cat:"⌚ Smartwatch",
-    img:"⌚",color:"#FFD700",
-    specs:["شاشة AMOLED 1.96 بوصة","GPS مدمج","مقاومة للماء IP68","بطارية 7 أيام","قياس SpO2 وضغط الدم"],
-    sell:["أعلى ساعة في الفئة","GPS حقيقي بدون هاتف","شاشة أوضح تحت الشمس","الأقوى مقارنة بـ Samsung & Huawei بنفس السعر"]
-  },
-  {
-    name:"Oraimo Smart Watch Nova2 OSW814",price:2326,cat:"⌚ Smartwatch",
-    img:"⌚",color:"#00C853",
-    specs:["شاشة 1.85 بوصة IPS","مقاومة IP68","120+ وضع رياضي","بطارية 10 أيام","إشعارات واتساب وفيسبوك"],
-    sell:["أفضل قيمة في سعرها","10 أيام بطارية — ضعف Apple Watch","120 وضع رياضي لكل الأنشطة","تصميم رفيع أنيق"]
-  },
-  {
-    name:"Oraimo Smart Watch OSW-30",price:1517,cat:"⌚ Smartwatch",
-    img:"⌚",color:"#2979FF",
-    specs:["شاشة كبيرة 2.01 بوصة","ضغط دم وأكسجين","بطارية 7 أيام","مقاومة IP67","مكالمات بلوتوث"],
-    sell:["أكبر شاشة في الفئة","مكالمات مباشرة من الساعة","سعر لا يُقاوَم","مثالية كهدية"]
-  },
-  {
-    name:"Oraimo Smart Watch OSW-42",price:1862,cat:"⌚ Smartwatch",
-    img:"⌚",color:"#9c27b0",
-    specs:["شاشة 1.95 بوصة","مكالمات بلوتوث","قياس ضغط دم وأكسجين","بطارية 7 أيام","100+ وضع رياضي"],
-    sell:["مكالمات بلوتوث عالية الجودة","تصميم مميز وعصري","ملحقات متعددة الألوان","أفضل من Mi Band بكثير"]
-  },
-  {
-    name:"Oraimo Smart Watch OSW-810",price:1988,cat:"⌚ Smartwatch",
-    img:"⌚",color:"#FF6D00",
-    specs:["شاشة AMOLED 1.43 بوصة","Always On Display","مقاومة IP68","بطارية 14 يوم","تصميم مستدير فاخر"],
-    sell:["شاشة AMOLED الأوضح","14 يوم بطارية — غير مسبوق","تصميم مستدير كالساعات الكلاسيكية","AOD يظهر الوقت دائماً"]
-  },
-  {
-    name:"Oraimo TWS OTW-930",price:3954,cat:"🎧 إيرباد",
-    img:"🎧",color:"#FF3B3B",
-    specs:["ANC إلغاء ضوضاء نشط","بطارية 40 ساعة مع الكيس","مقاومة IPX5","لاتنس منخفض للألعاب","تقنية ENC للمكالمات"],
-    sell:["ANC ينافس AirPods Pro بسعر 4x أقل","40 ساعة — أطول بطارية في الفئة","صوت ممتاز للمحتوى والمكالمات","مثالية للطلاب والموظفين"]
-  },
-  {
-    name:"Oraimo TWS OpenArc OPN675",price:3024,cat:"🎧 إيرباد",
-    img:"🎧",color:"#00BCD4",
-    specs:["Open-ear بدون سد الأذن","بطارية 60 ساعة مع الكيس","صوت ستيريو واسع","تصميم hook مريح","للرياضة والاستخدام اليومي"],
-    sell:["60 ساعة — الأطول في السوق","Open-ear صحي للأذن — لا يسبب ضغط","مثالية للرياضيين وقيادة السيارة","صوت طبيعي وواضح"]
-  },
-  {
-    name:"Oraimo TWS Openpods OPN-50D",price:2209,cat:"🎧 إيرباد",
-    img:"🎧",color:"#8BC34A",
-    specs:["Open-ear تصميم عصري","بطارية 30 ساعة","اتصال فوري","ميكروفون واضح","مريح للاستخدام الطويل"],
-    sell:["تصميم Open-ear الأكثر أماناً","لا تسقط أثناء الرياضة","مناسبة لكل أحجام الأذن","الأفضل مع Oraimo Watch كبرومو"]
-  },
-  {
-    name:"Oraimo TWS OEB-E108D",price:2095,cat:"🎧 إيرباد",
-    img:"🎧",color:"#FF4081",
-    specs:["ANC إلغاء ضوضاء","بطارية 35 ساعة","شاشة LED بالكيس","ENC للمكالمات","مقاومة IPX5"],
-    sell:["ANC بسعر اقتصادي جداً","شاشة الكيس تُظهر نسبة البطارية","35 ساعة كافية لرحلات طويلة","أفضل من سامسونج Buds2 بنفس السعر"]
-  },
-  {
-    name:"Oraimo Neckband OEB611 ANC",price:1396,cat:"🎧 إيرباد",
-    img:"🎧",color:"#795548",
-    specs:["ANC إلغاء ضوضاء","بطارية 30 ساعة","مقاومة للماء","تصميم neckband مريح","ENC للمكالمات"],
-    sell:["ANC في neckband — نادر جداً","30 ساعة لا تنتهي","لا تقع من الأذن أبداً","مثالية للموصلات والعمل الطويل"]
-  },
-  {
-    name:"Oraimo BT Headphone OHP-610S",price:1517,cat:"🎧 هيدفون",
-    img:"🎧",color:"#607D8B",
-    specs:["Over-ear مريح","بطارية 40 ساعة","بلوتوث 5.3","ميكروفون مدمج","قابل للطي"],
-    sell:["40 ساعة للطلاب والمذاكرة","صوت محيطي ممتاز","قابل للطي ومناسب للسفر","أرخص من Sony & JBL بمواصفات مقاربة"]
-  },
-  {
-    name:"Oraimo PowerJet 130 OPB-727SQ 27600mAh",price:3499,cat:"🔋 باور بانك",
-    img:"🔋",color:"#FFD700",
-    specs:["27600 mAh سعة ضخمة","شحن 65W سريع","3 منافذ USB","شاشة رقمية","يشحن لاب توب"],
-    sell:["يشحن لاب توب + موبايل معاً","65W — أسرع شحن في الفئة","يكفي لرحلات أسبوع كامل","أقوى من Anker بنفس السعر"]
-  },
-  {
-    name:"Oraimo PowerNova L21 OPB-7203C 30W 20K",price:1749,cat:"🔋 باور بانك",
-    img:"🔋",color:"#00C853",
-    specs:["20000 mAh","شحن PD 30W","منفذ Type-C وUSB-A","شحن الموبايل 4 مرات","رفيع وخفيف الوزن"],
-    sell:["30W PD — يشحن iPhone في ساعة","20000 رفيع وخفيف للحمل اليومي","يشحن الموبايل 4-5 مرات كاملة","أفضل قيمة في السوق المصري"]
-  },
-  {
-    name:"Oraimo P.Bank OPB-7103C 22.5W 10K",price:1279,cat:"🔋 باور بانك",
-    img:"🔋",color:"#2979FF",
-    specs:["10000 mAh","22.5W سريع","منفذ USB-C وUSB-A","شاشة رقمية","حجم صغير جداً"],
-    sell:["الأصغر حجماً في فئة 10000","22.5W يشحن أسرع من معظم المنافسين","شاشة رقمية تُظهر نسبة الشحن الدقيقة","مثالية للفتيات والطلاب"]
-  },
-  {
-    name:"Oraimo Wireless Speaker SpaceBox Pro 80W OBS682",price:4604,cat:"🔊 سبيكر",
-    img:"🔊",color:"#FF6D00",
-    specs:["80W صوت قوي جداً","بطارية 12 ساعة","مقاومة IPX6","LED ملونة","صوت ستيريو 360°"],
-    sell:["80W يملأ أي غرفة أو حفلة","IPX6 للحفلات الخارجية والشاطئ","LED جميلة تضيف أجواء","أقوى من JBL Xtreme بسعر أقل"]
-  },
-  {
-    name:"Oraimo Portable Speaker OBS382",price:1165,cat:"🔊 سبيكر",
-    img:"🔊",color:"#E91E63",
-    specs:["20W صوت واضح","بطارية 12 ساعة","مقاومة IPX5","بلوتوث 5.3","حمل مريح"],
-    sell:["20W للاستخدام الشخصي والسفر","IPX5 للشاطئ والرياضة","صوت أوضح من JBL Go3","أفضل هدية عملية"]
-  },
-  {
-    name:"Oraimo OCW-5451ECC 45W GaN Ultra PD",price:599,cat:"⚡ شاحن",
-    img:"⚡",color:"#FF3B3B",
-    specs:["GaN تقنية متقدمة","45W PD سريع جداً","منفذ USB-C وUSB-A","حجم صغير جداً","يشحن MacBook"],
-    sell:["GaN — أصغر بـ60% من الشواحن العادية","45W يشحن iPhone من 0-80% في 35 دقيقة","يشحن MacBook Air بكفاءة","مثالي للمسافرين"]
-  },
-  {
-    name:"Oraimo Charger OCW7331E 33W GaN Fast Dual",price:466,cat:"⚡ شاحن",
-    img:"⚡",color:"#9c27b0",
-    specs:["33W GaN","منفذان USB-C + USB-A","حجم كبريت تقريباً","شحن سريع QC","متوافق مع جميع الأجهزة"],
-    sell:["شاحن + كابل = حزمة مثالية","GaN يوفر الكهرباء ويقلل السخونة","منفذان لشحن جهازين معاً","أصغر شاحن 33W في السوق"]
-  },
-  {
-    name:"Oraimo Car Charger 48W OCC73D",price:466,cat:"⚡ شاحن سيارة",
-    img:"⚡",color:"#FF9800",
-    specs:["48W للسيارة","منفذ USB-C PD وUSB-A","يشحن الموبايل سريعاً","تصميم أنيق","مؤشر LED"],
-    sell:["48W — أسرع شاحن سيارة Oraimo","يشحن iPhone من 0-50% في 30 دقيقة","يناسب كل السيارات","هدية مثالية لأصحاب السيارات"]
-  },
-  {
-    name:"Oraimo Wireless Charger 15W OWH-1151",price:576,cat:"⚡ شاحن لاسلكي",
-    img:"⚡",color:"#00BCD4",
-    specs:["15W شحن لاسلكي","متوافق Qi مع iPhone وSamsung","LED مؤشر","حجم رفيع","لا يسخن"],
-    sell:["15W — أسرع من Apple MagSafe الأصلي","يشحن عبر الجراب (حتى 5mm)","لا حاجة لفك الجراب","سعر أقل من Apple و Samsung بنفس الجودة"]
-  },
-  {
-    name:"Oraimo Cable C to C 3M 100W OCD-173CC",price:366,cat:"🔌 كابل",
-    img:"🔌",color:"#607D8B",
-    specs:["طول 3 متر","100W PD","تحمل يصل لـ 20,000 انحناء","مادة نايلون مضفر","متوافق مع MacBook"],
-    sell:["3 متر — مثالي للاستخدام في السرير أو المكتب","100W يكفي لشحن لاب توب","نايلون لا يتقصف أبداً","الكابل الأطول والأقوى في الفئة"]
-  }
+{name:"Oraimo FreePods 3C",code:"OEB-E104DC",cat:"🎧 Earbuds",img:"🎧",color:"#FF3B3B",
+specs:{bluetooth:{ar:"بلوتوث 5.3",en:"Bluetooth 5.3"},battery:{ar:"36 ساعة تشغيل",en:"36 Hours Playtime"},mic:{ar:"4 مايك ENC",en:"4-Mic ENC"},driver:{ar:"13 مم",en:"13mm Driver"},waterproof:{ar:"IPX5",en:"IPX5 Water Resistant"},fast_charge:{ar:"10 دقائق = 140 دقيقة",en:"10min = 140min play"}},
+sell:[{ar:"أفضل مكالمات في الفئة",en:"Best call quality in class"},{ar:"بطارية أقوى من المنافسين",en:"Stronger battery than competitors"},{ar:"Bass قوي جدًا",en:"Powerful bass"},{ar:"Gaming mode بدون تأخير",en:"Low latency gaming mode"}],
+compare:{model:"Anker R50i",price:{ar:"حوالي 1100 جنيه",en:"≈1100 EGP"},points:[{ar:"36 ساعة مقابل 30",en:"36h vs 30h"},{ar:"4 مايك vs 2",en:"4 mics vs 2"},{ar:"شحن أسرع",en:"Faster charging"}]}},
+
+{name:"Oraimo FreePods Neo",code:"OEB-E105D",cat:"🎧 Earbuds",img:"🎧",color:"#00C853",
+specs:{bluetooth:{ar:"5.3",en:"Bluetooth 5.3"},battery:{ar:"50 ساعة",en:"50 Hours Playtime"},mic:{ar:"ENC",en:"ENC Mic"},sound:{ar:"360° صوت محيطي",en:"360 Spatial Sound"}},
+sell:[{ar:"أقوى بطارية في الفئة",en:"Best battery in class"},{ar:"صوت محيطي",en:"Immersive sound"},{ar:"مناسب للجيمينج",en:"Great for gaming"}],
+compare:{model:"Joyroom JR-T03",price:{ar:"حوالي 900 جنيه",en:"≈900 EGP"},points:[{ar:"بطارية أعلى بفرق كبير",en:"Much longer battery"},{ar:"ثبات اتصال أفضل",en:"Better connection stability"}]}},
+
+{name:"Oraimo Slice Link Pro",code:"OPB-P118D",cat:"🔋 Power Bank",img:"🔋",color:"#FFD700",
+specs:{capacity:{ar:"10000mAh",en:"10000mAh"},power:{ar:"22.5 وات",en:"22.5W Fast Charge"},cables:{ar:"كابلات مدمجة",en:"Built-in cables"},ports:{ar:"USB + Type-C",en:"USB + Type-C"}},
+sell:[{ar:"مش محتاج كابل",en:"No need for cables"},{ar:"خفيف وسهل الحمل",en:"Lightweight"},{ar:"شحن سريع",en:"Fast charging"}],
+compare:{model:"Anker PowerCore 10000",price:{ar:"حوالي 1200 جنيه",en:"≈1200 EGP"},points:[{ar:"كابلات مدمجة (ميزة قوية)",en:"Built-in cables advantage"},{ar:"سعر أقل",en:"Lower price"}]}},
+
+{name:"Oraimo PowerBox 200",code:"OPB-P204D",cat:"🔋 Power Bank",img:"🔋",color:"#2979FF",
+specs:{capacity:{ar:"20000mAh",en:"20000mAh"},power:{ar:"22.5W",en:"22.5W Fast Charge"},ports:{ar:"3 مخارج",en:"3 Outputs"}},
+sell:[{ar:"يشحن أكتر من جهاز",en:"Charge multiple devices"},{ar:"سعة كبيرة",en:"High capacity"}],
+compare:{model:"Xiaomi Mi Power Bank 3",price:{ar:"حوالي 1300 جنيه",en:"≈1300 EGP"},points:[{ar:"سرعة شحن أعلى",en:"Faster charging"},{ar:"عدد مخارج أكثر",en:"More ports"}]}},
+
+{name:"Oraimo PowerCube 20",code:"OCW-U66S",cat:"⚡ Charger",img:"⚡",color:"#9c27b0",
+specs:{power:{ar:"20W",en:"20W PD"},type:{ar:"Type-C",en:"USB-C"},tech:{ar:"GaN",en:"GaN Tech"}},
+sell:[{ar:"صغير جدًا",en:"Ultra compact"},{ar:"شحن سريع",en:"Fast charging"},{ar:"حرارة قليلة",en:"Low heat"}],
+compare:{model:"Anker Nano 20W",price:{ar:"حوالي 700 جنيه",en:"≈700 EGP"},points:[{ar:"نفس الأداء بس أرخص",en:"Same performance cheaper"}]}},
+
+{name:"Oraimo PowerGaN 33",code:"OCW-U112D",cat:"⚡ Charger",img:"⚡",color:"#FF6D00",
+specs:{power:{ar:"33W",en:"33W Fast Charge"},ports:{ar:"USB + Type-C",en:"Dual Port"}},
+sell:[{ar:"يشحن جهازين",en:"Charge 2 devices"},{ar:"سرعة أعلى",en:"Faster charging"}],
+compare:{model:"Joyroom 30W Charger",price:{ar:"حوالي 500 جنيه",en:"≈500 EGP"},points:[{ar:"ثبات أعلى في الأداء",en:"More stable performance"}]}},
+
+{name:"Oraimo Watch 5R",code:"OSW-18",cat:"⌚ Smart Watch",img:"⌚",color:"#00BCD4",
+specs:{battery:{ar:"7 أيام",en:"7 Days Battery"},health:{ar:"نبض + نوم",en:"Heart Rate + Sleep"},waterproof:{ar:"IP68",en:"IP68"}},
+sell:[{ar:"بطارية طويلة",en:"Long battery life"},{ar:"تصميم شيك",en:"Stylish design"}],
+compare:{model:"Huawei Band 8",price:{ar:"حوالي 1800 جنيه",en:"≈1800 EGP"},points:[{ar:"سعر أقل بفرق واضح",en:"Much cheaper"},{ar:"بطارية أطول",en:"Longer battery"}]}}
 ];
 
 // ── Q1 2026 STORES SNAPSHOT (for loadQ1Analytics in ui.js) ──

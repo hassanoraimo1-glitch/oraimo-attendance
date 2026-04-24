@@ -56,7 +56,6 @@ const PRODUCTS=[
 // ── BACK BUTTON — handled in bootstrap.js ──
 
 // ── SPLASH & INIT ──
-(async function initApp(){
 
 // ── MANAGERS (team leaders) ──
 const MANAGERS = [

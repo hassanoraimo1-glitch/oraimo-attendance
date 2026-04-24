@@ -34,7 +34,7 @@ async function loadAdminDashboard(){
     if(yp) yp.textContent=yestAtt.length;
     if(ya) ya.textContent=Math.max(0,allEmployees.length-yestAtt.length);
     const presentEl=document.getElementById('adm-present');
-    if(presentEl){presentEl.style.cursor='pointer';presentEl.onclick=function(){showPresentEmployees(todayAtt||[]);};}
+    if(presentEl){presentEl.style.cursor='pointer';presentEl.onclick=function(){showAttList('present','today');};}
     const[todaySales,monthSales]=await Promise.all([dbGet('sales',`?date=eq.${today}&select=total_amount,employee_id`),dbGet('sales',`?date=gte.${pm.start}&date=lte.${pm.end}&select=total_amount,employee_id,product_name`)]);
     let todayTotal=0,monthTotal=0;
     (todaySales||[]).forEach(s=>todayTotal+=s.total_amount);(monthSales||[]).forEach(s=>monthTotal+=s.total_amount);

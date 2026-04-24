@@ -56,7 +56,7 @@ body{
 }
 
 /* ── iOS SCROLL LOCK ── */
-body.modal-open{overflow:hidden;position:fixed;width:100%;height:100%}
+body.modal-open{overflow:hidden;width:100%;height:100%}
 
 /* ── SAFE AREA ── */
 html{

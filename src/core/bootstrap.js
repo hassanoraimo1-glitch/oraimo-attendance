@@ -50,9 +50,10 @@
 
 
 // ── SPLASH & INIT ──
-(async function initApp(){
+// Wait for all scripts to load before running initApp
+// (showApp is defined in auth.js which loads AFTER bootstrap.js)
+function _runInitApp(){
   try {
-    // Ensure chat modal is hidden on first paint
     const chatM = document.getElementById('chat-modal');
     if (chatM) { chatM.style.display = 'none'; chatM.classList.remove('open'); }
 
@@ -60,31 +61,34 @@
     if (typeof applyTheme === 'function') applyTheme();
     if (typeof startClock === 'function') startClock();
 
-    // If a saved user exists → open app directly, else show login
     const saved = localStorage.getItem('oraimo_user');
     if (saved) {
       try {
         window.currentUser = JSON.parse(saved);
         if (typeof showApp === 'function') showApp();
-        else if (typeof showPage === 'function') showPage('login-page');
+        else showPage('login-page');
       } catch (e) {
         localStorage.removeItem('oraimo_user');
-        if (typeof showPage === 'function') showPage('login-page');
+        showPage('login-page');
       }
     } else {
-      if (typeof showPage === 'function') showPage('login-page');
+      showPage('login-page');
     }
-
-    // Hide splash after a short delay
     setTimeout(hideSplash, 500);
-
   } catch (e) {
     console.warn('initApp error:', e);
     const login = document.getElementById('login-page');
     if (login) login.style.display = 'flex';
     setTimeout(hideSplash, 500);
   }
-})();
+}
+
+// Run after DOM + all scripts are ready
+if (document.readyState === 'complete') {
+  _runInitApp();
+} else {
+  window.addEventListener('load', _runInitApp);
+}
 
 function hideSplash(){
   const s = document.getElementById('splash');

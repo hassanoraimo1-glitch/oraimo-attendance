@@ -75,6 +75,33 @@ const Q1_STORES = [{"store": "B.ONLINE", "jan": 197623, "feb": 113359, "mar_actu
 const ORAIMO_MODELS = [
 
 {
+name:"Oraimo TWS OTW-625",
+specs:{
+bluetooth:{ar:"بلوتوث 5.3",en:"Bluetooth 5.3"},
+battery:{ar:"36 ساعة تشغيل",en:"36 Hours Playtime"},
+mic:{ar:"4 مايك ENC",en:"4-Mic ENC"},
+driver:{ar:"13 مم",en:"13mm Driver"},
+waterproof:{ar:"IPX5",en:"IPX5 Water Resistant"},
+fast_charge:{ar:"10 دقائق = 140 دقيقة",en:"10min = 140min play"}
+},
+sell:[
+{ar:"أفضل مكالمات في الفئة",en:"Best call quality in class"},
+{ar:"بطارية أقوى من المنافسين",en:"Stronger battery than competitors"},
+{ar:"Bass قوي جدًا",en:"Powerful bass"},
+{ar:"Gaming mode بدون تأخير",en:"Low latency gaming mode"}
+],
+compare:{
+model:"Anker R50i",
+price:{ar:"حوالي 1100 جنيه",en:"≈1100 EGP"},
+points:[
+{ar:"36 ساعة مقابل 30",en:"36h vs 30h"},
+{ar:"4 مايك vs 2",en:"4 mics vs 2"},
+{ar:"شحن أسرع",en:"Faster charging"}
+]
+}
+},
+
+{
 name:"Oraimo Smart Watch OSW-805",
 specs:{
 bluetooth:{ar:"إشعارات ذكية",en:"Smart Notifications"},
@@ -99,9 +126,6 @@ points:[
 {ar:"واجهة استخدام أسهل",en:"Easier UI"}
 ]
 }
-},
+}
 
 ];
-
-// ── Q1 2026 STORES SNAPSHOT (for loadQ1Analytics in ui.js) ──
-;

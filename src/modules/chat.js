@@ -403,6 +403,15 @@ async function _uploadVoiceWithFallback(fileName, blob) {
   throw lastErr || new Error('audio upload failed');
 }
 
+function _blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result || ''));
+    r.onerror = () => reject(new Error('voice encode failed'));
+    r.readAsDataURL(blob);
+  });
+}
+
 async function toggleVoiceRecording() {
   if (_isRecordingVoice) {
     stopVoiceRecording();
@@ -441,7 +450,19 @@ async function toggleVoiceRecording() {
 
         const ext = 'webm';
         const fileName = `chat-voice/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-        const audioUrl = await _uploadVoiceWithFallback(fileName, blob);
+        let audioUrl = null;
+        try {
+          audioUrl = await _uploadVoiceWithFallback(fileName, blob);
+        } catch (uploadErr) {
+          // Some deployments block anon writes to storage.objects via RLS.
+          // Fallback to in-message audio payload so voice chat still works.
+          const msg = String(uploadErr?.message || uploadErr || '');
+          if (/row-level security|unauthorized/i.test(msg)) {
+            audioUrl = await _blobToDataUrl(blob);
+          } else {
+            throw uploadErr;
+          }
+        }
 
         if (!audioUrl) throw new Error('audio upload failed');
 

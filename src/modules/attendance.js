@@ -16,6 +16,31 @@ function _getShiftTimes(shift, dayOfWeek) {
   return { start: '10:00', end: '18:00', labelAr: '🌅 صباحي: 10ص – 6م', labelEn: '🌅 Morning: 10AM–6PM' };
 }
 
+function _to12HourLabel(hhmm) {
+  if (!hhmm || typeof hhmm !== 'string') return '-';
+  const parts = hhmm.split(':');
+  if (parts.length < 2) return hhmm;
+  const h = Number(parts[0]);
+  const m = Number(parts[1]);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return hhmm;
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const h12 = ((h + 11) % 12) + 1;
+  return `${h12}:${String(m).padStart(2, '0')} ${suffix}`;
+}
+
+function _addHoursToHHMM(hhmm, hoursToAdd = 8) {
+  if (!hhmm || typeof hhmm !== 'string') return '';
+  const parts = hhmm.split(':');
+  if (parts.length < 2) return '';
+  const h = Number(parts[0]);
+  const m = Number(parts[1]);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return '';
+  const total = (h * 60 + m + Math.round(hoursToAdd * 60)) % (24 * 60);
+  const nh = Math.floor(total / 60);
+  const nm = total % 60;
+  return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`;
+}
+
 // Helper: ensure shift-info element exists on the home screen.
 // Injects it above the attend button if missing.
 function _ensureShiftInfoEl() {
@@ -110,13 +135,17 @@ function updateAttendBtn(record) {
     btn.classList.add('checked-in');
     if (iconEl) iconEl.textContent = '🔴';
     if (labelEl) labelEl.textContent = ar ? 'تسجيل خروج' : 'Check Out';
-    if (status) status.textContent = `${ar ? 'دخل الساعة' : 'In at'} ${record.check_in}${record.late_minutes > 0 ? (ar ? ' (تأخر ' + record.late_minutes + ' د)' : ' (' + record.late_minutes + 'm late)') : ''}`;
+    const expectedOut = _addHoursToHHMM(record.check_in, 8);
+    if (status) status.textContent =
+      `${ar ? 'دخل الساعة' : 'In at'} ${_to12HourLabel(record.check_in)}` +
+      `${record.late_minutes > 0 ? (ar ? ' (تأخر ' + record.late_minutes + ' د)' : ' (' + record.late_minutes + 'm late)') : ''}` +
+      `${expectedOut ? (ar ? ` • الخروج المتوقع: ${_to12HourLabel(expectedOut)}` : ` • Expected out: ${_to12HourLabel(expectedOut)}`) : ''}`;
   } else if (record && record.check_out) {
     btn.classList.remove('checked-in');
     if (iconEl) iconEl.textContent = '✅';
     if (labelEl) labelEl.textContent = ar ? 'تم' : 'Done';
     btn.onclick = null;
-    if (status) status.textContent = `${ar ? 'دخول' : 'In'}: ${record.check_in} – ${ar ? 'خروج' : 'Out'}: ${record.check_out}`;
+    if (status) status.textContent = `${ar ? 'دخول' : 'In'}: ${_to12HourLabel(record.check_in)} – ${ar ? 'خروج' : 'Out'}: ${_to12HourLabel(record.check_out)}`;
   } else {
     btn.classList.remove('checked-in');
     if (iconEl) iconEl.textContent = '🟢';
@@ -159,8 +188,8 @@ function renderAttendHistory(records) {
     <div class="hist-top"><div class="hist-name">${r.date}</div>
     <span class="badge ${r.late_minutes > 0 ? 'badge-yellow' : 'badge-green'}">${r.late_minutes > 0 ? r.late_minutes + (ar ? ' د تأخير' : 'm late') : (ar ? 'في الوقت' : 'On time')}</span></div>
     <div style="display:flex;justify-content:space-between">
-      <div class="hist-meta">${ar ? 'دخول' : 'In'}: ${r.check_in || '-'}</div>
-      <div class="hist-meta">${ar ? 'خروج' : 'Out'}: ${r.check_out || '-'}</div>
+      <div class="hist-meta">${ar ? 'دخول' : 'In'}: ${_to12HourLabel(r.check_in)}</div>
+      <div class="hist-meta">${ar ? 'خروج' : 'Out'}: ${_to12HourLabel(r.check_out)}</div>
     </div></div>`).join('');
 }
 
@@ -185,7 +214,7 @@ async function loadEmpDailyLog() {
   if (att.length === 0) { el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div>${ar ? 'لا توجد سجلات' : 'No records'}</div>`; return; }
   el.innerHTML = `<div class="table-wrap"><table>
     <tr><th>${ar ? 'التاريخ' : 'Date'}</th><th>${ar ? 'دخول' : 'In'}</th><th>${ar ? 'خروج' : 'Out'}</th><th>${ar ? 'تأخير' : 'Late'}</th></tr>
-    ${att.map(a => `<tr><td>${a.date}</td><td>${a.check_in || '-'}</td><td>${a.check_out || '-'}</td>
+    ${att.map(a => `<tr><td>${a.date}</td><td>${_to12HourLabel(a.check_in)}</td><td>${_to12HourLabel(a.check_out)}</td>
       <td>${a.late_minutes > 0 ? `<span class="badge badge-yellow">${a.late_minutes}${ar ? 'د' : 'm'}</span>` : '<span class="badge badge-green">✓</span>'}</td></tr>`).join('')}
   </table></div>`;
 }

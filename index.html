@@ -786,6 +786,26 @@
   </div>
 </div>
 
+<!-- ═══════════════ CHAT MODAL (full-screen) ═══════════════ -->
+<div id="chat-modal">
+  <!-- Header -->
+  <div class="chat-header-bar">
+    <button class="chat-back-btn" onclick="closeChat()">←</button>
+    <div class="chat-header-avatar">💬</div>
+    <div class="chat-header-info">
+      <div class="chat-header-title" id="chat-title">المحادثة</div>
+      <div class="chat-header-status" data-ar="متصل الآن" data-en="Online">متصل الآن</div>
+    </div>
+  </div>
+  <!-- Messages -->
+  <div id="chat-messages"></div>
+  <!-- Input -->
+  <div class="chat-input-bar">
+    <input type="text" id="chat-input" placeholder="اكتب رسالة..." data-ar-ph="اكتب رسالة..." data-en-ph="Type a message..." onkeydown="if(event.key==='Enter')sendMessage()">
+    <button class="chat-send-btn" onclick="sendMessage()">➤</button>
+  </div>
+</div>
+
 <!-- ═══════════════ MODALS ═══════════════ -->
 <div class="modal-overlay" id="add-emp-modal">
   <div class="modal">

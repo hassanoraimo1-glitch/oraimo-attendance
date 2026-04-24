@@ -7,21 +7,25 @@ import { state } from '../state.js';
 const DARK = {
   '--black': '#060608',
   '--dark': '#0e0e12',
-  '--card': '#141418',
-  '--card2': '#1c1c22',
-  '--border': '#252530',
+  '--card': '#14171d',
+  '--card2': '#1b1f27',
+  '--border': '#2a3040',
+  '--border-g': 'rgba(0,200,83,.24)',
   '--text': '#f0f0f5',
-  '--muted': '#666',
+  '--text2': '#a7b0c2',
+  '--muted': '#7f8aa1',
 };
 
 const LIGHT = {
-  '--black': '#f6f7fb',
-  '--dark': '#ffffff',
+  '--black': '#eef2f8',
+  '--dark': '#f8fbff',
   '--card': '#ffffff',
-  '--card2': '#f0f2f7',
-  '--border': '#e4e7ee',
+  '--card2': '#f3f6fc',
+  '--border': '#dce3ef',
+  '--border-g': 'rgba(0,168,67,.28)',
   '--text': '#101114',
-  '--muted': '#6b7280',
+  '--text2': '#4f5b70',
+  '--muted': '#6b7382',
 };
 
 const TRANSITION_MS = 220;

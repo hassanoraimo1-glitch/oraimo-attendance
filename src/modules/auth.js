@@ -109,22 +109,7 @@ function showApp(){
   setTimeout(fixNavDirection, 100);
 }
 
-// ── BACK BUTTON HANDLING ──
-(function(){
-  window.addEventListener('popstate', function(e) {
-    // If chat is open, close chat first
-    const chatModal=document.getElementById('chat-modal');
-    if(chatModal&&chatModal.classList.contains('open')){closeChat();history.pushState(null,'',location.href);return;}
-    // If any modal is open, close it
-    const openModal=document.querySelector('.modal-overlay.open');
-    if(openModal){openModal.classList.remove('open');history.pushState(null,'',location.href);return;}
-    // Always trap back — never let user leave the app while logged in
-    history.pushState(null,'',location.href);
-  });
-  // Push two states so the first back press is absorbed
-  history.pushState(null,'',location.href);
-  history.pushState(null,'',location.href);
-})();
+// ── BACK BUTTON — handled in bootstrap.js ──
 
 // ── AUTH ──
 async function doLogin(){

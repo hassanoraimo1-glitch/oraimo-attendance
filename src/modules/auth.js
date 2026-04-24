@@ -109,33 +109,14 @@ function showApp(){
   setTimeout(fixNavDirection, 100);
 }
 
-// ── BACK BUTTON HANDLING ──
-(function(){
-  window.addEventListener('popstate', function(e) {
-    // If chat is open, close chat first
-    const chatModal=document.getElementById('chat-modal');
-    if(chatModal&&chatModal.classList.contains('open')){closeChat();history.pushState(null,'',location.href);return;}
-    // If any modal is open, close it
-    const openModal=document.querySelector('.modal-overlay.open');
-    if(openModal){openModal.classList.remove('open');history.pushState(null,'',location.href);return;}
-    // Always trap back — never let user leave the app while logged in
-    history.pushState(null,'',location.href);
-  });
-  // Push two states so the first back press is absorbed
-  history.pushState(null,'',location.href);
-  history.pushState(null,'',location.href);
-})();
+// ── BACK BUTTON — handled in bootstrap.js ──
 
 // ── AUTH ──
-function _saveUser(user){
-  try{localStorage.setItem('oraimo_user',JSON.stringify(user));}
-  catch(e){console.warn('[auth] localStorage blocked:',e.message);
-    try{sessionStorage.setItem('oraimo_user',JSON.stringify(user));}catch(_){}}
-}
+function _saveUser(u){try{localStorage.setItem('oraimo_user',JSON.stringify(u));}catch(_){try{sessionStorage.setItem('oraimo_user',JSON.stringify(u));}catch(_){}}}
 
 async function doLogin(){
   if(_isSubmitting) return;
-  const username=(document.getElementById('login-user').value||'').trim();
+  const username=(document.getElementById('login-user').value||'').trim().replace(/[\u200B-\u200D\uFEFF]/g,'');
   const pass=(document.getElementById('login-pass').value||'').trim();
   const errEl=document.getElementById('login-err');
   const btn=document.querySelector('#login-page .btn-green');
@@ -147,30 +128,20 @@ async function doLogin(){
   try{
     if(username==='admin'&&pass==='Oraimo@Admin2026'){
       window.currentUser={role:'superadmin',name:'Super Admin'};
-      _saveUser(window.currentUser);
-      showApp();return;
+      _saveUser(window.currentUser);showApp();return;
     }
-    // Use encodeURIComponent but also handle special chars Huawei may inject
-    const uname=encodeURIComponent(username.replace(/[\u200B-\u200D\uFEFF]/g,''));
-    let admRes=null;
-    try{admRes=await dbGet('admins',`?username=eq.${uname}&select=*`);}
-    catch(e){console.warn('[login] admins query failed:',e.message);admRes=[];}
+    const uname=encodeURIComponent(username);
+    let admRes;try{admRes=await dbGet('admins',`?username=eq.${uname}&select=*`);}catch(_){admRes=[];}
     const admMatch=(admRes||[]).find(r=>r.password===pass);
     if(admMatch){
-      window.currentUser={...admMatch,role:admMatch.role||'admin'};
-      delete window.currentUser.password;
-      _saveUser(window.currentUser);
-      showApp();return;
+      window.currentUser={...admMatch,role:admMatch.role||'admin'};delete window.currentUser.password;
+      _saveUser(window.currentUser);showApp();return;
     }
-    let empRes=null;
-    try{empRes=await dbGet('employees',`?username=eq.${uname}&select=*`);}
-    catch(e){console.warn('[login] employees query failed:',e.message);empRes=[];}
+    let empRes;try{empRes=await dbGet('employees',`?username=eq.${uname}&select=*`);}catch(_){empRes=[];}
     const empMatch=(empRes||[]).find(r=>r.password===pass);
     if(!empMatch){errEl.textContent=ar?'بيانات دخول غير صحيحة':'Invalid credentials';return;}
-    window.currentUser={...empMatch,role:empMatch.role||'employee'};
-    delete window.currentUser.password;
-    _saveUser(window.currentUser);
-    showApp();
+    window.currentUser={...empMatch,role:empMatch.role||'employee'};delete window.currentUser.password;
+    _saveUser(window.currentUser);showApp();
   }catch(e){
     console.error('[login]',e);
     errEl.textContent=ar?'خطأ في الاتصال، حاول مرة أخرى':'Connection error, try again';
@@ -189,7 +160,8 @@ function doLogout(){
   }
   currentChat=null;
   // Clear session — مش بنعمل reload عشان التطبيق يفضل شغال
-  localStorage.removeItem('oraimo_user');
+  try{localStorage.removeItem('oraimo_user');}catch(_){}
+  try{sessionStorage.removeItem('oraimo_user');}catch(_){}
   window.currentUser=null;
   _isSubmitting=false;
   allAdmins=[];allBranches=[];allEmployees=[];

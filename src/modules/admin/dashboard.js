@@ -5,37 +5,46 @@
 
 // ── ADMIN DASHBOARD ──
 async function loadAdminDashboard(){
-  // Show loader, hide content
   const loader=document.getElementById('dash-loader');
   const dashC=document.getElementById('dash-content');
   if(loader) loader.style.display='none';
   if(dashC) dashC.style.display='block';
   try{
     const today=todayStr(),pm=getPayrollMonth(),ar=currentLang==='ar';
-    let allEmp=await dbGet('employees','?select=*');allEmployees=allEmp||[];
-    // Filter for team leader: only show their team
+    const yestDate=new Date(Date.now()-86400000).toISOString().split('T')[0];
+
+    // Fire ALL queries in parallel
+    const [allEmp, todayAtt, yestAtt, todaySales, monthSales, leaves] = await Promise.all([
+      dbGet('employees','?select=*'),
+      dbGet('attendance',`?date=eq.${today}&select=*`),
+      dbGet('attendance',`?date=eq.${yestDate}&select=*`).catch(()=>[]),
+      dbGet('sales',`?date=eq.${today}&select=total_amount,employee_id`),
+      dbGet('sales',`?date=gte.${pm.start}&date=lte.${pm.end}&select=total_amount,employee_id,product_name`),
+      dbGet('leave_requests','?status=eq.pending&select=*')
+    ]);
+
+    allEmployees=allEmp||[];
     if(currentUser&&(currentUser.role==='manager'||currentUser.role==='team_leader')){
       const teamIds=await getManagerTeamIds();
       if(teamIds&&teamIds.length>0) allEmployees=allEmployees.filter(e=>teamIds.includes(e.id));
       else allEmployees=[];
     }
-    const todayAtt=await dbGet('attendance',`?date=eq.${today}&select=*`);
-    const present=todayAtt?todayAtt.length:0;
-    document.getElementById('adm-present').textContent=present;
-    window._todayPresentIds=(todayAtt||[]).map(a=>a.employee_id);
+
+    // Today stats
+    const present=(todayAtt||[]).length;
     window._todayAtt=todayAtt||[];
+    window._todayPresentIds=(todayAtt||[]).map(a=>a.employee_id);
+    document.getElementById('adm-present').textContent=present;
     document.getElementById('adm-absent').textContent=Math.max(0,allEmployees.length-present);
-    // Yesterday
-    const yestDate=new Date(Date.now()-86400000).toISOString().split('T')[0];
-    const yestAtt=await dbGet('attendance',`?date=eq.${yestDate}&select=*`).catch(()=>[])||[];
-    window._yestAtt=yestAtt;
-    window._yestPresentIds=yestAtt.map(a=>a.employee_id);
+
+    // Yesterday stats
+    window._yestAtt=yestAtt||[];
+    window._yestPresentIds=(yestAtt||[]).map(a=>a.employee_id);
     const yp=document.getElementById('adm-present-yest'),ya=document.getElementById('adm-absent-yest');
-    if(yp) yp.textContent=yestAtt.length;
-    if(ya) ya.textContent=Math.max(0,allEmployees.length-yestAtt.length);
-    const presentEl=document.getElementById('adm-present');
-    if(presentEl){presentEl.style.cursor='pointer';presentEl.onclick=function(){showAttList('present','today');};}
-    const[todaySales,monthSales]=await Promise.all([dbGet('sales',`?date=eq.${today}&select=total_amount,employee_id`),dbGet('sales',`?date=gte.${pm.start}&date=lte.${pm.end}&select=total_amount,employee_id,product_name`)]);
+    if(yp) yp.textContent=(yestAtt||[]).length;
+    if(ya) ya.textContent=Math.max(0,allEmployees.length-(yestAtt||[]).length);
+
+    // Sales
     let todayTotal=0,monthTotal=0;
     (todaySales||[]).forEach(s=>todayTotal+=s.total_amount);(monthSales||[]).forEach(s=>monthTotal+=s.total_amount);
     document.getElementById('adm-sales-today').textContent='EGP '+fmtEGP(todayTotal);

@@ -149,7 +149,7 @@ function adminTab(tab,el){
             </div>
             <div class="acc-body" id="acc-shifts" style="display:none">
               <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
-                🌅 صباحي: 10:00 – 18:00&nbsp;&nbsp;|&nbsp;&nbsp;🌙 مسائي: 14:00 – 22:00 (الخميس/الجمعة: 15:00 – 23:00)
+                🌅 صباحي: 10:00 AM – 6:00 PM&nbsp;&nbsp;|&nbsp;&nbsp;🌙 مسائي: 2:00 PM – 10:00 PM (الخميس/الجمعة: 3:00 PM – 11:00 PM)
               </div>
               <div id="shift-settings-list"><div style="text-align:center;padding:16px"><div class="loader"></div></div></div>
             </div>`;

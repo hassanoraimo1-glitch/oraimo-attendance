@@ -795,7 +795,9 @@
     </div>
   </div>
   <div id="chat-messages"></div>
+  <div id="chat-reply-preview" class="chat-reply-preview hidden"></div>
   <div class="chat-input-bar">
+    <button class="chat-voice-btn" id="chat-voice-btn" onclick="toggleVoiceRecording()" title="Voice note">🎙️</button>
     <input type="text" id="chat-input" placeholder="اكتب رسالة..." onkeydown="if(event.key==='Enter')sendMessage()">
     <button class="chat-send-btn" onclick="sendMessage()">➤</button>
   </div>

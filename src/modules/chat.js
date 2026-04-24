@@ -389,6 +389,20 @@ function appendMessage(m) {
   el.scrollTop = el.scrollHeight;
 }
 
+async function _uploadVoiceWithFallback(fileName, blob) {
+  const candidates = ['chat-media', 'visit-photos', 'selfies', 'profiles'];
+  let lastErr = null;
+  for (const bucket of candidates) {
+    try {
+      const url = await uploadAny(bucket, fileName, blob);
+      if (url) return url;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('audio upload failed');
+}
+
 async function toggleVoiceRecording() {
   if (_isRecordingVoice) {
     stopVoiceRecording();
@@ -427,7 +441,7 @@ async function toggleVoiceRecording() {
 
         const ext = 'webm';
         const fileName = `chat-voice/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-        const audioUrl = await uploadAny('chat-media', fileName, blob);
+        const audioUrl = await _uploadVoiceWithFallback(fileName, blob);
 
         if (!audioUrl) throw new Error('audio upload failed');
 

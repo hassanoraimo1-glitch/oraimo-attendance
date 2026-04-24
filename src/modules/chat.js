@@ -25,17 +25,17 @@ async function openChat(chatType, title) {
   const titleEl = document.getElementById('chat-title');
   if (titleEl) titleEl.textContent = title;
   const modal = document.getElementById('chat-modal');
-  if (modal) {
-    modal.removeAttribute('style');
-    modal.classList.add('open');
-  }
+  if (!modal) { console.error('[chat] #chat-modal not found in DOM'); return; }
+  modal.removeAttribute('style');
+  modal.classList.add('open');
   document.body.classList.add('modal-open');
-  setTimeout(() => {
-    const msgs = document.getElementById('chat-messages');
-    if (msgs) msgs.scrollTop = msgs.scrollHeight;
-  }, 150);
   await loadMessages();
   subscribeToMessages();
+  // Scroll after messages are rendered
+  requestAnimationFrame(() => {
+    const msgs = document.getElementById('chat-messages');
+    if (msgs) msgs.scrollTop = msgs.scrollHeight;
+  });
 }
 
 function closeChat() {

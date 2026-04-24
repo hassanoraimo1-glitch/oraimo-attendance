@@ -430,8 +430,10 @@
     </div>
     <div id="dash-content" style="display:block">
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-label" data-ar="حاضر اليوم" data-en="Present">حاضر اليوم</div><div class="stat-val" style="color:var(--green)" id="adm-present">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="غائب اليوم" data-en="Absent">غائب اليوم</div><div class="stat-val" style="color:var(--red);cursor:pointer" id="adm-absent" onclick="showAbsentEmployees()">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="حاضر اليوم" data-en="Present Today">حاضر اليوم</div><div class="stat-val" style="color:var(--green);cursor:pointer" id="adm-present" onclick="showAttList('present','today')">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="غائب اليوم" data-en="Absent Today">غائب اليوم</div><div class="stat-val" style="color:var(--red);cursor:pointer" id="adm-absent" onclick="showAttList('absent','today')">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="حاضر أمس" data-en="Present Yesterday">حاضر أمس</div><div class="stat-val" style="color:var(--green);cursor:pointer" id="adm-present-yest" onclick="showAttList('present','yesterday')">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="غائب أمس" data-en="Absent Yesterday">غائب أمس</div><div class="stat-val" style="color:var(--red);cursor:pointer" id="adm-absent-yest" onclick="showAttList('absent','yesterday')">0</div></div>
       <div class="stat-card"><div class="stat-label" data-ar="مبيعات اليوم" data-en="Today Sales">مبيعات اليوم</div><div class="stat-val" style="color:var(--green);font-size:14px" id="adm-sales-today">0</div></div>
       <div class="stat-card"><div class="stat-label" data-ar="مبيعات الشهر" data-en="Month Sales">مبيعات الشهر</div><div class="stat-val" style="color:var(--green);font-size:14px" id="adm-sales-month">0</div></div>
     </div>

@@ -13,7 +13,7 @@ function reportTab(tab,el){
     if(el2)el2.style.display=t===tab?'block':'none';
   });
   document.querySelectorAll('#report-tabs .tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
+  if(el) el.classList.add('active');
   applyLang();
   if(tab==='products')loadProductsReport();
   if(tab==='branch')loadBranchReport();
@@ -73,6 +73,8 @@ async function loadEmpReport(){
       chartDays,
       salesByDate,
     });
+  } else if (el) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>' + (ar ? 'واجهة التقارير غير جاهزة' : 'Report UI not ready') + '</div>';
   }
 }
 

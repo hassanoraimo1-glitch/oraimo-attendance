@@ -663,7 +663,15 @@ async function loadMessages() {
     _loadMessagesInFlight = false;
     return;
   }
-  if (!_lastRenderedSignature) el.innerHTML = '<div class="full-loader"><div class="loader"></div></div>';
+  if (!_lastRenderedSignature) {
+    el.innerHTML = `<div class="chat-messages-skeleton" aria-hidden="true">
+      <div class="chat-msg-skel them"><div class="b"><span class="l1"></span><span class="l2"></span></div></div>
+      <div class="chat-msg-skel them"><div class="b"><span class="l1"></span><span class="l2"></span></div></div>
+      <div class="chat-msg-skel me"><div class="b"><span class="l1"></span><span class="l2"></span></div></div>
+      <div class="chat-msg-skel them"><div class="b"><span class="l1"></span><span class="l2"></span></div></div>
+      <div class="chat-msg-skel me"><div class="b"><span class="l1"></span><span class="l2"></span></div></div>
+    </div>`;
+  }
   let query = '?select=*&order=created_at.asc&limit=200';
 
   if (currentChat === 'group') {

@@ -20,7 +20,14 @@ function _runAdminShell(){
     const d=document.getElementById('admin-dashboard');
     if(d) d.style.display='block';
   }
-  loadAdminDashboard();loadAllEmployees();loadBranches();clearOldVisitPhotos();
+  void (async function _bootAdminData(){
+    try{
+      if(typeof loadAllEmployees==='function') await loadAllEmployees();
+      if(typeof loadBranches==='function') await loadBranches();
+      if(typeof loadAdminDashboard==='function') await loadAdminDashboard();
+    }catch(e){ console.error('[admin data boot]', e); }
+  })();
+  clearOldVisitPhotos();
   if(currentUser.role==='superadmin'||currentUser.role==='admin')loadAdminsList();
   if(currentUser.role==='superadmin'||currentUser.role==='admin'||currentUser.role==='viewer'){
     document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>n.style.display='');
@@ -127,7 +134,7 @@ async function doLogin(){
   errEl.textContent='';
   try{
     if(username==='admin'&&pass==='Oraimo@Admin2026'){
-      window.currentUser={role:'superadmin',name:'Super Admin'};
+      window.currentUser={role:'superadmin',name:'Super Admin',id:-1};
       _saveUser(window.currentUser);showApp();return;
     }
     const uname=encodeURIComponent(username);
@@ -166,6 +173,7 @@ function doLogout(){
   window.currentUser=null;
   _isSubmitting=false;
   allAdmins=[];allBranches=[];allEmployees=[];
+  try{window.branches=[];}catch(_){}
   managerTeamData={};
   // Reset admin nav
   document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});

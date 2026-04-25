@@ -190,8 +190,8 @@ function notify(msg,type='success'){
   // Use window.notify from dom.js if available
   if(window.notify && window.notify !== notify) { window.notify(msg,type); return; }
   const el=document.createElement('div');
-  const bg=type==='error'?'#ff3b3b':type==='success'?'#00C853':'#2979FF';
-  el.style.cssText='pointer-events:auto;background:'+bg+';color:'+(type==='success'?'#000':'#fff')+';padding:11px 18px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:toastIn .3s;font-family:Cairo,sans-serif;text-align:center';
+  const bg=type==='error'?'#ef4444':type==='success'?'#16a34a':'#3b82f6';
+  el.style.cssText='pointer-events:auto;background:'+bg+';color:#fff;padding:11px 18px;border-radius:14px;font-size:13px;font-weight:800;box-shadow:0 12px 34px rgba(0,0,0,.22);animation:toastIn .3s;font-family:Cairo,sans-serif;text-align:center';
   el.textContent=String(msg||'');
   let container=document.getElementById('toast-container');
   if(!container){container=document.createElement('div');container.id='toast-container';container.setAttribute('aria-live','polite');container.style.cssText='position:fixed;top:calc(20px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:90vw';document.body.appendChild(container);}

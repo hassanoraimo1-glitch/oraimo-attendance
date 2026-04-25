@@ -151,6 +151,7 @@ async function doLogin(){
   }
 }
 function doLogout(){
+  try { if (typeof resetPushRegistrationState === 'function') resetPushRegistrationState(); } catch (_) {}
   // Stop any active camera
   if(videoStream){try{videoStream.getTracks().forEach(t=>t.stop());}catch(_){}videoStream=null;}
   // Stop chat polling

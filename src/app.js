@@ -7,7 +7,6 @@ import { db, safeFilterValue, invalidateCache, clearAllCache } from './services/
 import { login as authLogin, logout as authLogout } from './services/auth.js';
 import * as storageSvc from './services/storage.js';
 import * as notifSvc from './services/notifications.js';
-import * as chatSvc from './services/chat.js';
 import { notify, $, $$, escapeHtml, safeHTML, debounce, throttle } from './utils/dom.js';
 import { fmtDate, todayStr, fmtEGP, getPayrollMonth, fmtTime } from './utils/format.js';
 import { applyLang, toggleLang, fixNavDirection } from './utils/lang.js';
@@ -77,10 +76,7 @@ Object.assign(window, {
 
   sendPushNotification: notifSvc.sendPushNotification,
   registerOneSignalUser: notifSvc.registerOneSignalUser,
-
-  chatLoadMessages: chatSvc.loadMessages,
-  chatSendMessage: chatSvc.sendMessage,
-  chatSubscribeRealtime: chatSvc.subscribeRealtime,
+  resetPushRegistrationState: notifSvc.resetPushRegistrationState,
 
   exportToExcel,
   exportToPDF,

@@ -78,6 +78,8 @@ async function submitSale(){
   _saleSending=true;
   try{
     await dbPost('sales',{employee_id:currentUser.id,date:todayStr(),product_name:selectedProduct.name,unit_price:selectedProduct.price,quantity:selectedQty,total_amount:total});
+    // Force cache invalidation so the new sale shows immediately
+    if(typeof invalidateCache==='function'){invalidateCache('sales');}
     notify(ar?'تم تسجيل البيع ✅':'Sale recorded ✅','success');
     cancelSale();loadTodaySales();loadEmpData();
   }catch(e){notify((ar?'خطأ: ':'Error: ')+e.message,'error');}

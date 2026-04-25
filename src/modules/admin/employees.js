@@ -6,12 +6,29 @@
 // Module state: allEmployees (shared across admin modules)
 // ═══════════════════════════════════════════════════════════
 
+async function filterEmployeesForManager() {
+  if (typeof getManagerTeamIds !== 'function') return;
+  const teamIds = await getManagerTeamIds();
+  if (teamIds && teamIds.length) {
+    const idSet = new Set(teamIds.map((id) => Number(id)));
+    allEmployees = (allEmployees || []).filter((e) => idSet.has(Number(e.id)));
+  } else {
+    allEmployees = [];
+  }
+}
+
 async function loadAllEmployees(){
   try{
     allEmployees=await dbGet('employees','?select=*&order=name')||[];
     renderEmployeesList();populateReportSelect();
     if(currentUser&&(currentUser.role==='manager'||currentUser.role==='team_leader')) await filterEmployeesForManager();
-  }catch(e){}
+  }catch(e){
+    console.error('[employees]', e);
+    if (typeof notify === 'function') {
+      const ar = currentLang === 'ar';
+      notify(ar ? 'تعذر تحميل قائمة الموظفين' : 'Could not load employees', 'error');
+    }
+  }
 }
 function renderEmployeesList(){
   const el=document.getElementById('adm-emp-list');if(!el)return;const ar=currentLang==='ar';

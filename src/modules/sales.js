@@ -63,21 +63,12 @@ function selectProduct(name,price){
   document.getElementById('sale-total').textContent=price.toLocaleString()+' EGP';
   const w=document.getElementById('sale-form-wrap');
   w.style.display='flex';
-  w.style.position='fixed';
-  w.style.bottom='0';
-  w.style.left='0';
-  w.style.right='0';
-  w.style.top='0';
-  w.style.zIndex='5000';
-  w.style.background='rgba(0,0,0,.75)';
-  w.style.alignItems='flex-end';
-  w.style.backdropFilter='blur(4px)';
 }
 function changeQty(d){selectedQty=Math.max(1,selectedQty+d);document.getElementById('qty-val').textContent=selectedQty;document.getElementById('sale-total').textContent=(selectedProduct.price*selectedQty).toLocaleString()+' EGP'}
 function cancelSale(){
   selectedProduct=null;
   const w=document.getElementById('sale-form-wrap');
-  if(w){w.style.display='none';w.style.position='';w.style.bottom='';w.style.left='';w.style.right='';w.style.zIndex='';w.style.background='';w.style.alignItems='';}
+  if(w){w.style.display='none';}
   renderProducts();
 }
 let _saleSending=false;

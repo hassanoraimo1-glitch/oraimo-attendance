@@ -21,6 +21,13 @@ const _CHAT_COLORS = ['#00C853', '#2979FF', '#FF6D00', '#AA00FF', '#00B8D4', '#F
 const CHAT_SEEN_PREFIX = 'oraimo_chat_seen_';
 const _seenUpdateInFlight = new Set();
 
+const CHAT_SVG_SEND =
+  '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
+const CHAT_SVG_MIC =
+  '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>';
+const CHAT_SVG_STOP =
+  '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6 6h12v12H6z"/></svg>';
+
 let _typingClient = null;
 let _typingChannel = null;
 let _typingRoomKey = '';
@@ -111,6 +118,7 @@ function _chatRoomKey(chatType = currentChat) {
 function _setHeaderStatus(textAr, textEn) {
   const s = document.querySelector('.chat-header-status');
   if (!s) return;
+  s.classList.remove('is-typing');
   s.textContent = currentLang === 'ar' ? textAr : textEn;
 }
 
@@ -119,7 +127,13 @@ function _setHeaderOnline() {
 }
 
 function _showTypingIndicator(name) {
-  _setHeaderStatus(`يكتب الآن... ${name ? `(${name})` : ''}`, `${name || 'Someone'} is typing...`);
+  const s = document.querySelector('.chat-header-status');
+  if (!s) return;
+  s.classList.add('is-typing');
+  const ar = currentLang === 'ar';
+  s.textContent = ar
+    ? `يكتب…${name ? ` (${name})` : ''}`
+    : `${name || 'Someone'} is typing…`;
   if (_typingHideTimer) clearTimeout(_typingHideTimer);
   _typingHideTimer = setTimeout(() => _setHeaderOnline(), 2400);
 }
@@ -200,8 +214,17 @@ async function _sendTypingState(isTyping) {
   } catch (_) {}
 }
 
+function _resizeChatComposer() {
+  const ta = document.getElementById('chat-input');
+  if (!ta || ta.tagName !== 'TEXTAREA') return;
+  ta.style.height = 'auto';
+  const h = Math.min(Math.max(ta.scrollHeight, 46), 132);
+  ta.style.height = `${h}px`;
+}
+
 function _onComposerInput() {
   _refreshSendButtonState();
+  _resizeChatComposer();
   const now = Date.now();
   const hasText = !!((document.getElementById('chat-input')?.value || '').trim());
   if (!hasText) {
@@ -253,14 +276,24 @@ function _replyPreviewHtml(reply) {
 
 function _refreshSendButtonState() {
   const input = document.getElementById('chat-input');
-  const sendBtn = document.querySelector('.chat-send-btn');
+  const sendBtn = document.getElementById('chat-send-btn');
   if (!input || !sendBtn) return;
 
   const hasText = !!(input.value || '').trim();
+  sendBtn.classList.remove('chat-send-btn--mic', 'chat-send-btn--stop');
+  if (_isRecordingVoice) {
+    sendBtn.classList.add('chat-send-btn--stop');
+    sendBtn.innerHTML = CHAT_SVG_STOP;
+    sendBtn.setAttribute('aria-label', currentLang === 'ar' ? 'إيقاف وإرسال' : 'Stop and send');
+    return;
+  }
   if (hasText) {
-    sendBtn.textContent = '➤';
+    sendBtn.innerHTML = CHAT_SVG_SEND;
+    sendBtn.setAttribute('aria-label', currentLang === 'ar' ? 'إرسال' : 'Send');
   } else {
-    sendBtn.textContent = _isRecordingVoice ? '⏹' : '🎤';
+    sendBtn.classList.add('chat-send-btn--mic');
+    sendBtn.innerHTML = CHAT_SVG_MIC;
+    sendBtn.setAttribute('aria-label', currentLang === 'ar' ? 'تسجيل صوتي' : 'Voice message');
   }
 }
 
@@ -321,6 +354,10 @@ async function openChat(chatType, title) {
     input.dataset.bound = '1';
     input.addEventListener('input', _onComposerInput);
   }
+  if (typeof window.ChatUI?.bindVoiceDelegation === 'function') {
+    window.ChatUI.bindVoiceDelegation();
+  }
+  _resizeChatComposer();
 
   _setHeaderOnline();
   await _ensureTypingChannel();
@@ -345,6 +382,12 @@ function closeChat() {
   if (modal) {
     modal.classList.remove('open');
     modal.removeAttribute('style');
+  }
+
+  const inp = document.getElementById('chat-input');
+  if (inp) {
+    inp.value = '';
+    _resizeChatComposer();
   }
 
   clearReplyTarget();
@@ -496,6 +539,7 @@ async function sendMessage() {
 
   _sendingMsg = true;
   input.value = '';
+  _resizeChatComposer();
   _sendTypingState(false);
   _refreshSendButtonState();
 

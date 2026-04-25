@@ -2239,10 +2239,10 @@ html[data-theme="dark"] .chat-list-avatar {
 }
 
 .chat-list-last {
-  flex: 1;
   min-width: 0;
   font-size: 13px;
-  color: var(--muted);
+  font-weight: 600;
+  color: color-mix(in srgb, var(--text) 72%, var(--muted));
   margin-top: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -2457,12 +2457,15 @@ html[data-theme="dark"] .chat-list-avatar {
 }
 
 /* ── Chat list rows / reply preview / bubble shell ── */
+/* Two-column grid: col1 (minmax) = title/preview, col2 = time/unread.
+   Works correctly in RTL without flex space-between edge cases. */
 .chat-list-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 8px 10px;
   width: 100%;
+  min-width: 0;
 }
 
 .chat-reply-preview-title {
@@ -2516,15 +2519,6 @@ html[data-theme="dark"] .chat-list-avatar {
 @media (min-width: 920px) {
   .content {
     padding-inline: 24px;
-  }
-
-  #chat-modal {
-    max-width: 900px;
-    margin: 0 auto;
-    left: 0;
-    right: 0;
-    border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
   }
 }
 

@@ -1,205 +1,129 @@
-// ═══════════════════════════════════════════════════════════
-// modules/auth.js — Login, logout, app routing, clock
-// Provides globals: showApp, doLogin, doLogout, startClock
-// Depends on: fallbacks.js (dbGet/dbPost, notify, applyLang)
-// ═══════════════════════════════════════════════════════════
+// ────────────────────────────────────────────────────────────
+// AUTH SERVICE  (v3 — secure)
+// ────────────────────────────────────────────────────────────
+import { db, safeFilterValue, clearAllCache, teardownRealtime } from './supabase.js';
+import { state, persistUser } from '../state.js';
+import { ROLES } from '../config.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config.js';
 
-function _runAdminShell(){
-  document.getElementById('admin-name-top').textContent=currentUser.name||'Admin';
-  const chip=document.getElementById('admin-role-chip');
-  chip.textContent=currentUser.role==='superadmin'?'Super Admin':currentUser.role==='manager'?'Team Leader':currentUser.role==='team_leader'?'Team Leader':currentUser.role.charAt(0).toUpperCase()+currentUser.role.slice(1);
-  chip.className='role-chip badge role-'+currentUser.role;
-  if(currentUser.role==='viewer')document.getElementById('settings-nav-item').style.display='none';
-  if(currentUser.role==='superadmin')document.getElementById('admins-section').style.display='block';
-  if(currentUser.role==='viewer'){const b=document.getElementById('add-emp-btn');if(b)b.style.display='none'}
-  showPage('admin-app');
-  const dashNav=document.querySelector('#admin-app .bottom-nav .nav-item');
-  if(typeof adminTab==='function' && dashNav){
-    adminTab('dashboard', dashNav);
-  } else {
-    const d=document.getElementById('admin-dashboard');
-    if(d) d.style.display='block';
+const THROTTLE = { attempts: 0, lockedUntil: 0, windowStart: 0 };
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 60_000;
+const LOCKOUT_MS = 30_000;
+
+function timingSafeEqual(a, b) {
+  const sa = String(a ?? '');
+  const sb = String(b ?? '');
+  const len = Math.max(sa.length, sb.length, 1);
+  let diff = sa.length ^ sb.length;
+  for (let i = 0; i < len; i++) {
+    diff |= (sa.charCodeAt(i) || 0) ^ (sb.charCodeAt(i) || 0);
   }
-  void (async function _bootAdminData(){
-    try{
-      if(typeof loadAllEmployees==='function') await loadAllEmployees();
-      if(typeof loadBranches==='function') await loadBranches();
-      if(typeof loadAdminDashboard==='function') await loadAdminDashboard();
-    }catch(e){ console.error('[admin data boot]', e); }
-  })();
-  clearOldVisitPhotos();
-  if(currentUser.role==='superadmin'||currentUser.role==='admin')loadAdminsList();
-  if(currentUser.role==='superadmin'||currentUser.role==='admin'||currentUser.role==='viewer'){
-    document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>n.style.display='');
-    document.getElementById('adm-visits-nav').style.display='none';
-  }
-  setTimeout(fixNavDirection, 100);
-  if(currentUser.role==='team_leader'){
-    setTimeout(()=>{
-      const admVisNav=document.getElementById('adm-visits-nav');
-      if(admVisNav) admVisNav.style.display='flex';
-      const settingsNavEl=document.getElementById('settings-nav-item');
-      if(settingsNavEl) settingsNavEl.style.display='flex';
-      const branchesNavEl=document.getElementById('adm-branches-nav');
-      if(branchesNavEl) branchesNavEl.style.display='none';
-      document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{
-        const oc=n.getAttribute('onclick')||'';
-        if(oc.includes('reports')) n.style.display='none';
-      });
-      ['add-emp-btn','add-emp-btn2'].forEach(id=>{
-        const el=document.getElementById(id);
-        if(el) el.style.display='none';
-      });
-      const visNavEl=document.getElementById('adm-visits-nav');
-      if(visNavEl){
-        document.querySelectorAll('#admin-app .nav-item').forEach(n=>n.classList.remove('active'));
-        visNavEl.classList.add('active');
-        ['dashboard','employees','branches','reports','settings'].forEach(t=>{
-          const d=document.getElementById('admin-'+t);if(d)d.style.display='none';
-        });
-        const vd=document.getElementById('admin-visits');
-        if(vd) vd.style.display='block';
-        loadTLVisitsTab();
-      }
-    },200);
-  }
-  if(typeof registerOneSignalUser==='function') registerOneSignalUser();
-  setTimeout(fixNavDirection, 100);
+  return diff === 0;
 }
 
-function showApp(){
-  if(!currentUser)return showPage('login-page');
-  applyLang();
-  document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});
-  const visNavReset=document.getElementById('adm-visits-nav');
-  if(visNavReset) visNavReset.style.display='none';
-  document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
-  ['add-emp-btn','add-emp-btn2'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='';});
-  const admSec=document.getElementById('admins-section');
-  if(admSec) admSec.style.display='none';
-  const firstNav=document.querySelector('#admin-app .bottom-nav .nav-item');
-  if(firstNav) firstNav.classList.add('active');
+function checkThrottle() {
+  const now = Date.now();
+  if (now < THROTTLE.lockedUntil) {
+    const err = new Error('RATE_LIMITED');
+    err.retryAfterSec = Math.ceil((THROTTLE.lockedUntil - now) / 1000);
+    throw err;
+  }
+  if (now - THROTTLE.windowStart > WINDOW_MS) {
+    THROTTLE.windowStart = now;
+    THROTTLE.attempts = 0;
+  }
+}
 
-  const isAdmin=['superadmin','admin','manager','viewer','team_leader'].includes(currentUser.role);
-  if(isAdmin){
-    const go=function(){
-      _runAdminShell();
-    };
-    if(typeof lazyLoadAdminModules==='function'){
-      lazyLoadAdminModules().then(go).catch(function(err){
-        console.error('[lazyLoadAdminModules]', err);
-        if(typeof notify==='function')notify(currentLang==='ar'?'تعذر تحميل لوحة الإدارة':'Could not load admin panel','error');
-        if(typeof doLogout==='function')doLogout();
-      });
-    }else{
-      go();
+function recordFailure() {
+  THROTTLE.attempts++;
+  if (THROTTLE.attempts >= MAX_ATTEMPTS) {
+    THROTTLE.lockedUntil = Date.now() + LOCKOUT_MS;
+  }
+}
+
+function resetThrottle() {
+  THROTTLE.attempts = 0;
+  THROTTLE.lockedUntil = 0;
+  THROTTLE.windowStart = 0;
+}
+
+function stripSecrets(user) {
+  const copy = { ...user };
+  delete copy.password;
+  delete copy.password_hash;
+  return copy;
+}
+
+export async function login(username, password) {
+  if (!username || !password) throw new Error('MISSING_CREDENTIALS');
+  checkThrottle();
+
+  // ── Super admin check via Edge Function (no credentials in frontend)
+  let superUser = null;
+  try {
+    const _res = await fetch(`${SUPABASE_URL}/functions/v1/admin-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+      body: JSON.stringify({ username, password }),
+    }).catch(() => null);
+    if (_res && _res.ok) superUser = await _res.json();
+  } catch (_) {}
+
+  if (superUser && superUser.role === 'superadmin') {
+    persistUser(superUser);
+    resetThrottle();
+    return superUser;
+  }
+
+  // ── DB lookup for admins + employees
+  let adminRows = [], empRows = [];
+  try {
+    const uname = safeFilterValue(username);
+    [adminRows, empRows] = await Promise.all([
+      db.get('admins',    `?username=eq.${uname}&select=*`).catch(() => []),
+      db.get('employees', `?username=eq.${uname}&select=*`).catch(() => []),
+    ]);
+  } catch (e) {
+    recordFailure();
+    throw e;
+  }
+
+  const adminMatch = (adminRows || []).find(r => timingSafeEqual(r.password || '', password));
+  if (adminMatch) {
+    const user = stripSecrets({ ...adminMatch, role: adminMatch.role || ROLES.ADMIN });
+    persistUser(user);
+    resetThrottle();
+    return user;
+  }
+
+  const empMatch = (empRows || []).find(r => timingSafeEqual(r.password || '', password));
+  if (empMatch) {
+    const user = stripSecrets({ ...empMatch, role: empMatch.role || ROLES.EMPLOYEE });
+    persistUser(user);
+    resetThrottle();
+    return user;
+  }
+
+  recordFailure();
+  throw new Error('INVALID_CREDENTIALS');
+}
+
+export function logout() {
+  persistUser(null);
+  state.allEmployees = [];
+  state.branches = [];
+  state.admins = [];
+  state.currentChat = null;
+  if (state.chatRealtimeChannel) {
+    const ch = state.chatRealtimeChannel;
+    if (ch.type === 'realtime' && ch.channel) {
+      try { ch.channel.unsubscribe(); } catch (_) {}
+    } else if (ch.type === 'polling' && ch.handle) {
+      try { clearInterval(ch.handle); } catch (_) {}
     }
-  }else{
-    showPage('emp-app');
-    if(typeof empTab==='function'){
-      const homeNav=document.querySelector('#emp-app .nav-item');
-      empTab('home', homeNav);
-    } else {
-      const h=document.getElementById('emp-home');
-      if(h) h.style.display='block';
-    }
-    document.getElementById('emp-name-top').textContent=currentUser.name;
-    document.getElementById('profile-name').textContent=currentUser.name;
-    document.getElementById('profile-branch').textContent=currentUser.branch||'';
-    const dayLabel=currentLang==='ar'?DAYS_AR[currentUser.day_off]:DAYS_EN[currentUser.day_off];
-    document.getElementById('profile-dayoff').innerHTML=`<span class="badge badge-blue">${currentLang==='ar'?'الإجازة:':'Day Off:'} ${dayLabel||'-'}</span>`;
-    loadEmpData();renderProducts();loadModelTargetAlert();
-    const visNav=document.querySelector('#emp-app .nav-item[onclick*=\"visits\"]');
-    if(visNav) visNav.style.display='none';
-    if(typeof registerOneSignalUser==='function') registerOneSignalUser();
-    setTimeout(fixNavDirection, 100);
+    state.chatRealtimeChannel = null;
   }
+  teardownRealtime();
+  clearAllCache();
 }
-
-// ── BACK BUTTON — handled in bootstrap.js ──
-
-// ── AUTH ──
-function _saveUser(u){try{localStorage.setItem('oraimo_user',JSON.stringify(u));}catch(_){try{sessionStorage.setItem('oraimo_user',JSON.stringify(u));}catch(_){}}}
-
-async function doLogin(){
-  if(_isSubmitting) return;
-  const username=(document.getElementById('login-user').value||'').trim().replace(/[\u200B-\u200D\uFEFF]/g,'');
-  const pass=(document.getElementById('login-pass').value||'').trim();
-  const errEl=document.getElementById('login-err');
-  const btn=document.querySelector('#login-page .btn-green');
-  const ar=currentLang==='ar';
-  if(!username||!pass){errEl.textContent=ar?'أدخل بيانات الدخول':'Enter your credentials';return;}
-  _isSubmitting=true;
-  if(btn){btn.disabled=true;btn.textContent=ar?'جاري الدخول...':'Signing in...';}
-  errEl.textContent='';
-  try{
-    if(username==='admin'&&pass==='Oraimo@Admin2026'){
-      window.currentUser={role:'superadmin',name:'Super Admin',id:-1};
-      _saveUser(window.currentUser);showApp();return;
-    }
-    const uname=encodeURIComponent(username);
-    let admRes;try{admRes=await dbGet('admins',`?username=eq.${uname}&select=*`);}catch(_){admRes=[];}
-    const admMatch=(admRes||[]).find(r=>r.password===pass);
-    if(admMatch){
-      window.currentUser={...admMatch,role:admMatch.role||'admin'};delete window.currentUser.password;
-      _saveUser(window.currentUser);showApp();return;
-    }
-    let empRes;try{empRes=await dbGet('employees',`?username=eq.${uname}&select=*`);}catch(_){empRes=[];}
-    const empMatch=(empRes||[]).find(r=>r.password===pass);
-    if(!empMatch){errEl.textContent=ar?'بيانات دخول غير صحيحة':'Invalid credentials';return;}
-    window.currentUser={...empMatch,role:empMatch.role||'employee'};delete window.currentUser.password;
-    _saveUser(window.currentUser);showApp();
-  }catch(e){
-    console.error('[login]',e);
-    errEl.textContent=ar?'خطأ في الاتصال، حاول مرة أخرى':'Connection error, try again';
-  }finally{
-    _isSubmitting=false;
-    if(btn){btn.disabled=false;btn.textContent=ar?'تسجيل الدخول':'Sign In';}
-  }
-}
-function doLogout(){
-  try { if (typeof resetPushRegistrationState === 'function') resetPushRegistrationState(); } catch (_) {}
-  // Stop any active camera
-  if(videoStream){try{videoStream.getTracks().forEach(t=>t.stop());}catch(_){}videoStream=null;}
-  // Stop chat polling
-  if(chatSubscription){
-    try{if(typeof chatSubscription==='function')chatSubscription();else clearInterval(chatSubscription);}catch(_){}
-    chatSubscription=null;
-  }
-  currentChat=null;
-  // Clear session — مش بنعمل reload عشان التطبيق يفضل شغال
-  try{localStorage.removeItem('oraimo_user');}catch(_){}
-  try{sessionStorage.removeItem('oraimo_user');}catch(_){}
-  window.currentUser=null;
-  _isSubmitting=false;
-  allAdmins=[];allBranches=[];allEmployees=[];
-  try{window.branches=[];}catch(_){}
-  managerTeamData={};
-  // Reset admin nav
-  document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});
-  const visNav=document.getElementById('adm-visits-nav');if(visNav)visNav.style.display='none';
-  // Reset tabs
-  ['dashboard','employees','branches','reports','settings','visits'].forEach(t=>{
-    const d=document.getElementById('admin-'+t);if(d)d.style.display='none';
-  });
-  document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
-  ['add-emp-btn','add-emp-btn2'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='';});
-  // Clear login form
-  const lu=document.getElementById('login-user');if(lu)lu.value='';
-  const lp=document.getElementById('login-pass');if(lp)lp.value='';
-  const le=document.getElementById('login-err');if(le)le.textContent='';
-  showPage('login-page');
-}
-
-// ── CLOCK ──
-function startClock(){
-  function tick(){
-    const now=new Date(),locale=currentLang==='ar'?'ar-EG':'en-US';
-    const el=document.getElementById('live-clock'),del=document.getElementById('live-date');
-    if(el)el.textContent=now.toLocaleTimeString(locale,{hour:'numeric',minute:'2-digit',hour12:true});
-    if(del)del.textContent=now.toLocaleDateString(locale,{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  }
-  tick();setInterval(tick,1000);
-}
-
-// ── EMP DATA ──

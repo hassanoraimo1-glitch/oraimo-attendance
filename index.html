@@ -35,6 +35,11 @@
 <!-- iOS notifications: OneSignal handles via service worker -->
 <title>Oraimo HR System</title>
 <link rel="manifest" href="/manifest.json">
+<link rel="preconnect" href="https://lmszelfnosejdemxhodm.supabase.co" crossorigin>
+<link rel="dns-prefetch" href="https://lmszelfnosejdemxhodm.supabase.co">
+<link rel="dns-prefetch" href="https://cdn.onesignal.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script>window.__ASSET_VER__='17';</script>
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -64,14 +69,14 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js?v=15')
+      navigator.serviceWorker.register('/sw.js?v=16')
         .then(reg => console.log('التطبيق جاهز للعمل'))
         .catch(err => console.log('فشل تسجيل الخدمة', err));
     });
   }
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./src/styles/main.css?v=6">
+<link rel="stylesheet" href="./src/styles/main.css?v=7">
 </head>
 <body>
 
@@ -966,6 +971,7 @@
 
 <!-- UI -->
 <script src="./src/modules/ui.js"></script>
+<script src="./src/core/lazy-admin.js"></script>
 
 <!-- FEATURES -->
 <script src="./src/modules/auth.js"></script>
@@ -977,16 +983,7 @@
 <script src="./src/modules/chat.js"></script>
 <script src="./src/modules/specs.js"></script>
 
-<!-- ADMIN -->
-<script src="./src/modules/admin/admin.ui.js"></script>
-<script src="./src/modules/admin/dashboard.js"></script>
-<script src="./src/modules/admin/employees.js"></script>
-<script src="./src/modules/admin/admins.js"></script>
-<script src="./src/modules/admin/branches.js"></script>
-<script src="./src/modules/admin/targets.js"></script>
-<script src="./src/modules/admin/reports.ui.js"></script>
-<script src="./src/modules/admin/reports.js"></script>
-<script src="./src/modules/admin/visits.js"></script>
-<script src="./src/modules/admin/display.js"></script>
+<!-- Admin panel scripts: lazy-loaded in auth.js (lazyLoadAdminModules) -->
+
 </body>
 </html>

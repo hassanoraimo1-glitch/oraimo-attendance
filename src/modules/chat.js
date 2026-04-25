@@ -58,8 +58,17 @@ function _formatChatListTime(iso) {
     d.getFullYear() === now.getFullYear() &&
     d.getMonth() === now.getMonth() &&
     d.getDate() === now.getDate();
-  if (sameDay) return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  return d.toLocaleDateString(currentLang === 'ar' ? 'ar-EG' : 'en-US', { day: 'numeric', month: 'short' });
+  const loc = currentLang === 'ar' ? 'ar-EG' : 'en-US';
+  if (sameDay) return d.toLocaleTimeString(loc, { hour: 'numeric', minute: '2-digit', hour12: true });
+  return d.toLocaleDateString(loc, { day: 'numeric', month: 'short' });
+}
+
+function _privateThreadIncludesUser(m, userId) {
+  if (!m || m.chat_type !== 'private' || userId == null) return false;
+  const mine = Number(userId);
+  const sid = Number(m.sender_id);
+  const rid = m.receiver_id != null && m.receiver_id !== '' ? Number(m.receiver_id) : null;
+  return sid === mine || rid === mine;
 }
 
 function _chatSeenStorageKey(chatId) {
@@ -361,6 +370,11 @@ function closeChat() {
     clearInterval(_statusRefreshTimer);
     _statusRefreshTimer = null;
   }
+
+  try {
+    void loadEmployeeChatList();
+    if (typeof loadAdminChatList === 'function') void loadAdminChatList();
+  } catch (_) {}
 }
 
 async function loadMessages() {
@@ -461,6 +475,10 @@ async function _sendPayload(payload) {
   }
   await loadMessages();
   clearReplyTarget();
+  try {
+    void loadEmployeeChatList();
+    if (typeof loadAdminChatList === 'function') void loadAdminChatList();
+  } catch (_) {}
 }
 
 async function sendMessage() {
@@ -724,8 +742,8 @@ async function loadAdminChatList() {
   if (totalEl) totalEl.textContent = String(1 + employees.length);
 
   const groupItem = `
-    <button class="chat-list-item ${groupUnread ? 'has-unread' : ''}" onclick="openChat('group','B.tech team')">
-      <div class="chat-list-avatar group">👥</div>
+    <button type="button" class="chat-list-item ${groupUnread ? 'has-unread' : ''}" onclick="openChat('group','B.tech team')">
+      <div class="chat-list-avatar group" aria-hidden="true">👥</div>
       <div class="chat-list-main">
         <div class="chat-list-row">
           <div class="chat-list-name">B.tech team</div>
@@ -749,8 +767,8 @@ async function loadAdminChatList() {
     const timeLabel = _formatChatListTime(last?.created_at);
     const unread = unreadByChat[chatId] || 0;
 
-    return `<button class="chat-list-item ${unread ? 'has-unread' : ''}" onclick="openChat('${emp.id}','${(emp.name || '').replace(/'/g, "\\'")}')">
-      <div class="chat-list-avatar" style="background:${color};color:#fff">${emp.profile_photo ? `<img src="${emp.profile_photo}" alt="">` : (emp.name || '?')[0].toUpperCase()}</div>
+    return `<button type="button" class="chat-list-item ${unread ? 'has-unread' : ''}" onclick="openChat('${emp.id}','${(emp.name || '').replace(/'/g, "\\'")}')">
+      <div class="chat-list-avatar" style="background:${color};color:#fff" aria-hidden="true">${emp.profile_photo ? `<img src="${emp.profile_photo}" alt="">` : (emp.name || '?')[0].toUpperCase()}</div>
       <div class="chat-list-main">
         <div class="chat-list-row">
           <div class="chat-list-name">${escapeHtmlLocal(emp.name || '')}</div>
@@ -770,4 +788,89 @@ async function loadAdminChatList() {
   }
 
   el.innerHTML = groupItem + empItems;
+}
+
+/** Employee home chat tab — same row layout as admin (WhatsApp / Telegram style). */
+async function loadEmployeeChatList() {
+  const el = document.getElementById('emp-chat-list');
+  if (!el || !currentUser?.id) return;
+
+  const ar = currentLang === 'ar';
+  const uid = currentUser.id;
+  const adminTitle = ar ? 'الإدارة' : 'Management';
+  const adminTitleEsc = String(adminTitle).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+  const rows = await dbGet('messages', '?select=sender_id,receiver_id,sender_name,message,chat_type,created_at&order=created_at.desc&limit=400').catch(() => []) || [];
+
+  let groupLast = null;
+  let adminLast = null;
+  for (let i = 0; i < rows.length; i++) {
+    const m = rows[i];
+    if (m.chat_type === 'group' && !groupLast) groupLast = m;
+    if (_privateThreadIncludesUser(m, uid) && !adminLast) adminLast = m;
+    if (groupLast && adminLast) break;
+  }
+
+  const groupSeen = _getChatSeen('group');
+  const adminSeen = _getChatSeen('admin');
+  let groupUnread = 0;
+  let adminUnread = 0;
+
+  const myId = Number(uid);
+  for (let i = 0; i < rows.length; i++) {
+    const m = rows[i];
+    if (m.chat_type === 'group') {
+      if (Number(m.sender_id) !== myId && (!groupSeen || new Date(m.created_at) > new Date(groupSeen))) {
+        groupUnread++;
+      }
+    } else if (_privateThreadIncludesUser(m, uid)) {
+      if (Number(m.sender_id) !== myId && (!adminSeen || new Date(m.created_at) > new Date(adminSeen))) {
+        adminUnread++;
+      }
+    }
+  }
+
+  const groupParsed = groupLast ? _parseMessagePayload(groupLast.message) : null;
+  const groupPreview = groupParsed
+    ? (groupParsed.type === 'audio' ? (ar ? '🎤 رسالة صوتية' : '🎤 Voice note') : _shortText(groupParsed.text || ''))
+    : (ar ? 'محادثة الفريق' : 'Team chat');
+  const groupTime = _formatChatListTime(groupLast?.created_at);
+
+  const adminParsed = adminLast ? _parseMessagePayload(adminLast.message) : null;
+  const adminPreview = adminParsed
+    ? (adminParsed.type === 'audio' ? (ar ? '🎤 رسالة صوتية' : '🎤 Voice note') : _shortText(adminParsed.text || ''))
+    : (ar ? 'اضغط للمحادثة مع الإدارة' : 'Tap to chat with management');
+  const adminTime = _formatChatListTime(adminLast?.created_at);
+
+  const adminBtn = `
+    <button type="button" class="chat-list-item ${adminUnread ? 'has-unread' : ''}" onclick="openChat('admin','${adminTitleEsc}')">
+      <div class="chat-list-avatar admin" aria-hidden="true">👑</div>
+      <div class="chat-list-main">
+        <div class="chat-list-row">
+          <div class="chat-list-name">${escapeHtmlLocal(adminTitle)}</div>
+          <div class="chat-list-time">${adminTime || ''}</div>
+        </div>
+        <div class="chat-list-row">
+          <div class="chat-list-last">${escapeHtmlLocal(adminPreview)}</div>
+          ${adminUnread ? `<span class="chat-list-unread">${adminUnread > 99 ? '99+' : adminUnread}</span>` : ''}
+        </div>
+      </div>
+    </button>`;
+
+  const groupBtn = `
+    <button type="button" class="chat-list-item ${groupUnread ? 'has-unread' : ''}" onclick="openChat('group','B.tech team')">
+      <div class="chat-list-avatar group" aria-hidden="true">👥</div>
+      <div class="chat-list-main">
+        <div class="chat-list-row">
+          <div class="chat-list-name">B.tech team</div>
+          <div class="chat-list-time">${groupTime || ''}</div>
+        </div>
+        <div class="chat-list-row">
+          <div class="chat-list-last">${escapeHtmlLocal(groupPreview)}</div>
+          ${groupUnread ? `<span class="chat-list-unread">${groupUnread > 99 ? '99+' : groupUnread}</span>` : ''}
+        </div>
+      </div>
+    </button>`;
+
+  el.innerHTML = adminBtn + groupBtn;
 }

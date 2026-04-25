@@ -39,7 +39,7 @@
 <link rel="dns-prefetch" href="https://lmszelfnosejdemxhodm.supabase.co">
 <link rel="dns-prefetch" href="https://cdn.onesignal.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<script>window.__ASSET_VER__='22';</script>
+<script>window.__ASSET_VER__='26';</script>
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -76,7 +76,7 @@
   }
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./src/styles/main.css?v=14">
+<link rel="stylesheet" href="./src/styles/main.css?v=18">
 </head>
 <body>
 
@@ -170,13 +170,14 @@
     <div class="attend-wrap">
       <div class="attend-time" id="live-clock">00:00:00</div>
       <div class="attend-date" id="live-date"></div>
-      <br>
       <div class="attend-btn" id="attend-btn" onclick="handleAttendClick()">
-        <div class="attend-icon">🟢</div>
+        <div class="attend-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 2a7 7 0 0 1 7 7v2a5 5 0 0 1-5 5h-4a5 5 0 0 1-5-5V9a7 7 0 0 1 7-7zm-2 19h4v-2h-4v2z"/></svg>
+        </div>
         <div class="attend-label" data-ar="تسجيل دخول" data-en="Check In">تسجيل دخول</div>
       </div>
-      <div style="margin-top:14px;font-size:12px;color:var(--muted);text-align:center" id="attend-status" data-ar="لم يتم تسجيل حضور اليوم" data-en="No attendance recorded today">لم يتم تسجيل حضور اليوم</div>
-      <div id="emp-shift-info" style="margin-top:6px;font-size:11px;color:var(--green);text-align:center;font-weight:700"></div>
+      <div class="attend-status" id="attend-status" data-ar="لم يتم تسجيل حضور اليوم" data-en="No attendance recorded today">لم يتم تسجيل حضور اليوم</div>
+      <div class="attend-shift" id="emp-shift-info"></div>
     </div>
 
     <div class="stats-grid">
@@ -239,7 +240,7 @@
       <div class="sh"><div class="sh-title">🏖️ طلب إجازة يوم</div></div>
       <div class="inp-grp">
         <label>تاريخ الإجازة</label>
-        <input type="date" id="vacation-date" style="width:100%;padding:13px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none">
+        <input type="date" id="vacation-date">
       </div>
       <div class="inp-grp">
         <label data-ar="السبب" data-en="Reason">السبب</label>
@@ -335,7 +336,7 @@
       </div>
       <div class="inp-grp" style="margin-top:10px">
         <label>ملاحظة (اختياري)</label>
-        <textarea id="display-note" rows="2" style="width:100%;padding:11px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl"></textarea>
+        <textarea id="display-note" rows="2"></textarea>
       </div>
       <button class="btn btn-green" onclick="submitDisplayPhotos()">✅ رفع صور الديسبلاي</button>
     </div>
@@ -365,8 +366,7 @@
       </div>
       <div class="inp-grp">
         <label>ملاحظة (اختياري)</label>
-        <textarea id="visit-note-input" placeholder="حالة الديسبلاي، ملاحظات الفرع..." rows="2"
-          style="width:100%;padding:11px 14px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl;transition:.2s"></textarea>
+        <textarea id="visit-note-input" placeholder="حالة الديسبلاي، ملاحظات الفرع..." rows="2"></textarea>
       </div>
       <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">صور الديسبلاي (max 3)</label>
       <div class="photo-previews" id="visit-photo-previews"></div>

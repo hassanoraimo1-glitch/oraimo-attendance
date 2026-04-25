@@ -76,7 +76,7 @@
   }
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./src/styles/main.css?v=9">
+<link rel="stylesheet" href="./src/styles/main.css?v=11">
 </head>
 <body>
 
@@ -812,8 +812,12 @@
 
 <div id="chat-modal">
   <div class="chat-header-bar">
-    <button type="button" class="chat-back-btn" id="chat-back-btn" aria-label="Back">←</button>
-    <div class="chat-header-avatar">💬</div>
+    <button type="button" class="chat-back-btn" id="chat-back-btn" aria-label="Back" data-ar-aria="رجوع" data-en-aria="Back">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+    </button>
+    <div class="chat-header-avatar" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+    </div>
     <div class="chat-header-info">
       <div class="chat-header-title" id="chat-title">المحادثة</div>
       <div class="chat-header-status" data-ar="متصل" data-en="Online">متصل</div>
@@ -822,9 +826,13 @@
   <div id="chat-messages"></div>
   <div id="chat-reply-preview" class="chat-reply-preview hidden"></div>
   <div class="chat-input-bar">
-    <button class="chat-voice-btn" id="chat-voice-btn" onclick="toggleVoiceRecording()" title="Voice note">🎙️</button>
-    <input type="text" id="chat-input" placeholder="اكتب رسالة..." onkeydown="if(event.key==='Enter')sendMessage()">
-    <button class="chat-send-btn" onclick="sendMessage()">➤</button>
+    <button type="button" class="chat-voice-btn" id="chat-voice-btn" onclick="toggleVoiceRecording()" title="Voice note" data-ar-title="رسالة صوتية" data-en-title="Voice note" aria-label="Voice">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+    </button>
+    <textarea id="chat-input" rows="1" placeholder="اكتب رسالة…" data-ar-ph="اكتب رسالة…" data-en-ph="Type a message…" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();sendMessage();}"></textarea>
+    <button type="button" class="chat-send-btn chat-send-btn--mic" id="chat-send-btn" onclick="sendMessage()" aria-label="Send">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+    </button>
   </div>
 </div>
 

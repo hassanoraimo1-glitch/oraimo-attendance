@@ -64,7 +64,7 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js?v=14')
+      navigator.serviceWorker.register('/sw.js?v=15')
         .then(reg => console.log('التطبيق جاهز للعمل'))
         .catch(err => console.log('فشل تسجيل الخدمة', err));
     });
@@ -807,7 +807,7 @@
 
 <div id="chat-modal">
   <div class="chat-header-bar">
-    <button class="chat-back-btn" onclick="closeChat()">←</button>
+    <button type="button" class="chat-back-btn" id="chat-back-btn" aria-label="Back">←</button>
     <div class="chat-header-avatar">💬</div>
     <div class="chat-header-info">
       <div class="chat-header-title" id="chat-title">المحادثة</div>

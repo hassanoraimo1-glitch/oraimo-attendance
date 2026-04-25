@@ -3,7 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#0a0a0a">
+<meta name="theme-color" content="#0b0d12">
+<script>
+(function () {
+  function paintTheme(light) {
+    document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', light ? '#eef2f9' : '#0b0d12');
+  }
+  try {
+    var t = localStorage.getItem('oraimo_theme');
+    paintTheme(t === 'light');
+  } catch (e) {}
+  window.toggleTheme = function () {
+    try {
+      var cur = document.documentElement.getAttribute('data-theme') === 'light';
+      var nextLight = !cur;
+      localStorage.setItem('oraimo_theme', nextLight ? 'light' : 'dark');
+      paintTheme(nextLight);
+      if (document.body) document.body.setAttribute('data-theme', nextLight ? 'light' : 'dark');
+    } catch (e2) {}
+  };
+})();
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -49,20 +71,21 @@
   }
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./src/styles/main.css?v=3">
+<link rel="stylesheet" href="./src/styles/main.css?v=5">
 </head>
 <body>
 
-<!-- ORAIMO BACKGROUND -->
-<div class="oraimo-bg">
-  <div class="oraimo-bg-dots"></div>
-  <div class="oraimo-corner tl">O</div>
-  <div class="oraimo-corner br">O</div>
+<div class="app-atmosphere" aria-hidden="true">
+  <span class="noise-corner tl">O</span>
+  <span class="noise-corner br">O</span>
 </div>
 
 <!-- SPLASH -->
 <div id="splash">
-  <div class="oraimo-bg"><div class="oraimo-bg-dots"></div></div>
+  <div class="app-atmosphere" aria-hidden="true">
+    <span class="noise-corner tl">O</span>
+    <span class="noise-corner br">O</span>
+  </div>
   <div class="splash-inner">
     <div class="splash-clock" id="splash-clock">--:--</div>
     <div class="splash-ring">
@@ -95,11 +118,12 @@
 
 <!-- ═══════════════ LOGIN ═══════════════ -->
 <div id="login-page" class="page active">
-  <div style="position:absolute;top:16px;left:16px;z-index:10">
-    <button class="lang-btn" onclick="toggleLang()" id="lang-toggle-btn">
+  <div class="login-toolbar">
+    <button type="button" class="lang-btn" onclick="toggleLang()" id="lang-toggle-btn">
       <span class="lang-flag">🌐</span>
       <span id="lang-toggle-label">EN</span>
     </button>
+    <button type="button" class="theme-btn" onclick="toggleTheme()" title="Theme">🌓</button>
   </div>
   <div class="login-card">
     <div class="login-logo"><div class="login-o">O</div></div>
@@ -129,14 +153,15 @@
       </div>
     </div>
     <div class="topbar-right">
-      <button class="lang-btn" onclick="toggleLang()" id="lang-btn-emp"><span class="lang-flag">🌐</span><span id="lang-label-emp">EN</span></button>
+      <button type="button" class="theme-btn" onclick="toggleTheme()" title="Theme">🌓</button>
+      <button type="button" class="lang-btn" onclick="toggleLang()" id="lang-btn-emp"><span class="lang-flag">🌐</span><span id="lang-label-emp">EN</span></button>
       <span class="badge badge-green role-chip" data-ar="موظف" data-en="Employee">موظف</span>
       <button class="icon-btn" onclick="doLogout()" title="خروج">🚪</button>
     </div>
   </div>
 
   <!-- HOME TAB -->
-  <div id="emp-home" class="content" style="padding-top:70px">
+  <div id="emp-home" class="content">
     <div class="attend-wrap">
       <div class="attend-time" id="live-clock">00:00:00</div>
       <div class="attend-date" id="live-date"></div>
@@ -410,14 +435,15 @@
 <div id="admin-app" class="page">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="topbar-logo" style="background:linear-gradient(135deg,#00C853,#007a2a);box-shadow:0 0 16px rgba(0,200,83,.3)">O</div>
+      <div class="topbar-logo">O</div>
       <div>
         <div class="topbar-brand">ORAIMO HR</div>
         <div class="topbar-title" id="admin-name-top" data-ar="لوحة الإدارة" data-en="Dashboard">لوحة الإدارة</div>
       </div>
     </div>
     <div class="topbar-right">
-      <button class="lang-btn" onclick="toggleLang()" id="lang-btn-adm"><span class="lang-flag">🌐</span><span id="lang-label-adm">ع</span></button>
+      <button type="button" class="theme-btn" onclick="toggleTheme()" title="Theme">🌓</button>
+      <button type="button" class="lang-btn" onclick="toggleLang()" id="lang-btn-adm"><span class="lang-flag">🌐</span><span id="lang-label-adm">ع</span></button>
       <span class="role-chip badge" id="admin-role-chip">Admin</span>
       <button class="icon-btn" onclick="doLogout()" title="خروج">🚪</button>
     </div>

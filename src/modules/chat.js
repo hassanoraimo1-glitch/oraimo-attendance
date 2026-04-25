@@ -991,10 +991,25 @@ async function loadAdminChatList() {
   const searchEl = document.getElementById('chat-list-search');
   const q = String(searchEl?.value || '').trim().toLowerCase();
 
+  const GROUP_SVG =
+    '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>';
+  const ADMIN_SVG =
+    '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 1l3 5.5 6 .9-4.3 4.2 1 6-5.7-3-5.7 3 1-6L3 7.4l6-.9L12 1z"/></svg>';
+
   if (!allEmployees || !allEmployees.length) {
     if (totalEl) totalEl.textContent = '0';
     el.innerHTML = `<div class="chat-empty">${ar ? 'لا يوجد موظفون' : 'No employees'}</div>`;
     return;
+  }
+
+  if (!el.dataset.loading) {
+    el.dataset.loading = '1';
+    el.innerHTML = `<div class="chat-list-skeleton" aria-hidden="true">
+      <div class="chat-skel-row"><span class="chat-skel-av"></span><span class="chat-skel-lines"><i></i><b></b></span></div>
+      <div class="chat-skel-row"><span class="chat-skel-av"></span><span class="chat-skel-lines"><i></i><b></b></span></div>
+      <div class="chat-skel-row"><span class="chat-skel-av"></span><span class="chat-skel-lines"><i></i><b></b></span></div>
+      <div class="chat-skel-row"><span class="chat-skel-av"></span><span class="chat-skel-lines"><i></i><b></b></span></div>
+    </div>`;
   }
 
   const rows = await dbGet('messages', '?select=sender_id,receiver_id,sender_name,message,chat_type,created_at&order=created_at.desc&limit=600').catch(() => []) || [];
@@ -1026,6 +1041,7 @@ async function loadAdminChatList() {
   const groupListPreview = hasGroupDraft
     ? (ar ? `مسودة: ${_shortText(groupDraft, 50)}` : `Draft: ${_shortText(groupDraft, 50)}`)
     : groupPreview;
+  const groupLastTs = groupLast?.created_at ? new Date(groupLast.created_at).getTime() : 0;
 
   const employees = allEmployees.filter(emp => {
     if (!q) return true;
@@ -1036,7 +1052,7 @@ async function loadAdminChatList() {
 
   const groupItem = `
     <button type="button" class="chat-list-item ${groupUnread ? 'has-unread' : ''} ${hasGroupDraft ? 'has-draft' : ''}" onclick="openChat('group','B.tech team')">
-      <div class="chat-list-avatar group" aria-hidden="true">👥</div>
+      <div class="chat-list-avatar group" aria-hidden="true">${GROUP_SVG}</div>
       <div class="chat-list-main">
         <div class="chat-list-row">
           <div class="chat-list-name">B.tech team</div>
@@ -1049,21 +1065,41 @@ async function loadAdminChatList() {
       </div>
     </button>`;
 
-  const empItems = employees.map(emp => {
-    const color = _colorForName(emp.name || '');
+  const decorated = employees.map(emp => {
     const chatId = String(emp.id);
     const last = lastByChat[chatId];
-    const parsed = last ? _parseMessagePayload(last.message) : null;
+    const lastTs = last?.created_at ? new Date(last.created_at).getTime() : 0;
+    const unread = unreadByChat[chatId] || 0;
     const dtxt = getChatDraftText(emp.id);
     const hasDraft = !!String(dtxt).trim();
+    const parsed = last ? _parseMessagePayload(last.message) : null;
     const preview = hasDraft
       ? (ar ? `مسودة: ${_shortText(dtxt, 50)}` : `Draft: ${_shortText(dtxt, 50)}`)
       : (parsed
         ? (parsed.type === 'audio' ? (ar ? '🎤 رسالة صوتية' : '🎤 Voice note') : _shortText(parsed.text || ''))
         : (emp.branch || (ar ? 'لا توجد رسائل بعد' : 'No messages yet')));
-    const timeLabel = _formatChatListTime(last?.created_at);
-    const unread = unreadByChat[chatId] || 0;
+    return {
+      emp,
+      chatId,
+      last,
+      lastTs,
+      unread,
+      hasDraft,
+      preview,
+    };
+  });
 
+  // Priority: unread > draft > latest activity > name
+  decorated.sort((a, b) => {
+    if (!!b.unread !== !!a.unread) return b.unread ? 1 : -1;
+    if (!!b.hasDraft !== !!a.hasDraft) return b.hasDraft ? 1 : -1;
+    if ((b.lastTs || 0) !== (a.lastTs || 0)) return (b.lastTs || 0) - (a.lastTs || 0);
+    return String(a.emp?.name || '').localeCompare(String(b.emp?.name || ''));
+  });
+
+  const empItems = decorated.map(({ emp, last, unread, hasDraft, preview }) => {
+    const color = _colorForName(emp.name || '');
+    const timeLabel = _formatChatListTime(last?.created_at);
     return `<button type="button" class="chat-list-item ${unread ? 'has-unread' : ''} ${hasDraft ? 'has-draft' : ''}" onclick="openChat('${emp.id}','${(emp.name || '').replace(/'/g, "\\'")}')">
       <div class="chat-list-avatar" style="background:${color};color:#fff" aria-hidden="true">${emp.profile_photo ? `<img src="${emp.profile_photo}" alt="" loading="lazy" decoding="async">` : (emp.name || '?')[0].toUpperCase()}</div>
       <div class="chat-list-main">
@@ -1084,7 +1120,16 @@ async function loadAdminChatList() {
     return;
   }
 
-  el.innerHTML = groupItem + empItems;
+  // If group has unread/draft/newer activity, bubble it above employees
+  const groupPriority =
+    (groupUnread ? 3 : 0) + (hasGroupDraft ? 2 : 0) + (groupLastTs ? 1 : 0);
+  const firstEmp = decorated[0];
+  const topEmpPriority = firstEmp
+    ? ((firstEmp.unread ? 3 : 0) + (firstEmp.hasDraft ? 2 : 0) + (firstEmp.lastTs ? 1 : 0))
+    : 0;
+
+  el.innerHTML = (groupPriority >= topEmpPriority ? (groupItem + empItems) : (empItems + groupItem));
+  delete el.dataset.loading;
 }
 
 /** Employee home chat tab — same row layout as admin (WhatsApp / Telegram style). */
@@ -1139,6 +1184,11 @@ async function loadEmployeeChatList() {
     : (ar ? 'اضغط للمحادثة مع الإدارة' : 'Tap to chat with management');
   const adminTime = _formatChatListTime(adminLast?.created_at);
 
+  const GROUP_SVG =
+    '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>';
+  const ADMIN_SVG =
+    '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2l2.5 5.2L20 8l-4 4 1 6-5-2.8L7 18l1-6-4-4 5.5-.8L12 2z"/></svg>';
+
   const adminDraft = getChatDraftText('admin');
   const hasAdminDraft = !!String(adminDraft).trim();
   const adminListPreview = hasAdminDraft
@@ -1152,7 +1202,7 @@ async function loadEmployeeChatList() {
 
   const adminBtn = `
     <button type="button" class="chat-list-item ${adminUnread ? 'has-unread' : ''} ${hasAdminDraft ? 'has-draft' : ''}" onclick="openChat('admin','${adminTitleEsc}')">
-      <div class="chat-list-avatar admin" aria-hidden="true">👑</div>
+      <div class="chat-list-avatar admin" aria-hidden="true">${ADMIN_SVG}</div>
       <div class="chat-list-main">
         <div class="chat-list-row">
           <div class="chat-list-name">${escapeHtmlLocal(adminTitle)}</div>
@@ -1167,7 +1217,7 @@ async function loadEmployeeChatList() {
 
   const groupBtn = `
     <button type="button" class="chat-list-item ${groupUnread ? 'has-unread' : ''} ${hasGroupDraftE ? 'has-draft' : ''}" onclick="openChat('group','B.tech team')">
-      <div class="chat-list-avatar group" aria-hidden="true">👥</div>
+      <div class="chat-list-avatar group" aria-hidden="true">${GROUP_SVG}</div>
       <div class="chat-list-main">
         <div class="chat-list-row">
           <div class="chat-list-name">B.tech team</div>
@@ -1180,7 +1230,10 @@ async function loadEmployeeChatList() {
       </div>
     </button>`;
 
-  el.innerHTML = adminBtn + groupBtn;
+  // Priority: unread/draft then admin first (direct to management)
+  const adminP = (adminUnread ? 3 : 0) + (hasAdminDraft ? 2 : 0);
+  const groupP = (groupUnread ? 3 : 0) + (hasGroupDraftE ? 2 : 0);
+  el.innerHTML = (adminP >= groupP) ? (adminBtn + groupBtn) : (groupBtn + adminBtn);
 }
 
 (function _bindChatBackButton() {

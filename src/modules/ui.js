@@ -92,6 +92,7 @@ function empTab(tab,el){
   if(tab==='visits'){loadVisitsTab()}
   if(tab==='display'){loadDisplayTab()}
   if(tab==='specs'){renderSpecsList()}
+  if(tab==='chat'&&typeof loadEmployeeChatList==='function'){loadEmployeeChatList()}
 }
 function adminTab(tab,el){
   ['dashboard','employees','branches','reports','settings','visits','chat'].forEach(t=>{

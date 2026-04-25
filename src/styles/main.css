@@ -604,6 +604,12 @@ button:disabled {
   opacity: 0.88;
 }
 
+.nav-icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
 .nav-label {
   font-size: 10px;
   font-weight: 700;

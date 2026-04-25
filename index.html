@@ -39,7 +39,7 @@
 <link rel="dns-prefetch" href="https://lmszelfnosejdemxhodm.supabase.co">
 <link rel="dns-prefetch" href="https://cdn.onesignal.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<script>window.__ASSET_VER__='17';</script>
+<script>window.__ASSET_VER__='18';</script>
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -597,23 +597,23 @@
       <div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
       <div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
-        <button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
+        <button onclick="exportHrPayrollCsv('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
+        <button onclick="exportHrPayrollCsv('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
       </div>
     </div>
     </div>
     <div id="report-products" style="display:none"><div id="products-report-content"></div><div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
       <div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
-        <button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
+        <button onclick="exportHrPayrollCsv('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
+        <button onclick="exportHrPayrollCsv('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
       </div>
     </div></div>
     <div id="report-branch" style="display:none"><div id="branch-report-content"></div><div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
       <div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
-        <button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
+        <button onclick="exportHrPayrollCsv('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
+        <button onclick="exportHrPayrollCsv('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
       </div>
     </div></div>
     <div id="report-display" style="display:none">

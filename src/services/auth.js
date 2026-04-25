@@ -1,33 +1,11 @@
 // ────────────────────────────────────────────────────────────
-// AUTH SERVICE  (v3)
+// AUTH SERVICE  (v3 — secure)
 // ────────────────────────────────────────────────────────────
-// Honest note on what this module does and doesn't give you:
-//
-//   What it does:
-//     • Keeps usernames out of direct equality-vs-DB checks that
-//       could be brute-forced in a tight loop.
-//     • Uses the same codepath length for super-admin vs DB-backed
-//       logins so a timing side-channel can't distinguish them.
-//     • Applies client-side back-off for failed attempts.
-//
-//   What it does NOT give you (need server-side work):
-//     • Real rate limiting — anyone with DevTools bypasses the
-//       client-side limiter. Real protection requires a Supabase
-//       Edge Function or Postgres function for the auth flow.
-//     • Password hashing — the `password` column is still plaintext
-//       in the DB. Migrate to Supabase Auth before going to prod.
-//     • Session revocation — there are no JWTs; logging out on one
-//       device does not log out others.
-// ────────────────────────────────────────────────────────────
-
 import { db, safeFilterValue, clearAllCache, teardownRealtime } from './supabase.js';
 import { state, persistUser } from '../state.js';
 import { ROLES } from '../config.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config.js';
 
-const SUPER_USERNAME = 'admin';
-const SUPER_PASSWORD = 'Oraimo@Admin2026';
-
-// Client-side throttle (not a true rate limiter — see header comment).
 const THROTTLE = { attempts: 0, lockedUntil: 0, windowStart: 0 };
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 60_000;
@@ -77,17 +55,28 @@ function stripSecrets(user) {
   return copy;
 }
 
-/**
- * Authenticate a user. Throws a typed error on failure.
- * Uses constant-ish codepath: always hits the DB (even for super admin
- * credentials) so an observer can't tell which path matched.
- */
 export async function login(username, password) {
   if (!username || !password) throw new Error('MISSING_CREDENTIALS');
   checkThrottle();
 
-  // Always do a DB lookup, even for super admin — this keeps the
-  // latency profile uniform between the two paths.
+  // ── Super admin check via Edge Function (no credentials in frontend)
+  let superUser = null;
+  try {
+    const _res = await fetch(`${SUPABASE_URL}/functions/v1/admin-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+      body: JSON.stringify({ username, password }),
+    }).catch(() => null);
+    if (_res && _res.ok) superUser = await _res.json();
+  } catch (_) {}
+
+  if (superUser && superUser.role === 'superadmin') {
+    persistUser(superUser);
+    resetThrottle();
+    return superUser;
+  }
+
+  // ── DB lookup for admins + employees
   let adminRows = [], empRows = [];
   try {
     const uname = safeFilterValue(username);
@@ -98,19 +87,6 @@ export async function login(username, password) {
   } catch (e) {
     recordFailure();
     throw e;
-  }
-
-  // Compare super-admin creds first but using timingSafeEqual so it
-  // takes roughly the same time as DB-backed compares below.
-  const superMatch =
-    timingSafeEqual(username, SUPER_USERNAME) &&
-    timingSafeEqual(password, SUPER_PASSWORD);
-
-  if (superMatch) {
-    const user = { role: ROLES.SUPER_ADMIN, name: 'Super Admin' };
-    persistUser(user);
-    resetThrottle();
-    return user;
   }
 
   const adminMatch = (adminRows || []).find(r => timingSafeEqual(r.password || '', password));

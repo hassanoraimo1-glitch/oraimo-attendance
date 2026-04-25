@@ -312,7 +312,7 @@ async function openChat(chatType, title) {
   const modal = document.getElementById('chat-modal');
   if (!modal) return;
 
-  modal.removeAttribute('style');
+  modal.style.removeProperty('display');
   modal.classList.add('open');
   document.body.classList.add('modal-open');
 
@@ -874,3 +874,14 @@ async function loadEmployeeChatList() {
 
   el.innerHTML = adminBtn + groupBtn;
 }
+
+(function _bindChatBackButton() {
+  const btn = document.getElementById('chat-back-btn');
+  if (!btn || btn.dataset.bound) return;
+  btn.dataset.bound = '1';
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeChat();
+  });
+})();

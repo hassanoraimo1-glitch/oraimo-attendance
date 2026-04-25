@@ -16,8 +16,14 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config.js';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_RETRIES = 1;
-const GET_CACHE_TTL_MS = 3 * 60_000;  // 3 min cache — reduces DB calls dramatically
+const GET_CACHE_TTL_MS = 30_000;          // 30 sec default (was 3 min — too long)
 const GET_CACHE_MAX_ENTRIES = 150;
+
+// Tables that change frequently get a shorter TTL
+const SHORT_TTL_TABLES = new Set(['attendance', 'sales', 'leave_requests', 'warnings']);
+function _ttlForTable(table) {
+  return SHORT_TTL_TABLES.has(table) ? 15_000 : GET_CACHE_TTL_MS; // 15s for live data
+}
 
 const baseHeaders = {
   apikey: SUPABASE_ANON_KEY,
@@ -97,7 +103,7 @@ async function request(method, table, query = '', body = null, opts = {}) {
 
   if (cacheKey) {
     const hit = lruGet(cacheKey);
-    if (hit && Date.now() - hit.t < GET_CACHE_TTL_MS) return hit.v;
+    if (hit && Date.now() - hit.t < _ttlForTable(table)) return hit.v;
     if (inflight.has(cacheKey)) return inflight.get(cacheKey);
   }
 
@@ -140,12 +146,19 @@ async function request(method, table, query = '', body = null, opts = {}) {
 }
 
 /** Invalidate GET cache entries for a given table. Bumps the generation
- *  so that any in-flight GET which started before now won't cache. */
+ *  so that any in-flight GET which started before now won't cache.
+ *  Also clears inflight entries so a post-write GET makes a fresh fetch
+ *  rather than deduplicating onto a pre-write in-flight promise. */
 export function invalidateCache(table) {
   if (!table || typeof table !== 'string') return;  // no accidental wipe
   bumpGen(table);
   for (const k of Array.from(getCache.keys())) {
     if (k.startsWith(`GET|${table}|`)) getCache.delete(k);
+  }
+  // Also purge any inflight request for this table so the next GET
+  // doesn't reuse a pre-write pending fetch and return stale data.
+  for (const k of Array.from(inflight.keys())) {
+    if (k.startsWith(`GET|${table}|`)) inflight.delete(k);
   }
 }
 

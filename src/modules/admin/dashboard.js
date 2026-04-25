@@ -1,7 +1,16 @@
 // ═══════════════════════════════════════════════════════════
 // modules/admin/dashboard.js — Admin dashboard (home) + perf ranking
-// Provides globals: loadAdminDashboard, renderPerformanceRanking, showAttList
+// Provides globals: getManagerTeamIds, loadAdminDashboard,
+//   renderPerformanceRanking, showAttList
 // ═══════════════════════════════════════════════════════════
+
+/** IDs of employees assigned to the current manager / team leader (manager_teams). */
+async function getManagerTeamIds() {
+  if (!currentUser?.id) return [];
+  const rows =
+    (await dbGet('manager_teams', `?manager_id=eq.${currentUser.id}&select=employee_id`).catch(() => [])) || [];
+  return rows.map((r) => Number(r.employee_id)).filter((id) => !Number.isNaN(id));
+}
 
 async function loadAdminDashboard(){
   const loader=document.getElementById('dash-loader');
@@ -24,8 +33,12 @@ async function loadAdminDashboard(){
     allEmployees=allEmp||[];
     if(currentUser&&(currentUser.role==='manager'||currentUser.role==='team_leader')){
       const teamIds=await getManagerTeamIds();
-      if(teamIds&&teamIds.length>0) allEmployees=allEmployees.filter(e=>teamIds.includes(e.id));
-      else allEmployees=[];
+      if(teamIds&&teamIds.length>0){
+        const idSet=new Set(teamIds.map((id)=>Number(id)));
+        allEmployees=allEmployees.filter((e)=>idSet.has(Number(e.id)));
+      }else{
+        allEmployees=[];
+      }
     }
 
     const present=(todayAtt||[]).length;

@@ -62,7 +62,7 @@ html[data-theme="dark"] {
 
 html[data-theme="light"] {
   color-scheme: light;
-  --black: #eef2f9;
+  --black: #eef6f1;
   --dark: #f8fafc;
   --elev: #ffffff;
   --card: #ffffff;
@@ -120,6 +120,13 @@ body {
     radial-gradient(900px 500px at 50% -8%, color-mix(in srgb, var(--green) 6%, transparent), transparent 55%),
     linear-gradient(180deg, var(--black), var(--dark) 40%, var(--black));
   background-attachment: fixed;
+}
+
+html[data-theme="light"] body {
+  background-image:
+    radial-gradient(820px 420px at 88% 0%, color-mix(in srgb, var(--green) 18%, transparent), transparent 55%),
+    radial-gradient(640px 380px at 0% 95%, color-mix(in srgb, var(--green) 10%, transparent), transparent 48%),
+    linear-gradient(185deg, #f2faf6 0%, var(--black) 42%, #eef6f1 100%);
 }
 
 body.modal-open {
@@ -182,6 +189,15 @@ a {
 .app-atmosphere .noise-corner.br {
   bottom: -8%;
   left: -4%;
+}
+
+html[data-theme="light"] .app-atmosphere .noise-corner {
+  color: color-mix(in srgb, var(--green) 10%, transparent);
+}
+
+html[data-theme="light"] .app-atmosphere::before {
+  opacity: 0.22;
+  background-image: radial-gradient(color-mix(in srgb, var(--green) 12%, #64748b) 1px, transparent 1px);
 }
 
 #splash .app-atmosphere {
@@ -1582,8 +1598,12 @@ td {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(165deg, #0a0f18, #050810);
+  background: linear-gradient(165deg, #0c121c 0%, #060910 55%, #03050a 100%);
   transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+html[data-theme="light"] #splash {
+  background: linear-gradient(165deg, #fbfffe 0%, #eef9f3 42%, #e2f4ea 100%);
 }
 
 #splash.hide {
@@ -1616,6 +1636,39 @@ td {
   justify-content: center;
   background: linear-gradient(145deg, var(--green-light), var(--green-dark));
   box-shadow: 0 20px 60px color-mix(in srgb, var(--green) 25%, transparent);
+}
+
+html[data-theme="light"] .splash-ring {
+  background: linear-gradient(145deg, #ffffff, #d1fae5 55%, var(--green-light));
+  box-shadow: 0 18px 48px color-mix(in srgb, var(--green) 28%, rgba(15, 23, 42, 0.1));
+}
+
+.splash-logo-img {
+  width: 92px;
+  height: 92px;
+  border-radius: 22px;
+  object-fit: contain;
+  position: relative;
+  z-index: 1;
+}
+
+.splash-ring .splash-o {
+  display: none;
+  width: 92px;
+  height: 92px;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 52px;
+  font-weight: 900;
+  font-style: italic;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="light"] .splash-ring .splash-o {
+  color: var(--green-dark);
+  text-shadow: none;
 }
 
 .splash-brand {
@@ -1828,6 +1881,274 @@ td {
   margin-bottom: 8px;
   cursor: pointer;
   background: var(--surface-1);
+}
+
+/* ── Specs catalogue (theme-aware; no hard-coded dark halos) ── */
+.spec-cat-hdr {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.spec-card.spec-card--interactive {
+  position: relative;
+  overflow: hidden;
+  padding: 14px;
+  margin-bottom: 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+html[data-theme="light"] .spec-card.spec-card--interactive {
+  background: linear-gradient(145deg, #ffffff, color-mix(in srgb, var(--green) 5%, #f8fdfb));
+  border-color: color-mix(in srgb, var(--green) 22%, var(--border));
+  box-shadow: 0 6px 22px color-mix(in srgb, var(--green) 14%, rgba(15, 23, 42, 0.07));
+}
+
+.spec-card.spec-card--interactive:active {
+  transform: scale(0.99);
+}
+
+.spec-card.spec-card--interactive:hover {
+  border-color: color-mix(in srgb, var(--green) 38%, var(--border));
+  box-shadow: var(--elev-2);
+}
+
+.spec-card__accent-bar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--spec-accent, var(--green));
+  border-radius: 0 3px 3px 0;
+}
+
+.spec-card__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.spec-card__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--spec-accent, var(--green)) 16%, var(--card2));
+  border: 1px solid color-mix(in srgb, var(--spec-accent, var(--green)) 32%, var(--border));
+}
+
+.spec-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.spec-card__name {
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: ltr;
+  color: var(--text);
+}
+
+.spec-card__code {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+  direction: ltr;
+}
+
+.spec-card__chev {
+  font-size: 20px;
+  color: var(--muted);
+}
+
+.spec-detail-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: var(--overlay);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.spec-detail-sheet {
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: 24px 24px 0 0;
+  padding: 24px 20px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--spec-accent, var(--green));
+  box-shadow: 0 -20px 50px rgba(0, 0, 0, 0.15);
+}
+
+html[data-theme="dark"] .spec-detail-sheet {
+  background: linear-gradient(168deg, var(--elev) 0%, var(--card) 55%, var(--card2) 100%);
+  box-shadow: 0 -24px 70px rgba(0, 0, 0, 0.5);
+}
+
+.spec-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.spec-detail-icon-lg {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--spec-accent, var(--green)) 14%, var(--card2));
+  border: 2px solid color-mix(in srgb, var(--spec-accent, var(--green)) 38%, var(--border));
+}
+
+.spec-detail-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.spec-detail-name {
+  font-size: 13px;
+  font-weight: 800;
+  direction: ltr;
+  color: var(--text);
+}
+
+.spec-detail-box {
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  background: var(--card2);
+}
+
+.spec-detail-sell-wrap {
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
+  border: 1px solid color-mix(in srgb, var(--spec-accent, var(--green)) 35%, var(--border));
+  background: color-mix(in srgb, var(--spec-accent, var(--green)) 7%, var(--card2));
+}
+
+.spec-detail-section-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.spec-detail-section-title--accent {
+  color: var(--spec-accent, var(--green));
+}
+
+.spec-spec-line {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.spec-spec-line:last-child {
+  margin-bottom: 0;
+}
+
+.spec-spec-line .spec-check {
+  color: var(--spec-accent, var(--green));
+  flex-shrink: 0;
+}
+
+.spec-detail-sell-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.spec-detail-sell-row:last-child {
+  margin-bottom: 0;
+}
+
+.spec-detail-sell-num {
+  background: var(--spec-accent, var(--green));
+  color: #052e16;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+html[data-theme="light"] .spec-detail-sell-num {
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.spec-detail-close {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 16px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  color: #052e16;
+  background: linear-gradient(
+    135deg,
+    var(--spec-accent, var(--green)),
+    color-mix(in srgb, var(--spec-accent, var(--green)) 78%, #0f172a)
+  );
+}
+
+html[data-theme="light"] .spec-detail-close {
+  color: #fff;
+}
+
+.spec-compare-box {
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 20px;
+  border: 1px solid color-mix(in srgb, var(--red) 32%, var(--border));
+  background: color-mix(in srgb, var(--red) 7%, var(--card2));
+}
+
+.spec-compare-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--red);
+  margin-bottom: 12px;
 }
 
 #toast-container {

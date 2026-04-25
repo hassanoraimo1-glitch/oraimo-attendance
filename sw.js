@@ -1,14 +1,13 @@
 // Service Worker for Oraimo HR PWA
 // This handles offline caching and push notifications
 
-const CACHE_NAME = 'oraimo-hr-v13';
+const CACHE_NAME = 'oraimo-hr-v14';
 const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
   '/src/styles/main.css',
   '/src/app.js',
-  '/src/legacy.js',
   '/icon-192.png',
   '/icon-512.png'
 ];
@@ -20,7 +19,9 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('[SW] Caching app shell');
-        return cache.addAll(urlsToCache);
+        return Promise.all(
+          urlsToCache.map((u) => cache.add(u).catch((err) => console.warn('[SW] skip cache add', u, err)))
+        );
       })
   );
   // Activate immediately
@@ -47,7 +48,8 @@ self.addEventListener('activate', event => {
 
 // Fetch event strategy:
 // - Navigations: network-first with cached index fallback
-// - Static assets (style/script/image/font): cache-first
+// - Scripts: network-first (then update cache) so new *.js files are never stuck behind old cache
+// - Other static (style/image/font): cache-first
 // - API/external requests: passthrough
 self.addEventListener('fetch', event => {
   const req = event.request;
@@ -79,6 +81,24 @@ self.addEventListener('fetch', event => {
   const isStaticAsset = ['style', 'script', 'image', 'font'].includes(dest);
 
   if (!isStaticAsset) {
+    return;
+  }
+
+  if (dest === 'script') {
+    event.respondWith(
+      fetch(req)
+        .then((response) => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const contentType = (response.headers.get('content-type') || '').toLowerCase();
+            if (!contentType.includes('text/html')) {
+              const responseToCache = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(req, responseToCache));
+            }
+          }
+          return response;
+        })
+        .catch(() => caches.match(req))
+    );
     return;
   }
 

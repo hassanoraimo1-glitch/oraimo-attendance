@@ -142,5 +142,3 @@ function downloadCSV(csv, filename) {
   a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
 }
-
-

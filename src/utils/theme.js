@@ -16,7 +16,16 @@ function _setMetaThemeColor(hex) {
   meta.setAttribute('content', hex);
 }
 
+function _syncDarkModeFromStorage() {
+  try {
+    const v = localStorage.getItem(THEME_KEY);
+    if (v === 'light') state.darkMode = false;
+    else if (v === 'dark') state.darkMode = true;
+  } catch (_) {}
+}
+
 export function applyTheme() {
+  _syncDarkModeFromStorage();
   const dark = state.darkMode;
   const mode = dark ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', mode);
@@ -25,6 +34,7 @@ export function applyTheme() {
 }
 
 export function toggleTheme() {
+  _syncDarkModeFromStorage();
   state.darkMode = !state.darkMode;
   try {
     localStorage.setItem(THEME_KEY, state.darkMode ? 'dark' : 'light');

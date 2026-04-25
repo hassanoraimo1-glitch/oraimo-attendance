@@ -124,7 +124,6 @@ function showApp(){
 // ── AUTH ──
 function _saveUser(u){try{localStorage.setItem('oraimo_user',JSON.stringify(u));}catch(_){try{sessionStorage.setItem('oraimo_user',JSON.stringify(u));}catch(_){}}}
 
-let _isSubmitting=false;
 
 async function doLogin(){
   if(_isSubmitting) return;

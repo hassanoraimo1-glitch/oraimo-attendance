@@ -8,7 +8,20 @@
 // ═══════════════════════════════════════════════════════════
 
 // ── BRANCHES CRUD ──
-async function loadBranches(){try{allBranches=await dbGet('branches','?select=*&order=name')||[];renderBranches();populateBranchSelects()}catch(e){}}
+async function loadBranches(){
+  try{
+    allBranches=await dbGet('branches','?select=*&order=name')||[];
+    try{window.branches=allBranches;}catch(_){}
+    renderBranches();
+    populateBranchSelects();
+  }catch(e){
+    console.error('[branches]', e);
+    if(typeof notify==='function'){
+      const ar=currentLang==='ar';
+      notify(ar?'تعذر تحميل الفروع من السيرفر':'Could not load branches from server','error');
+    }
+  }
+}
 function renderBranches(){
   const el=document.getElementById('branches-list');if(!el)return;
   el.innerHTML=allBranches.map(b=>`<div class="emp-card"><div class="emp-info"><div class="emp-name">🏪 ${b.name}</div></div><div class="emp-actions"><button class="action-btn edit" onclick="openEditBranch(${b.id},'${b.name}')">✏️</button><button class="action-btn del" onclick="deleteBranch(${b.id})">🗑️</button></div></div>`).join('')||`<div style="color:var(--muted);font-size:12px">${currentLang==='ar'?'لا توجد فروع':'No branches'}</div>`;

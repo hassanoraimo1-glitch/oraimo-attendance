@@ -124,23 +124,33 @@ if (typeof window.sendPushNotification !== 'function') {
   };
 }
 
+if (typeof window.resetPushRegistrationState !== 'function') {
+  window.resetPushRegistrationState = function () {};
+}
 if (typeof window.registerOneSignalUser !== 'function') {
   window.registerOneSignalUser = async function() {
     const user = window.currentUser;
     if (!user || !user.id) return;
-    // Wait for SDK (max 15s)
     for (let i = 0; i < 10; i++) {
-      if (window.OneSignal && window.OneSignal.Notifications) break;
+      if (window.OneSignal && window.OneSignal.Notifications && window.OneSignal.User) break;
       await new Promise(r => setTimeout(r, 1500));
     }
-    if (!window.OneSignal || !window.OneSignal.Notifications) return;
+    const OS = window.OneSignal;
+    if (!OS || !OS.Notifications || !OS.User) return;
     try {
-      const perm = await window.OneSignal.Notifications.permission;
-      if (!perm) await window.OneSignal.Notifications.requestPermission().catch(()=>{});
-      await window.OneSignal.User.addTag('user_id', String(user.id));
-      await window.OneSignal.User.addTag('name', String(user.name || ''));
-      await window.OneSignal.User.addTag('role', String(user.role || 'employee'));
-      try { await window.OneSignal.login(String(user.id)); } catch(_){}
+      try { await OS.login(String(user.id)); } catch (_) {}
+      let ok = OS.Notifications.permission === true || OS.Notifications.permission === 'granted';
+      if (!ok && typeof Notification !== 'undefined' && Notification.permission === 'granted') ok = true;
+      if (!ok) {
+        const asked = await OS.Notifications.requestPermission().catch(() => false);
+        ok = asked === true || asked === 'granted' || (typeof Notification !== 'undefined' && Notification.permission === 'granted');
+      }
+      if (!ok) return;
+      const sub = OS.User.PushSubscription;
+      if (sub && typeof sub.optIn === 'function') await sub.optIn().catch(() => {});
+      await OS.User.addTag('user_id', String(user.id));
+      await OS.User.addTag('name', String(user.name || ''));
+      await OS.User.addTag('role', String(user.role || 'employee'));
     } catch(e) { console.warn('[onesignal fallback]', e.message); }
   };
 }

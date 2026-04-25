@@ -29,7 +29,10 @@ Object.assign(window, {
   dbGet: db.get,
   dbPost: db.post,
 
-dbPatch: async (table, query, body) => {
+dbPatch: async (table, body, query) => {
+    if (typeof body === 'string') {
+      return db.patch(table, body, query);
+    }
     return db.patch(table, query, body);
   },
 

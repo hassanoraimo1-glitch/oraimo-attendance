@@ -39,7 +39,7 @@
 <link rel="dns-prefetch" href="https://lmszelfnosejdemxhodm.supabase.co">
 <link rel="dns-prefetch" href="https://cdn.onesignal.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<script>window.__ASSET_VER__='19';</script>
+<script>window.__ASSET_VER__='20';</script>
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -76,7 +76,7 @@
   }
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./src/styles/main.css?v=11">
+<link rel="stylesheet" href="./src/styles/main.css?v=12">
 </head>
 <body>
 
@@ -811,16 +811,34 @@
 </div>
 
 <div id="chat-modal">
-  <div class="chat-header-bar">
-    <button type="button" class="chat-back-btn" id="chat-back-btn" aria-label="Back" data-ar-aria="رجوع" data-en-aria="Back">
-      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
-    </button>
-    <div class="chat-header-avatar" aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+  <div class="chat-header-bar" id="chat-header-bar">
+    <div class="chat-header-primary">
+      <button type="button" class="chat-back-btn" id="chat-back-btn" aria-label="Back" data-ar-aria="رجوع" data-en-aria="Back">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+      </button>
+      <div class="chat-header-avatar" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+      </div>
+      <div class="chat-header-titles" id="chat-header-titles">
+        <div class="chat-header-title" id="chat-title">المحادثة</div>
+        <div class="chat-header-status" id="chat-header-status" data-ar="متصل" data-en="Online">متصل</div>
+      </div>
+      <button type="button" class="chat-header-icon-btn" id="chat-search-toggle" data-ar-aria="بحث في المحادثة" data-en-aria="Search in chat" aria-label="Search">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5A6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5S14 7.01 14 9.5S11.99 14 9.5 14z"/></svg>
+      </button>
     </div>
-    <div class="chat-header-info">
-      <div class="chat-header-title" id="chat-title">المحادثة</div>
-      <div class="chat-header-status" data-ar="متصل" data-en="Online">متصل</div>
+    <div class="chat-header-searchrow hidden" id="chat-header-searchrow">
+      <input type="search" id="chat-insearch-input" class="chat-insearch-input" data-ar-ph="ابحث في الرسائل…" data-en-ph="Search messages…" placeholder="ابحث في الرسائل…" autocomplete="off" />
+      <span class="chat-insearch-count" id="chat-insearch-count" aria-live="polite"></span>
+      <button type="button" class="chat-insearch-ico" id="chat-insearch-prev" data-ar-aria="نتيجة سابقة" data-en-aria="Previous result" aria-label="Previous result">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+      </button>
+      <button type="button" class="chat-insearch-ico" id="chat-insearch-next" data-ar-aria="نتيجة تالية" data-en-aria="Next result" aria-label="Next result">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M7.41 7.84L12 12.42l4.59-4.58L18 8.16l-6 6-6-6z"/></svg>
+      </button>
+      <button type="button" class="chat-insearch-ico" id="chat-insearch-close" data-ar-aria="إغلاق البحث" data-en-aria="Close search" aria-label="Close">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/></svg>
+      </button>
     </div>
   </div>
   <div id="chat-messages"></div>

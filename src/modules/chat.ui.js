@@ -1,5 +1,5 @@
 // UI-only helpers for chat rendering.
-// Keeps templates and DOM paint logic separate from chat business logic.
+// Theme-aware bubbles, grouping, custom voice row (no default <audio controls> chrome).
 (function initChatUI(global) {
   function escapeHtml(s) {
     return String(s ?? '')
@@ -10,9 +10,9 @@
   }
 
   function shortText(v, len = 70) {
-    const s = String(v || '').trim();
-    if (!s) return '';
-    return s.length > len ? `${s.slice(0, len)}...` : s;
+    const t = String(v || '').trim();
+    if (!t) return '';
+    return t.length > len ? `${t.slice(0, len)}...` : t;
   }
 
   function formatAudioDuration(sec) {
@@ -20,6 +20,66 @@
     const m = Math.floor(s / 60);
     const r = s % 60;
     return `${m}:${String(r).padStart(2, '0')}`;
+  }
+
+  const PLAY_SVG =
+    '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>';
+  const PAUSE_SVG =
+    '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+
+  function voiceBlock(parsed, isArabic) {
+    const src = escapeHtml(parsed.audioUrl || '');
+    const dur = parsed.durationSec ? formatAudioDuration(parsed.durationSec) : '';
+    const label = isArabic ? 'صوت' : 'Voice';
+    return `<div class="chat-voice-wrap">
+      <button type="button" class="chat-voice-play" aria-label="${isArabic ? 'تشغيل' : 'Play'}">${PLAY_SVG}</button>
+      <div class="chat-voice-wave" aria-hidden="true"></div>
+      <span class="chat-voice-dur">${escapeHtml(dur || '0:01')}</span>
+      <span class="chat-voice-label">${label}</span>
+      <audio preload="metadata" class="chat-voice-audio" src="${src}"></audio>
+    </div>`;
+  }
+
+  function bindVoiceDelegation() {
+    const root = document.getElementById('chat-messages');
+    if (!root || root._chatVoiceBound) return;
+    root._chatVoiceBound = true;
+    root.addEventListener('click', (e) => {
+      const btn = e.target.closest('.chat-voice-play');
+      if (!btn) return;
+      e.preventDefault();
+      const wrap = btn.closest('.chat-voice-wrap');
+      if (!wrap) return;
+      const audio = wrap.querySelector('audio');
+      if (!audio || !audio.src) return;
+
+      root.querySelectorAll('.chat-voice-wrap.is-playing').forEach((w) => {
+        if (w === wrap) return;
+        w.classList.remove('is-playing');
+        const a = w.querySelector('audio');
+        const b = w.querySelector('.chat-voice-play');
+        if (a) {
+          try {
+            a.pause();
+          } catch (_) {}
+        }
+        if (b) b.innerHTML = PLAY_SVG;
+      });
+
+      if (audio.paused) {
+        audio.onended = () => {
+          wrap.classList.remove('is-playing');
+          btn.innerHTML = PLAY_SVG;
+        };
+        audio.play().catch(() => {});
+        wrap.classList.add('is-playing');
+        btn.innerHTML = PAUSE_SVG;
+      } else {
+        audio.pause();
+        wrap.classList.remove('is-playing');
+        btn.innerHTML = PLAY_SVG;
+      }
+    });
   }
 
   function renderMessages(opts) {
@@ -37,9 +97,9 @@
     } = opts;
     if (!container) return;
     if (!Array.isArray(msgs) || !msgs.length) {
-      container.innerHTML = `<div style="text-align:center;color:var(--muted);padding:40px 20px;font-size:13px">
-        <div style="font-size:36px;margin-bottom:8px">💬</div>
-        ${isArabic ? 'لا توجد رسائل بعد. ابدأ المحادثة!' : 'No messages yet. Start the conversation!'}
+      container.innerHTML = `<div class="chat-empty-state">
+        <div class="chat-empty-state__icon" aria-hidden="true"></div>
+        <p class="chat-empty-state__text">${isArabic ? 'لا توجد رسائل بعد. ابدأ المحادثة!' : 'No messages yet. Start the conversation!'}</p>
       </div>`;
       return;
     }
@@ -63,7 +123,7 @@
         if (dateStr === today) dateLabel = isArabic ? 'اليوم' : 'Today';
         else if (dateStr === yest) dateLabel = isArabic ? 'أمس' : 'Yesterday';
         else dateLabel = d.toLocaleDateString(isArabic ? 'ar-EG' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-        html.push(`<div style="text-align:center;margin:14px 0 8px"><span style="background:rgba(255,255,255,.06);color:var(--muted);font-size:11px;font-weight:700;padding:4px 12px;border-radius:12px">${dateLabel}</span></div>`);
+        html.push(`<div class="chat-date-divider"><span class="chat-date-pill">${escapeHtml(dateLabel)}</span></div>`);
         lastSenderId = null;
       }
       lastDate = dateStr;
@@ -72,40 +132,35 @@
       lastSenderId = m.sender_id;
 
       const senderColor = colorForName(m.sender_name || '');
-      const bubbleBg = isMe
-        ? 'linear-gradient(135deg,rgba(0,200,83,.28),rgba(0,160,64,.18))'
-        : 'rgba(255,255,255,.05)';
-      const bubbleBorder = isMe
-        ? '1px solid rgba(0,200,83,.35)'
-        : '1px solid rgba(255,255,255,.08)';
-      const bubbleRadius = isMe ? '14px 4px 14px 14px' : '4px 14px 14px 14px';
-
       const showSenderName = !isMe && isGroup && !isConsecutive;
       const showAvatar = !isMe && isGroup && !isConsecutive;
-      const marginTop = isConsecutive ? '2px' : '10px';
+      const stackClass = isConsecutive ? ' chat-msg--stack' : '';
 
-      const avatarHtml = (!isMe && isGroup)
-        ? (showAvatar
-          ? `<div style="width:32px;height:32px;border-radius:50%;background:${senderColor};color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;align-self:flex-end">${(m.sender_name || '?')[0].toUpperCase()}</div>`
-          : '<div style="width:32px;flex-shrink:0"></div>')
+      const avatarHtml = !isMe && isGroup
+        ? showAvatar
+          ? `<div class="chat-msg__avatar" style="background:${escapeHtml(senderColor)}">${escapeHtml((m.sender_name || '?')[0].toUpperCase())}</div>`
+          : '<div class="chat-msg__avatar chat-msg__avatar--spacer" aria-hidden="true"></div>'
         : '';
 
-      const messageBody = parsed.type === 'audio'
-        ? `<audio controls class="chat-audio" src="${escapeHtml(parsed.audioUrl || '')}"></audio>
-           <div style="font-size:10px;color:var(--text2);margin-top:3px">${isArabic ? 'رسالة صوتية' : 'Voice note'} ${parsed.durationSec ? `• ${formatAudioDuration(parsed.durationSec)}` : ''}</div>`
-        : `<div style="font-size:14px;line-height:1.4;word-break:break-word;color:var(--text)">${escapeHtml(parsed.text || '')}</div>`;
+      const messageBody =
+        parsed.type === 'audio'
+          ? voiceBlock(parsed, isArabic)
+          : `<div class="chat-msg__text">${escapeHtml(parsed.text || '')}</div>`;
 
-      html.push(`<div class="chat-msg" style="display:flex;flex-direction:${isMe ? 'row-reverse' : 'row'};align-items:flex-end;gap:6px;margin-top:${marginTop}">
+      const bubbleMod = isMe ? 'chat-bubble--me' : 'chat-bubble--them';
+      const rowMod = isMe ? 'chat-msg--me' : 'chat-msg--them';
+
+      html.push(`<div class="chat-msg ${rowMod}${stackClass}" style="--sender-accent:${escapeHtml(senderColor)}">
         ${avatarHtml}
-        <div style="display:flex;flex-direction:column;align-items:${isMe ? 'flex-end' : 'flex-start'};max-width:100%">
-          <div class="chat-bubble" style="background:${bubbleBg};border-radius:${bubbleRadius};border:${bubbleBorder};box-shadow:0 1px 2px rgba(0,0,0,.15)">
-            ${showSenderName ? `<div style="font-size:11px;color:${senderColor};font-weight:800;margin-bottom:2px">${escapeHtml(m.sender_name || '')}</div>` : ''}
+        <div class="chat-msg__col">
+          <div class="chat-bubble ${bubbleMod}">
+            ${showSenderName ? `<div class="chat-msg__sender">${escapeHtml(m.sender_name || '')}</div>` : ''}
             ${replyPreviewHtml(parsed.reply)}
             ${messageBody}
-            <div style="font-size:10px;color:var(--muted);margin-top:3px;text-align:${isMe ? 'left' : 'right'};direction:ltr">${time}${statusSuffixForMessage(m, parsed, isMe)}</div>
+            <div class="chat-msg__meta">${time}${statusSuffixForMessage(m, parsed, isMe)}</div>
           </div>
           <div class="chat-message-actions">
-            <button class="chat-reply-action" onclick="setReplyTarget(${i})">${isArabic ? 'رد' : 'Reply'}</button>
+            <button type="button" class="chat-reply-action" onclick="setReplyTarget(${i})">${isArabic ? 'رد' : 'Reply'}</button>
           </div>
         </div>
       </div>`);
@@ -113,6 +168,7 @@
 
     container.innerHTML = html.join('');
     container.scrollTop = container.scrollHeight;
+    bindVoiceDelegation();
   }
 
   function appendMessage(opts) {
@@ -121,23 +177,26 @@
     const parsed = parsePayload(message.message);
     const isMe = message.sender_id === currentUserId || message.sender_name === currentUserName;
     const time = new Date(message.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-    const bubbleBg = isMe ? 'linear-gradient(135deg,rgba(0,200,83,.28),rgba(0,160,64,.18))' : 'rgba(255,255,255,.05)';
-    const bubbleBorder = isMe ? '1px solid rgba(0,200,83,.35)' : '1px solid rgba(255,255,255,.08)';
-    const body = parsed.type === 'audio'
-      ? `<audio controls class="chat-audio" src="${escapeHtml(parsed.audioUrl || '')}"></audio>`
-      : `<div style="font-size:14px;line-height:1.4;word-break:break-word;color:var(--text)">${escapeHtml(parsed.text || '')}</div>`;
+    const ar = typeof currentLang !== 'undefined' ? currentLang === 'ar' : true;
+    const grp = typeof currentChat !== 'undefined' && currentChat === 'group';
+    const body =
+      parsed.type === 'audio'
+        ? voiceBlock(parsed, ar)
+        : `<div class="chat-msg__text">${escapeHtml(parsed.text || '')}</div>`;
 
     const div = document.createElement('div');
-    div.style.cssText = `display:flex;flex-direction:${isMe ? 'row-reverse' : 'row'};align-items:flex-end;gap:6px;margin-top:4px`;
-    div.innerHTML = `<div style="display:flex;flex-direction:column;align-items:${isMe ? 'flex-end' : 'flex-start'};max-width:82%">
-      <div class="chat-bubble" style="background:${bubbleBg};border-radius:14px 4px 14px 14px;border:${bubbleBorder}">
-        ${replyPreviewHtml(parsed.reply)}
-        ${body}
-        <div style="font-size:10px;color:var(--muted);margin-top:3px;text-align:${isMe ? 'left' : 'right'};direction:ltr">${time}${statusSuffixForMessage(message, parsed, isMe)}</div>
-      </div>
-    </div>`;
+    div.className = `chat-msg ${isMe ? 'chat-msg--me' : 'chat-msg--them'}`;
+    div.innerHTML = `${!isMe && grp ? '<div class="chat-msg__avatar chat-msg__avatar--spacer"></div>' : ''}
+      <div class="chat-msg__col">
+        <div class="chat-bubble ${isMe ? 'chat-bubble--me' : 'chat-bubble--them'}">
+          ${replyPreviewHtml(parsed.reply)}
+          ${body}
+          <div class="chat-msg__meta">${time}${statusSuffixForMessage(message, parsed, isMe)}</div>
+        </div>
+      </div>`;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
+    bindVoiceDelegation();
   }
 
   global.ChatUI = {
@@ -146,6 +205,6 @@
     formatAudioDuration,
     renderMessages,
     appendMessage,
+    bindVoiceDelegation,
   };
 })(window);
-

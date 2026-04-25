@@ -21,35 +21,72 @@ if (typeof window.dbGet !== 'function') {
     Authorization: 'Bearer ' + _SUPABASE_ANON_KEY,
     'Content-Type': 'application/json',
   };
-  window.dbGet = async function (table, q = '') {
-    const res = await fetch(_SUPABASE_URL + '/rest/v1/' + table + (q || ''), { headers: _hdr });
+  // ── Simple in-memory GET cache (30 sec) ──────────────────
+  var _cache = {};
+  var _CACHE_TTL = 30000; // 30 seconds — short enough that new data shows quickly
+
+  function _cacheKey(table, q) { return table + '|' + (q || ''); }
+
+  function _cacheGet(table, q) {
+    var k = _cacheKey(table, q);
+    var entry = _cache[k];
+    if (!entry) return null;
+    if (Date.now() - entry.t > _CACHE_TTL) { delete _cache[k]; return null; }
+    return entry.v;
+  }
+
+  function _cacheSet(table, q, v) {
+    _cache[_cacheKey(table, q)] = { v: v, t: Date.now() };
+  }
+
+  function _cacheInvalidate(table) {
+    // Remove all entries for this table
+    Object.keys(_cache).forEach(function(k) {
+      if (k.indexOf(table + '|') === 0) delete _cache[k];
+    });
+    // Also invalidate the ES-module cache if available
+    if (typeof window.invalidateCache === 'function') {
+      try { window.invalidateCache(table); } catch(_) {}
+    }
+  }
+
+  window.dbGet = async function (table, q) {
+    q = q || '';
+    var cached = _cacheGet(table, q);
+    if (cached !== null) return cached;
+    var res = await fetch(_SUPABASE_URL + '/rest/v1/' + table + q, { headers: _hdr });
     if (!res.ok) throw new Error('DB GET failed ' + res.status);
-    return res.json();
+    var data = await res.json();
+    _cacheSet(table, q, data);
+    return data;
   };
   window.dbPost = async function (table, body) {
-    const res = await fetch(_SUPABASE_URL + '/rest/v1/' + table, {
+    var res = await fetch(_SUPABASE_URL + '/rest/v1/' + table, {
       method: 'POST',
       headers: { ..._hdr, Prefer: 'return=representation' },
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error('DB POST failed ' + res.status);
+    _cacheInvalidate(table);
     return res.json();
   };
   window.dbPatch = async function (table, body, query) {
-    const res = await fetch(_SUPABASE_URL + '/rest/v1/' + table + (query || ''), {
+    var res = await fetch(_SUPABASE_URL + '/rest/v1/' + table + (query || ''), {
       method: 'PATCH',
       headers: _hdr,
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error('DB PATCH failed ' + res.status);
+    _cacheInvalidate(table);
     return res.status === 204 ? null : res.json();
   };
   window.dbDelete = async function (table, query) {
-    const res = await fetch(_SUPABASE_URL + '/rest/v1/' + table + (query || ''), {
+    var res = await fetch(_SUPABASE_URL + '/rest/v1/' + table + (query || ''), {
       method: 'DELETE',
       headers: _hdr,
     });
     if (!res.ok) throw new Error('DB DELETE failed ' + res.status);
+    _cacheInvalidate(table);
     return null;
   };
 }

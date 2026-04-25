@@ -768,7 +768,7 @@ async function loadAdminChatList() {
     const unread = unreadByChat[chatId] || 0;
 
     return `<button type="button" class="chat-list-item ${unread ? 'has-unread' : ''}" onclick="openChat('${emp.id}','${(emp.name || '').replace(/'/g, "\\'")}')">
-      <div class="chat-list-avatar" style="background:${color};color:#fff" aria-hidden="true">${emp.profile_photo ? `<img src="${emp.profile_photo}" alt="">` : (emp.name || '?')[0].toUpperCase()}</div>
+      <div class="chat-list-avatar" style="background:${color};color:#fff" aria-hidden="true">${emp.profile_photo ? `<img src="${emp.profile_photo}" alt="" loading="lazy" decoding="async">` : (emp.name || '?')[0].toUpperCase()}</div>
       <div class="chat-list-main">
         <div class="chat-list-row">
           <div class="chat-list-name">${escapeHtmlLocal(emp.name || '')}</div>

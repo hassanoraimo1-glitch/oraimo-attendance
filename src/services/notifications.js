@@ -17,6 +17,11 @@ const MAX_REGISTER_RETRIES = 3;
 
 let lastRegisteredUserId = null;
 
+/** Call on logout so the next login re-runs OneSignal / push setup. */
+export function resetPushRegistrationState() {
+  lastRegisteredUserId = null;
+}
+
 /**
  * Send a push notification via our Supabase Edge Function.
  * The OneSignal REST key never touches the browser.
@@ -59,40 +64,72 @@ export async function sendPushNotification(title, message, targetUserId = null) 
  * Waits politely for the SDK to load, then stops after a bounded number
  * of attempts. Idempotent: calling twice for the same user is a no-op.
  */
+function _browserNotifGranted() {
+  try {
+    return typeof Notification !== 'undefined' && Notification.permission === 'granted';
+  } catch (_) {
+    return false;
+  }
+}
+
+async function _oneSignalNotifGranted(OS) {
+  try {
+    let p = OS?.Notifications?.permission;
+    if (p && typeof p.then === 'function') p = await p;
+    if (typeof p === 'boolean') return p;
+    if (typeof p === 'string') return p === 'granted';
+  } catch (_) {}
+  return _browserNotifGranted();
+}
+
 export async function registerOneSignalUser() {
   const user = state.currentUser;
   if (!user || !user.id) return;
   if (lastRegisteredUserId === String(user.id)) return; // already done
 
-  // Wait for the SDK (bounded)
   for (let i = 0; i < MAX_SDK_WAIT_RETRIES; i++) {
-    if (window.OneSignal && window.OneSignal.Notifications) break;
+    if (window.OneSignal && window.OneSignal.Notifications && window.OneSignal.User) break;
     await sleep(SDK_WAIT_RETRY_MS);
   }
-  if (!window.OneSignal || !window.OneSignal.Notifications) {
-    console.warn('[notifications] SDK not available after wait');
+  const OS = window.OneSignal;
+  if (!OS || !OS.Notifications || !OS.User) {
+    console.warn('[notifications] OneSignal SDK not ready');
     return;
   }
 
   for (let attempt = 0; attempt < MAX_REGISTER_RETRIES; attempt++) {
     try {
-      let granted = false;
       try {
-        const perm = await window.OneSignal.Notifications.permission;
-        granted = !!perm;
+        await OS.login(String(user.id));
       } catch (_) {}
+
+      let granted = await _oneSignalNotifGranted(OS);
       if (!granted) {
         try {
-          const asked = await window.OneSignal.Notifications.requestPermission();
-          granted = !!asked;
-        } catch (_) {}
+          const asked = await OS.Notifications.requestPermission();
+          granted = asked === true || asked === 'granted' || _browserNotifGranted();
+        } catch (_) {
+          granted = _browserNotifGranted();
+        }
       }
       if (!granted) throw new Error('push permission denied');
 
-      try { await window.OneSignal.login(String(user.id)); } catch (_) {}
-      await window.OneSignal.User.addTag('user_id', String(user.id));
-      await window.OneSignal.User.addTag('name', String(user.name || ''));
-      await window.OneSignal.User.addTag('role', String(user.role || 'employee'));
+      const sub = OS.User?.PushSubscription;
+      if (sub && typeof sub.optIn === 'function') {
+        try {
+          await sub.optIn();
+        } catch (e) {
+          console.warn('[notifications] PushSubscription.optIn:', e?.message || e);
+        }
+      }
+
+      try {
+        await OS.User.addTag('user_id', String(user.id));
+        await OS.User.addTag('name', String(user.name || ''));
+        await OS.User.addTag('role', String(user.role || 'employee'));
+      } catch (e) {
+        console.warn('[notifications] addTag:', e?.message || e);
+      }
 
       lastRegisteredUserId = String(user.id);
       console.log('[notifications] registered:', user.name);

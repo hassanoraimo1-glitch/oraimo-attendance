@@ -42,7 +42,7 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js?v=13')
+      navigator.serviceWorker.register('/sw.js?v=14')
         .then(reg => console.log('التطبيق جاهز للعمل'))
         .catch(err => console.log('فشل تسجيل الخدمة', err));
     });

@@ -360,6 +360,9 @@ async function confirmAttendance() {
   const today = todayStr(), now = new Date(), timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
   const ar = currentLang === 'ar';
   try {
+    // Always invalidate attendance cache before reading to avoid stale data
+    if (typeof invalidateCache === 'function') invalidateCache('attendance');
+
     const todayAtt = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`).catch(() => []);
     if (attendMode === 'in') {
       const dow = now.getDay();
@@ -378,6 +381,8 @@ async function confirmAttendance() {
         notify(ar ? 'تم تسجيل الخروج ✅' : 'Checked out ✅', 'success');
       }
     }
+    // Invalidate after write so loadEmpData gets fresh data
+    if (typeof invalidateCache === 'function') invalidateCache('attendance');
     closeModal('selfie-modal');
     loadEmpData();
   } catch (e) {

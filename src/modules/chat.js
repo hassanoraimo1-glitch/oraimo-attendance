@@ -37,6 +37,12 @@ let _statusRefreshTimer = null;
 let _loadMessagesInFlight = false;
 let _loadMessagesQueued = false;
 let _lastRenderedSignature = '';
+let _draftTimer = null;
+let _searchHits = [];
+let _searchIdx = -1;
+let _edgeSwipeArmed = false;
+let _edgeSwipeStartX = 0;
+let _edgeSwipeStartY = 0;
 
 function _colorForName(name) {
   let h = 0;
@@ -90,6 +96,198 @@ function _getChatSeen(chatId) {
   try { return localStorage.getItem(_chatSeenStorageKey(chatId)) || ''; } catch (_) { return ''; }
 }
 
+function getChatDraftText(chatId) {
+  const key = chatId === 'group' ? 'oraimo_chat_draft_group' : chatId === 'admin' ? 'oraimo_chat_draft_admin' : `oraimo_chat_draft_${String(chatId)}`;
+  try { return localStorage.getItem(key) || ''; } catch (_) { return ''; }
+}
+
+function _chatDraftKey() {
+  if (currentChat === 'group') return 'oraimo_chat_draft_group';
+  if (currentChat === 'admin') return 'oraimo_chat_draft_admin';
+  if (currentChat == null) return '';
+  return `oraimo_chat_draft_${String(currentChat)}`;
+}
+
+function _loadChatDraft() {
+  const inp = document.getElementById('chat-input');
+  if (!inp) return;
+  const k = _chatDraftKey();
+  if (!k) return;
+  try {
+    const v = localStorage.getItem(k);
+    if (v) inp.value = v;
+  } catch (_) {}
+}
+
+function _saveChatDraft() {
+  const k = _chatDraftKey();
+  const inp = document.getElementById('chat-input');
+  if (!k || !inp) return;
+  const raw = inp.value || '';
+  const t = raw.trim();
+  try {
+    if (t) localStorage.setItem(k, raw);
+    else localStorage.removeItem(k);
+  } catch (_) {}
+}
+
+function _clearChatDraft() {
+  const k = _chatDraftKey();
+  if (!k) return;
+  try { localStorage.removeItem(k); } catch (_) {}
+}
+
+function _scheduleDraftSave() {
+  if (_draftTimer) clearTimeout(_draftTimer);
+  _draftTimer = setTimeout(() => {
+    _draftTimer = null;
+    _saveChatDraft();
+  }, 400);
+}
+
+function _isHtmlRtl() {
+  return document.documentElement.getAttribute('dir') === 'rtl' || (typeof currentLang !== 'undefined' && currentLang === 'ar');
+}
+
+function _setHeaderLoading() {
+  const s = document.getElementById('chat-header-status') || document.querySelector('.chat-header-status');
+  if (!s) return;
+  s.classList.remove('is-typing');
+  s.textContent = currentLang === 'ar' ? 'جارٍ التحميل…' : 'Loading…';
+}
+
+function _updateHeaderActivity(msgs) {
+  const s = document.getElementById('chat-header-status') || document.querySelector('.chat-header-status');
+  if (!s) return;
+  if (s.classList.contains('is-typing')) return;
+  const ar = currentLang === 'ar';
+  if (!Array.isArray(msgs) || !msgs.length) {
+    s.textContent = ar ? 'لا توجد رسائل بعد' : 'No messages yet';
+    return;
+  }
+  const last = msgs[msgs.length - 1];
+  const d = new Date(last.created_at);
+  if (Number.isNaN(d.getTime())) {
+    s.textContent = ar ? 'متصل' : 'Online';
+    return;
+  }
+  const loc = ar ? 'ar-EG' : 'en-US';
+  const timeStr = d.toLocaleTimeString(loc, { hour: 'numeric', minute: '2-digit' });
+  s.textContent = ar ? `آخر رسالة · ${timeStr}` : `Last message · ${timeStr}`;
+}
+
+function _restoreHeaderStatus() {
+  const s = document.getElementById('chat-header-status') || document.querySelector('.chat-header-status');
+  if (s) s.classList.remove('is-typing');
+  _updateHeaderActivity(_latestMessages);
+}
+
+function _closeChatSearch() {
+  const bar = document.getElementById('chat-header-bar');
+  const row = document.getElementById('chat-header-searchrow');
+  const modal = document.getElementById('chat-modal');
+  const q = document.getElementById('chat-insearch-input');
+  if (q) {
+    q.value = '';
+  }
+  if (row) row.classList.add('hidden');
+  if (bar) bar.classList.remove('is-searching');
+  if (modal) modal.classList.remove('chat-search-open');
+  _searchHits = [];
+  _searchIdx = -1;
+  _updateInSearchCount();
+  const root = document.getElementById('chat-messages');
+  if (root) {
+    root.querySelectorAll('.chat-insearch-active').forEach((el) => el.classList.remove('chat-insearch-active'));
+  }
+}
+
+function _updateInSearchCount() {
+  const el = document.getElementById('chat-insearch-count');
+  if (!el) return;
+  const n = _searchHits.length;
+  if (!n) {
+    el.textContent = '';
+    return;
+  }
+  const i = Math.max(0, _searchIdx) + 1;
+  el.textContent = `${i} / ${n}`;
+}
+
+function _applyChatSearch(rawQ) {
+  const root = document.getElementById('chat-messages');
+  if (!root) return;
+  const q = String(rawQ || '').trim().toLowerCase();
+  root.querySelectorAll('.chat-insearch-active').forEach((el) => el.classList.remove('chat-insearch-active'));
+  _searchHits = [];
+  _searchIdx = -1;
+  if (!q) {
+    _updateInSearchCount();
+    return;
+  }
+  const ar = currentLang === 'ar';
+  for (const m of _latestMessages) {
+    if (m == null || m.id == null) continue;
+    const p = _parseMessagePayload(m.message);
+    const t =
+      p.type === 'audio'
+        ? `${ar ? 'صوت صوتية رسالة' : 'voice note audio'} ${p.durationSec || ''}`
+        : String(p.text || '');
+    if (t.toLowerCase().includes(q)) _searchHits.push(String(m.id));
+  }
+  if (_searchHits.length) {
+    _searchIdx = 0;
+    _highlightChatSearchAtIndex();
+  }
+  _updateInSearchCount();
+}
+
+function _highlightChatSearchAtIndex() {
+  const root = document.getElementById('chat-messages');
+  if (!root) return;
+  root.querySelectorAll('.chat-insearch-active').forEach((el) => el.classList.remove('chat-insearch-active'));
+  if (_searchIdx < 0 || _searchIdx >= _searchHits.length) return;
+  const id = _searchHits[_searchIdx];
+  const row = Array.from(root.querySelectorAll('.chat-msg[data-chat-msg-id]')).find(
+    (el) => el.getAttribute('data-chat-msg-id') === id
+  );
+  if (row) {
+    row.classList.add('chat-insearch-active');
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  _updateInSearchCount();
+}
+
+function _goChatSearchDir(delta) {
+  if (!_searchHits.length) return;
+  _searchIdx = (_searchIdx + delta + _searchHits.length) % _searchHits.length;
+  _highlightChatSearchAtIndex();
+}
+
+function toggleChatInSearch(forceOpen) {
+  const row = document.getElementById('chat-header-searchrow');
+  const bar = document.getElementById('chat-header-bar');
+  const modal = document.getElementById('chat-modal');
+  const input = document.getElementById('chat-insearch-input');
+  if (!row || !bar || !modal) return;
+  const willOpen = typeof forceOpen === 'boolean' ? forceOpen : row.classList.contains('hidden');
+  if (willOpen) {
+    row.classList.remove('hidden');
+    bar.classList.add('is-searching');
+    modal.classList.add('chat-search-open');
+    if (input) {
+      const isAr = currentLang === 'ar';
+      input.placeholder = isAr
+        ? (input.getAttribute('data-ar-ph') || input.placeholder)
+        : (input.getAttribute('data-en-ph') || input.placeholder);
+      requestAnimationFrame(() => { try { input.focus(); } catch (_) {} });
+    }
+    _applyChatSearch(input ? input.value : '');
+  } else {
+    _closeChatSearch();
+  }
+}
+
 function _buildMessagePayload(payload) {
   return `${CHAT_PAYLOAD_PREFIX}${JSON.stringify(payload)}`;
 }
@@ -116,18 +314,18 @@ function _chatRoomKey(chatType = currentChat) {
 }
 
 function _setHeaderStatus(textAr, textEn) {
-  const s = document.querySelector('.chat-header-status');
+  const s = document.getElementById('chat-header-status') || document.querySelector('.chat-header-status');
   if (!s) return;
   s.classList.remove('is-typing');
   s.textContent = currentLang === 'ar' ? textAr : textEn;
 }
 
 function _setHeaderOnline() {
-  _setHeaderStatus('متصل', 'Online');
+  _restoreHeaderStatus();
 }
 
 function _showTypingIndicator(name) {
-  const s = document.querySelector('.chat-header-status');
+  const s = document.getElementById('chat-header-status') || document.querySelector('.chat-header-status');
   if (!s) return;
   s.classList.add('is-typing');
   const ar = currentLang === 'ar';
@@ -225,6 +423,7 @@ function _resizeChatComposer() {
 function _onComposerInput() {
   _refreshSendButtonState();
   _resizeChatComposer();
+  _scheduleDraftSave();
   const now = Date.now();
   const hasText = !!((document.getElementById('chat-input')?.value || '').trim());
   if (!hasText) {
@@ -268,7 +467,14 @@ function _replyPreviewHtml(reply) {
   if (!reply) return '';
   const safeName = escapeHtmlLocal(reply.name || (currentLang === 'ar' ? 'رسالة' : 'Message'));
   const safeText = escapeHtmlLocal(_shortText(reply.text || (reply.type === 'audio' ? 'Voice note' : '...')));
-  return `<div class="chat-reply-quote">
+  const mid = reply.messageId != null && String(reply.messageId).length
+    ? ` data-reply-to-id="${escapeHtmlLocal(String(reply.messageId))}"`
+    : '';
+  const linkCl = mid ? ' chat-reply-quote--link' : '';
+  const a11y = mid
+    ? ' role="button" tabindex="0" aria-label="' + (currentLang === 'ar' ? 'الانتقال للرسالة' : 'Go to message') + '"'
+    : '';
+  return `<div class="chat-reply-quote${linkCl}"${mid}${a11y}>
     <div class="chat-reply-quote-name">${safeName}</div>
     <div class="chat-reply-quote-text">${safeText}</div>
   </div>`;
@@ -323,7 +529,8 @@ function setReplyTarget(index) {
   _replyTarget = {
     name: msg.sender_name || (currentLang === 'ar' ? 'مستخدم' : 'User'),
     text: parsed.type === 'audio' ? (currentLang === 'ar' ? 'رسالة صوتية' : 'Voice note') : (parsed.text || ''),
-    type: parsed.type || 'text'
+    type: parsed.type || 'text',
+    messageId: msg.id != null ? String(msg.id) : undefined
   };
   _renderReplyPreview();
 }
@@ -337,7 +544,7 @@ async function openChat(chatType, title) {
   currentChat = chatType;
   _markChatSeen(chatType === 'group' ? 'group' : String(chatType));
   clearReplyTarget();
-  _refreshSendButtonState();
+  _closeChatSearch();
 
   const titleEl = document.getElementById('chat-title');
   if (titleEl) titleEl.textContent = title;
@@ -354,12 +561,17 @@ async function openChat(chatType, title) {
     input.dataset.bound = '1';
     input.addEventListener('input', _onComposerInput);
   }
+  if (input) {
+    input.value = '';
+  }
+  _loadChatDraft();
+  _refreshSendButtonState();
   if (typeof window.ChatUI?.bindVoiceDelegation === 'function') {
     window.ChatUI.bindVoiceDelegation();
   }
   _resizeChatComposer();
 
-  _setHeaderOnline();
+  _setHeaderLoading();
   await _ensureTypingChannel();
   await loadMessages();
   subscribeToMessages();
@@ -378,10 +590,30 @@ function _stopVoiceTracks() {
 }
 
 function closeChat() {
+  if (currentChat) {
+    const inp0 = document.getElementById('chat-input');
+    if (inp0) {
+      const t = (inp0.value || '').trim();
+      const k = _chatDraftKey();
+      if (k) {
+        try {
+          if (t) localStorage.setItem(k, inp0.value);
+          else localStorage.removeItem(k);
+        } catch (_) {}
+      }
+    }
+  }
+  _closeChatSearch();
+
   const modal = document.getElementById('chat-modal');
   if (modal) {
     modal.classList.remove('open');
     modal.removeAttribute('style');
+  }
+
+  if (_draftTimer) {
+    clearTimeout(_draftTimer);
+    _draftTimer = null;
   }
 
   const inp = document.getElementById('chat-input');
@@ -453,6 +685,12 @@ async function loadMessages() {
     if (sig !== _lastRenderedSignature) {
       renderMessages(msgs);
       _lastRenderedSignature = sig;
+    }
+    _updateHeaderActivity(msgs);
+    const modal0 = document.getElementById('chat-modal');
+    if (modal0 && modal0.classList.contains('chat-search-open')) {
+      const iq = document.getElementById('chat-insearch-input');
+      if (iq) _applyChatSearch(iq.value);
     }
   } finally {
     _loadMessagesInFlight = false;
@@ -537,6 +775,11 @@ async function sendMessage() {
   if (!msg) return;
   if (msg.length > 2000) return;
 
+  if (_draftTimer) {
+    clearTimeout(_draftTimer);
+    _draftTimer = null;
+  }
+
   _sendingMsg = true;
   input.value = '';
   _resizeChatComposer();
@@ -549,6 +792,7 @@ async function sendMessage() {
       text: msg,
       reply: _replyTarget
     });
+    _clearChatDraft();
   } catch (e) {
     console.error('[sendMessage]', e);
     notify('Error: ' + e.message, 'error');
@@ -777,6 +1021,11 @@ async function loadAdminChatList() {
     : (ar ? 'جميع الموظفين' : 'All employees');
   const groupTime = _formatChatListTime(groupLast?.created_at);
   const groupUnread = unreadByChat.group || 0;
+  const groupDraft = getChatDraftText('group');
+  const hasGroupDraft = !!String(groupDraft).trim();
+  const groupListPreview = hasGroupDraft
+    ? (ar ? `مسودة: ${_shortText(groupDraft, 50)}` : `Draft: ${_shortText(groupDraft, 50)}`)
+    : groupPreview;
 
   const employees = allEmployees.filter(emp => {
     if (!q) return true;
@@ -786,7 +1035,7 @@ async function loadAdminChatList() {
   if (totalEl) totalEl.textContent = String(1 + employees.length);
 
   const groupItem = `
-    <button type="button" class="chat-list-item ${groupUnread ? 'has-unread' : ''}" onclick="openChat('group','B.tech team')">
+    <button type="button" class="chat-list-item ${groupUnread ? 'has-unread' : ''} ${hasGroupDraft ? 'has-draft' : ''}" onclick="openChat('group','B.tech team')">
       <div class="chat-list-avatar group" aria-hidden="true">👥</div>
       <div class="chat-list-main">
         <div class="chat-list-row">
@@ -794,7 +1043,7 @@ async function loadAdminChatList() {
           <div class="chat-list-time">${groupTime || ''}</div>
         </div>
         <div class="chat-list-row">
-          <div class="chat-list-last">${escapeHtmlLocal(groupPreview)}</div>
+          <div class="chat-list-last">${escapeHtmlLocal(groupListPreview)}</div>
           ${groupUnread ? `<span class="chat-list-unread">${groupUnread > 99 ? '99+' : groupUnread}</span>` : ''}
         </div>
       </div>
@@ -805,13 +1054,17 @@ async function loadAdminChatList() {
     const chatId = String(emp.id);
     const last = lastByChat[chatId];
     const parsed = last ? _parseMessagePayload(last.message) : null;
-    const preview = parsed
-      ? (parsed.type === 'audio' ? (ar ? '🎤 رسالة صوتية' : '🎤 Voice note') : _shortText(parsed.text || ''))
-      : (emp.branch || (ar ? 'لا توجد رسائل بعد' : 'No messages yet'));
+    const dtxt = getChatDraftText(emp.id);
+    const hasDraft = !!String(dtxt).trim();
+    const preview = hasDraft
+      ? (ar ? `مسودة: ${_shortText(dtxt, 50)}` : `Draft: ${_shortText(dtxt, 50)}`)
+      : (parsed
+        ? (parsed.type === 'audio' ? (ar ? '🎤 رسالة صوتية' : '🎤 Voice note') : _shortText(parsed.text || ''))
+        : (emp.branch || (ar ? 'لا توجد رسائل بعد' : 'No messages yet')));
     const timeLabel = _formatChatListTime(last?.created_at);
     const unread = unreadByChat[chatId] || 0;
 
-    return `<button type="button" class="chat-list-item ${unread ? 'has-unread' : ''}" onclick="openChat('${emp.id}','${(emp.name || '').replace(/'/g, "\\'")}')">
+    return `<button type="button" class="chat-list-item ${unread ? 'has-unread' : ''} ${hasDraft ? 'has-draft' : ''}" onclick="openChat('${emp.id}','${(emp.name || '').replace(/'/g, "\\'")}')">
       <div class="chat-list-avatar" style="background:${color};color:#fff" aria-hidden="true">${emp.profile_photo ? `<img src="${emp.profile_photo}" alt="" loading="lazy" decoding="async">` : (emp.name || '?')[0].toUpperCase()}</div>
       <div class="chat-list-main">
         <div class="chat-list-row">
@@ -886,8 +1139,19 @@ async function loadEmployeeChatList() {
     : (ar ? 'اضغط للمحادثة مع الإدارة' : 'Tap to chat with management');
   const adminTime = _formatChatListTime(adminLast?.created_at);
 
+  const adminDraft = getChatDraftText('admin');
+  const hasAdminDraft = !!String(adminDraft).trim();
+  const adminListPreview = hasAdminDraft
+    ? (ar ? `مسودة: ${_shortText(adminDraft, 50)}` : `Draft: ${_shortText(adminDraft, 50)}`)
+    : adminPreview;
+  const groupDraftE = getChatDraftText('group');
+  const hasGroupDraftE = !!String(groupDraftE).trim();
+  const groupListPreviewE = hasGroupDraftE
+    ? (ar ? `مسودة: ${_shortText(groupDraftE, 50)}` : `Draft: ${_shortText(groupDraftE, 50)}`)
+    : groupPreview;
+
   const adminBtn = `
-    <button type="button" class="chat-list-item ${adminUnread ? 'has-unread' : ''}" onclick="openChat('admin','${adminTitleEsc}')">
+    <button type="button" class="chat-list-item ${adminUnread ? 'has-unread' : ''} ${hasAdminDraft ? 'has-draft' : ''}" onclick="openChat('admin','${adminTitleEsc}')">
       <div class="chat-list-avatar admin" aria-hidden="true">👑</div>
       <div class="chat-list-main">
         <div class="chat-list-row">
@@ -895,14 +1159,14 @@ async function loadEmployeeChatList() {
           <div class="chat-list-time">${adminTime || ''}</div>
         </div>
         <div class="chat-list-row">
-          <div class="chat-list-last">${escapeHtmlLocal(adminPreview)}</div>
+          <div class="chat-list-last">${escapeHtmlLocal(adminListPreview)}</div>
           ${adminUnread ? `<span class="chat-list-unread">${adminUnread > 99 ? '99+' : adminUnread}</span>` : ''}
         </div>
       </div>
     </button>`;
 
   const groupBtn = `
-    <button type="button" class="chat-list-item ${groupUnread ? 'has-unread' : ''}" onclick="openChat('group','B.tech team')">
+    <button type="button" class="chat-list-item ${groupUnread ? 'has-unread' : ''} ${hasGroupDraftE ? 'has-draft' : ''}" onclick="openChat('group','B.tech team')">
       <div class="chat-list-avatar group" aria-hidden="true">👥</div>
       <div class="chat-list-main">
         <div class="chat-list-row">
@@ -910,7 +1174,7 @@ async function loadEmployeeChatList() {
           <div class="chat-list-time">${groupTime || ''}</div>
         </div>
         <div class="chat-list-row">
-          <div class="chat-list-last">${escapeHtmlLocal(groupPreview)}</div>
+          <div class="chat-list-last">${escapeHtmlLocal(groupListPreviewE)}</div>
           ${groupUnread ? `<span class="chat-list-unread">${groupUnread > 99 ? '99+' : groupUnread}</span>` : ''}
         </div>
       </div>
@@ -928,4 +1192,98 @@ async function loadEmployeeChatList() {
     e.stopPropagation();
     closeChat();
   });
+})();
+
+(function _bindChatHeaderExtras() {
+  const modal = document.getElementById('chat-modal');
+  const tb = document.getElementById('chat-search-toggle');
+  const iPrev = document.getElementById('chat-insearch-prev');
+  const iNext = document.getElementById('chat-insearch-next');
+  const iClose = document.getElementById('chat-insearch-close');
+  const iInp = document.getElementById('chat-insearch-input');
+  if (tb && !tb.dataset.bound) {
+    tb.dataset.bound = '1';
+    tb.addEventListener('click', () => toggleChatInSearch());
+  }
+  if (iClose && !iClose.dataset.bound) {
+    iClose.dataset.bound = '1';
+    iClose.addEventListener('click', () => _closeChatSearch());
+  }
+  if (iPrev && !iPrev.dataset.bound) {
+    iPrev.dataset.bound = '1';
+    iPrev.addEventListener('click', () => _goChatSearchDir(-1));
+  }
+  if (iNext && !iNext.dataset.bound) {
+    iNext.dataset.bound = '1';
+    iNext.addEventListener('click', () => _goChatSearchDir(1));
+  }
+  if (iInp && !iInp.dataset.bound) {
+    iInp.dataset.bound = '1';
+    iInp.addEventListener('input', () => _applyChatSearch(iInp.value));
+    iInp.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        _closeChatSearch();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (e.shiftKey) _goChatSearchDir(-1);
+        else _goChatSearchDir(1);
+      }
+    });
+  }
+
+  const msgs = document.getElementById('chat-messages');
+  if (msgs && !msgs.dataset.replyNav) {
+    msgs.dataset.replyNav = '1';
+    msgs.addEventListener('click', (e) => {
+      const qel = e.target.closest('.chat-reply-quote--link');
+      if (!qel) return;
+      const id = qel.getAttribute('data-reply-to-id');
+      if (!id) return;
+      e.preventDefault();
+      const row = Array.from(msgs.querySelectorAll('.chat-msg[data-chat-msg-id]')).find(
+        (el) => el.getAttribute('data-chat-msg-id') === id
+      );
+      if (row) {
+        row.classList.add('chat-msg--highlight');
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => row.classList.remove('chat-msg--highlight'), 2000);
+      }
+    });
+    msgs.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const qel = e.target.closest('.chat-reply-quote--link');
+      if (!qel) return;
+      e.preventDefault();
+      qel.click();
+    });
+  }
+
+  if (modal && !modal.dataset.edgeSw) {
+    modal.dataset.edgeSw = '1';
+    let sx = 0; let sy = 0; let armed = false;
+    const fromEdge = (x) => {
+      const w = window.innerWidth;
+      return _isHtmlRtl() ? (x > w - 28) : (x < 28);
+    };
+    modal.addEventListener('touchstart', (e) => {
+      if (!e.touches || !e.touches[0]) return;
+      const x = e.touches[0].clientX;
+      if (!fromEdge(x)) { armed = false; return; }
+      armed = true;
+      sx = x;
+      sy = e.touches[0].clientY;
+    }, { passive: true });
+    modal.addEventListener('touchend', (e) => {
+      if (!armed) return;
+      armed = false;
+      const t = e.changedTouches && e.changedTouches[0];
+      if (!t) return;
+      const dx = t.clientX - sx;
+      const dy = t.clientY - sy;
+      const rtl = _isHtmlRtl();
+      const goBack = rtl ? (dx < -64) : (dx > 64);
+      if (goBack && Math.abs(dy) < 50) closeChat();
+    }, { passive: true });
+  }
 })();

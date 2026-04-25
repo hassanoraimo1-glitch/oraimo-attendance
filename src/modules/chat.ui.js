@@ -150,7 +150,8 @@
       const bubbleMod = isMe ? 'chat-bubble--me' : 'chat-bubble--them';
       const rowMod = isMe ? 'chat-msg--me' : 'chat-msg--them';
 
-      html.push(`<div class="chat-msg ${rowMod}${stackClass}" style="--sender-accent:${escapeHtml(senderColor)}">
+      const dataId = m.id != null ? escapeHtml(String(m.id)) : '';
+      html.push(`<div class="chat-msg ${rowMod}${stackClass}" data-chat-msg-id="${dataId}" style="--sender-accent:${escapeHtml(senderColor)}">
         ${avatarHtml}
         <div class="chat-msg__col">
           <div class="chat-bubble ${bubbleMod}">
@@ -185,7 +186,8 @@
         : `<div class="chat-msg__text">${escapeHtml(parsed.text || '')}</div>`;
 
     const div = document.createElement('div');
-    div.className = `chat-msg ${isMe ? 'chat-msg--me' : 'chat-msg--them'}`;
+    div.className = `chat-msg ${isMe ? 'chat-msg--me' : 'chat-msg--them'} chat-msg--enter`;
+    if (message.id != null) div.setAttribute('data-chat-msg-id', String(message.id));
     div.innerHTML = `${!isMe && grp ? '<div class="chat-msg__avatar chat-msg__avatar--spacer"></div>' : ''}
       <div class="chat-msg__col">
         <div class="chat-bubble ${isMe ? 'chat-bubble--me' : 'chat-bubble--them'}">
@@ -197,6 +199,9 @@
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
     bindVoiceDelegation();
+    const rmEnter = () => div.classList.remove('chat-msg--enter');
+    div.addEventListener('animationend', rmEnter, { once: true });
+    setTimeout(rmEnter, 900);
   }
 
   global.ChatUI = {

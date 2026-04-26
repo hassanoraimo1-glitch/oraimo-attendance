@@ -1,12 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// modules/attendance.js — MASTER FIX (state-locked + observer)
-// ═══════════════════════════════════════════════════════════
-// الفلسفة:
-// 1. نقرأ الحالة من السرفر مباشرة (no cache, no Service Worker, nothing)
-// 2. نحفظها في localStorage + window state
-// 3. MutationObserver يراقب الزرار — لو حد غيره، نرجعه فوراً
-// 4. polling كل 30 ثانية يتأكد من الحالة الصحيحة
-// 5. كل event للرجوع للتطبيق بيعيد القراءة من السرفر
+// modules/attendance.js — FINAL FIX (no _t param, validated requests)
 // ═══════════════════════════════════════════════════════════
 
 const _SB_URL = 'https://lmszelfnosejdemxhodm.supabase.co';
@@ -14,17 +7,11 @@ const _SB_KEY = 'sb_publishable_HCOQxXf5sEyulaPkqlSEzg_IK7elCQb';
 const _ATT_LOCAL_KEY = 'oraimo_att_state_v1';
 
 // ═══════════════════════════════════════════════════════════
-// PERSISTENT STATE — نحفظ في localStorage عشان حتى لو التطبيق
-// قفل وفتح، نعرف آخر حالة معروفة قبل ما نسأل السرفر
+// Persistent State
 // ═══════════════════════════════════════════════════════════
 function _saveAttState(empId, record) {
   try {
-    const data = {
-      empId: empId,
-      date: todayStr(),
-      record: record,
-      savedAt: Date.now(),
-    };
+    const data = { empId: empId, date: todayStr(), record: record, savedAt: Date.now() };
     localStorage.setItem(_ATT_LOCAL_KEY, JSON.stringify(data));
   } catch (_) {}
 }
@@ -35,11 +22,9 @@ function _loadAttState(empId) {
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (!data || data.empId !== empId) return null;
-    if (data.date !== todayStr()) return null; // يوم جديد، تجاهل
+    if (data.date !== todayStr()) return null;
     return data.record || null;
-  } catch (_) {
-    return null;
-  }
+  } catch (_) { return null; }
 }
 
 function _clearAttState() {
@@ -47,12 +32,22 @@ function _clearAttState() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// DIRECT FETCH — يتجاوز كل الكاش
+// ✅ FIX: Direct fetch — بدون _t parameter (Supabase ما بيقبلوش)
+// نستخدم headers بس عشان نمنع الكاش
 // ═══════════════════════════════════════════════════════════
 async function _attFetchToday(empId) {
-  if (!empId) return [];
+  if (!empId && empId !== 0) return [];
   const today = todayStr();
-  const url = `${_SB_URL}/rest/v1/attendance?employee_id=eq.${empId}&date=eq.${today}&select=*&_t=${Date.now()}`;
+  // ✅ FIX: تنظيف empId — لازم يكون رقم
+  const safeId = Number(empId);
+  if (!Number.isFinite(safeId)) {
+    console.error('[_attFetchToday] Invalid empId:', empId);
+    return [];
+  }
+
+  // ✅ FIX: URL نظيف — بدون أي params extra
+  const url = `${_SB_URL}/rest/v1/attendance?employee_id=eq.${safeId}&date=eq.${today}&select=*`;
+
   try {
     const res = await fetch(url, {
       method: 'GET',
@@ -60,12 +55,12 @@ async function _attFetchToday(empId) {
       headers: {
         apikey: _SB_KEY,
         Authorization: 'Bearer ' + _SB_KEY,
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        Pragma: 'no-cache',
+        'Cache-Control': 'no-cache',
       },
     });
     if (!res.ok) {
-      console.error('[_attFetchToday] HTTP', res.status);
+      const text = await res.text().catch(() => '');
+      console.error('[_attFetchToday] HTTP', res.status, text);
       return [];
     }
     const data = await res.json();
@@ -98,7 +93,8 @@ async function _attPostCheckIn(record) {
 }
 
 async function _attPatchCheckOut(empId, today, body) {
-  const url = `${_SB_URL}/rest/v1/attendance?employee_id=eq.${empId}&date=eq.${today}`;
+  const safeId = Number(empId);
+  const url = `${_SB_URL}/rest/v1/attendance?employee_id=eq.${safeId}&date=eq.${today}`;
   const res = await fetch(url, {
     method: 'PATCH',
     cache: 'no-store',
@@ -119,7 +115,7 @@ async function _attPatchCheckOut(empId, today, body) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// HELPERS
+// Helpers
 // ═══════════════════════════════════════════════════════════
 function _getShiftTimes(shift, dayOfWeek) {
   const isThurFri = (dayOfWeek === 4 || dayOfWeek === 5);
@@ -187,10 +183,10 @@ function _ensureShiftInfoEl() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 🔒 STATE LOCK — نحتفظ بآخر record صحيح ونمنع أي تغيير غلط
+// State Lock
 // ═══════════════════════════════════════════════════════════
 window._attCurrentRecord = window._attCurrentRecord || null;
-window._attUpdatingFromCode = false; // flag: نحن مين اللي بنغير الزرار
+window._attUpdatingFromCode = false;
 
 function _setAttRecord(record) {
   window._attCurrentRecord = record || null;
@@ -200,24 +196,20 @@ function _setAttRecord(record) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// updateAttendBtn — يحدّث الزرار ويحفظ الـ state
+// updateAttendBtn
 // ═══════════════════════════════════════════════════════════
 function updateAttendBtn(record) {
   const btn = document.getElementById('attend-btn');
   const status = document.getElementById('attend-status');
   if (!btn) return;
 
-  // 🔒 احفظ الـ record
   _setAttRecord(record);
-
-  // 🔒 flag إن التغيير من الكود (مش من حد تاني)
   window._attUpdatingFromCode = true;
 
   const ar = currentLang === 'ar';
   const labelEl = btn.querySelector('.attend-label');
 
   try {
-    // ✅ State 1: مسجل دخول، لسه ما خرجش
     if (record && record.check_in && !record.check_out) {
       btn.classList.add('checked-in');
       btn.classList.remove('attend-done');
@@ -229,11 +221,9 @@ function updateAttendBtn(record) {
       btn.onclick = handleAttendClick;
       btn.style.pointerEvents = '';
       _startWorkCountdown(record.check_in, record.late_minutes || 0);
-      // status هتتحدث من _startWorkCountdown
       return;
     }
 
-    // ✅ State 2: مسجل دخول وخروج
     if (record && record.check_in && record.check_out) {
       _clearWorkCountdown();
       btn.classList.remove('checked-in');
@@ -253,7 +243,6 @@ function updateAttendBtn(record) {
       return;
     }
 
-    // ✅ State 3: لا يوجد سجل — افتراضي "تسجيل دخول"
     _clearWorkCountdown();
     btn.classList.remove('checked-in', 'attend-done');
     if (labelEl) {
@@ -274,48 +263,48 @@ function updateAttendBtn(record) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// ✅ refresh من السرفر مع fallback للـ localStorage
+// Refresh from server
 // ═══════════════════════════════════════════════════════════
 async function _refreshAttendanceState() {
   if (!window.currentUser || window.currentUser.role !== 'employee') return null;
   const empId = window.currentUser.id;
 
-  // 1. أعرض الحالة المحفوظة محلياً فوراً (instant feedback)
+  // ✅ Fallback للـ localStorage فوراً
   const cached = _loadAttState(empId);
   if (cached) {
     updateAttendBtn(cached);
   }
 
-  // 2. اقرأ من السرفر (الأكيد)
+  // اقرأ من السرفر
   const today = await _attFetchToday(empId);
   const record = today.length > 0 ? today[0] : null;
 
-  // 3. حدّث الزرار بالنتيجة الحقيقية
+  // ✅ FIX: لو الـ fetch فشل (رجع []) لكن عندنا cached، استخدم الـ cached
+  if (record === null && cached) {
+    console.log('[ATT] Server fetch returned empty, keeping cached state');
+    return cached;
+  }
+
   updateAttendBtn(record);
   return record;
 }
 
 // ═══════════════════════════════════════════════════════════
-// 🔒 MUTATION OBSERVER — يراقب الزرار
-// لو حد غيره (زي applyLang) لحالة غلط، نرجعه فوراً
+// MutationObserver
 // ═══════════════════════════════════════════════════════════
 function _setupButtonObserver() {
   if (window._attObserverSetup) return;
 
   const btn = document.getElementById('attend-btn');
   if (!btn) {
-    // الزرار لسه ما اتحملش، نحاول تاني
     setTimeout(_setupButtonObserver, 500);
     return;
   }
 
   window._attObserverSetup = true;
 
-  const observer = new MutationObserver((mutations) => {
-    // لو احنا اللي بنغير، تجاهل
+  const observer = new MutationObserver(() => {
     if (window._attUpdatingFromCode) return;
-
-    // لو في record محفوظ ومختلف عن المعروض، أعد التطبيق
     const record = window._attCurrentRecord;
     if (!record) return;
 
@@ -327,7 +316,7 @@ function _setupButtonObserver() {
     const expectedEn = record.check_out ? 'Done' : (record.check_in ? 'Check Out' : 'Check In');
 
     if (currentText !== expectedAr && currentText !== expectedEn) {
-      console.warn('[ATT] Button text changed externally, reverting:', currentText);
+      console.warn('[ATT] Button changed externally, reverting:', currentText);
       updateAttendBtn(record);
     }
   });
@@ -349,10 +338,7 @@ function _setupButtonObserver() {
 async function loadEmpData() {
   if (!currentUser) return;
   try {
-    // ✅ الحضور أول حاجة
     await _refreshAttendanceState();
-
-    // تأكد إن الـ observer شغال
     _setupButtonObserver();
 
     const pm = getPayrollMonth();
@@ -397,8 +383,8 @@ async function loadEmpData() {
       shiftInfoEl.textContent = ar ? labelAr : labelEn;
     }
 
-    // ✅ تأكيد نهائي بعد كل شيء
-    if (window._attCurrentRecord !== undefined && window._attCurrentRecord !== null) {
+    // ✅ تأكيد نهائي
+    if (window._attCurrentRecord) {
       updateAttendBtn(window._attCurrentRecord);
     }
   } catch (e) {
@@ -448,7 +434,7 @@ function handleAttendClick() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// HISTORY & REPORTS
+// History & Reports
 // ═══════════════════════════════════════════════════════════
 function renderAttendHistory(records) {
   if (window.AttendanceUI?.renderAttendHistory) {
@@ -613,8 +599,15 @@ async function confirmAttendance() {
       } catch (postErr) {
         if (postErr.status === 409) {
           notify(ar ? '⚠️ تم تسجيل دخولك مسبقاً اليوم' : '⚠️ Already checked in today', 'error');
+          // ✅ لو الـ GET ما رجعش حاجة، استخدم newRecord كـ fallback
           const fresh = await _attFetchToday(currentUser.id);
-          updateAttendBtn(fresh.length > 0 ? fresh[0] : { ...newRecord, check_out: null });
+          if (fresh.length > 0) {
+            updateAttendBtn(fresh[0]);
+          } else {
+            // ✅ الـ GET بيرجع 400 — استخدم newRecord
+            console.log('[ATT] GET failed, using local record');
+            updateAttendBtn({ ...newRecord, check_out: null });
+          }
         } else {
           throw postErr;
         }
@@ -655,20 +648,18 @@ async function confirmAttendance() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 🔥 INIT — يعمل setup فور تحميل الملف
+// INIT
 // ═══════════════════════════════════════════════════════════
 (function _initAttendanceModule() {
   if (window.__attModuleInit) return;
   window.__attModuleInit = true;
 
-  // 1. Setup observer لما الـ DOM يجهز
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', _setupButtonObserver);
   } else {
     _setupButtonObserver();
   }
 
-  // 2. Auto-refresh listeners
   let _lastRefresh = 0;
   async function _maybeRefresh() {
     const now = Date.now();
@@ -694,14 +685,12 @@ async function confirmAttendance() {
   window.addEventListener('focus', _maybeRefresh);
   window.addEventListener('pageshow', _maybeRefresh);
 
-  // 3. Polling كل 30 ثانية تأكيد إضافي
   setInterval(() => {
     if (window.currentUser?.role === 'employee' && document.visibilityState === 'visible') {
       _maybeRefresh();
     }
   }, 30000);
 
-  // 4. عند تسجيل الخروج، امسح الـ state
   const origLogout = window.doLogout;
   if (typeof origLogout === 'function') {
     window.doLogout = function () {
@@ -711,7 +700,6 @@ async function confirmAttendance() {
     };
   }
 
-  // 5. على تحميل الصفحة: اعرض الحالة المحفوظة فوراً (لو موجودة)
   function _showCachedStateOnLoad() {
     if (!window.currentUser || window.currentUser.role !== 'employee') return;
     const cached = _loadAttState(window.currentUser.id);
@@ -727,10 +715,9 @@ async function confirmAttendance() {
     setTimeout(_showCachedStateOnLoad, 100);
   }
 
-  // 6. window load — refresh من السرفر
   window.addEventListener('load', () => {
     setTimeout(_maybeRefresh, 500);
   });
 
-  console.log('[ATT] Master fix module initialized');
+  console.log('[ATT] Master fix module v2 initialized');
 })();

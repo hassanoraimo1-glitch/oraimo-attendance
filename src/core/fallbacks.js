@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════════
 // core/fallbacks.js — Early boot shims (load order: before app.js)
+// ✅ FIXED VERSION — إصلاح dbPatch fallback
 //
 // Classic scripts (auth, chat, ui, …) run before the deferred ES
 // module entry assigns window.* from src/app.js. This file only
@@ -70,7 +71,24 @@ if (typeof window.dbGet !== 'function') {
     _cacheInvalidate(table);
     return res.json();
   };
-  window.dbPatch = async function (table, body, query) {
+
+  // ✅ FIX: dbPatch fallback — نفس المنطق المُصلح من app.js
+  // الكود كله بيستدعي: dbPatch(table, body_object, query_string)
+  // الدالة دي لازم تتعامل مع الترتيبين
+  window.dbPatch = async function (table, bodyOrQuery, queryOrBody) {
+    var query, body;
+    if (typeof bodyOrQuery === 'string') {
+      // استدعاء: (table, query, body)
+      query = bodyOrQuery;
+      body = queryOrBody;
+    } else if (typeof bodyOrQuery === 'object' && bodyOrQuery !== null) {
+      // استدعاء: (table, body, query) — الشائع في الكود
+      body = bodyOrQuery;
+      query = queryOrBody || '';
+    } else {
+      body = bodyOrQuery;
+      query = queryOrBody || '';
+    }
     var res = await fetch(_SUPABASE_URL + '/rest/v1/' + table + (query || ''), {
       method: 'PATCH',
       headers: _hdr,
@@ -80,6 +98,7 @@ if (typeof window.dbGet !== 'function') {
     _cacheInvalidate(table);
     return res.status === 204 ? null : res.json();
   };
+
   window.dbDelete = async function (table, query) {
     var res = await fetch(_SUPABASE_URL + '/rest/v1/' + table + (query || ''), {
       method: 'DELETE',

@@ -1,7 +1,6 @@
 // ═══════════════════════════════════════════════════════════
-// modules/attendance.js — FINAL FIX v4
-// ✅ loadEmpData invalidates all caches on start
-// ✅ confirmAttendance handles 409 + immediate button update
+// modules/attendance.js — FINAL FIX
+// ✅ يعتمد على إن fallbacks.js مش بيكاش جدول الحضور
 // ═══════════════════════════════════════════════════════════
 
 function _getShiftTimes(shift, dayOfWeek) {
@@ -30,40 +29,33 @@ function _startWorkCountdown(checkInHHMM, lateMinutes = 0) {
   const inH = Number(parts[0]), inM = Number(parts[1]);
   if (!Number.isFinite(inH) || !Number.isFinite(inM)) { if (window.AttendanceUI?.setAttendStatus) window.AttendanceUI.setAttendStatus({ mode: 'checked-in', isArabic: currentLang === 'ar', checkInLabel: _to12HourLabel(checkInHHMM), lateMinutes }); else status.textContent = `${currentLang === 'ar' ? 'دخل الساعة' : 'In at'} ${_to12HourLabel(checkInHHMM)}`; return; }
   const baseInMin = inH * 60 + inM, shiftSeconds = 8 * 3600;
-  const render = () => { const ar = currentLang === 'ar', now = new Date(), nowSec = (now.getHours() * 60 + now.getMinutes()) * 60 + now.getSeconds(); let rem = shiftSeconds - (nowSec - baseInMin * 60); if (!Number.isFinite(rem)) rem = 0; if (rem < 0) rem = 0; const hh = Math.floor(rem / 3600), mm = Math.floor((rem % 3600) / 60), ss = rem % 60; const cd = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`; if (window.AttendanceUI?.setAttendStatus) window.AttendanceUI.setAttendStatus({ mode: 'checked-in', isArabic: ar, checkInLabel: _to12HourLabel(checkInHHMM), lateMinutes, countdown: cd }); else status.textContent = `${ar ? 'دخل الساعة' : 'In at'} ${_to12HourLabel(checkInHHMM)}${lateMinutes > 0 ? (ar ? ` (تأخر ${lateMinutes} د)` : ` (${lateMinutes}m late)`) : ''}${ar ? ` • المتبقي: ${cd}` : ` • Remaining: ${cd}`}`; if (rem <= 0) _clearWorkCountdown(); };
+  const render = () => {
+    const ar = currentLang === 'ar', now = new Date();
+    const nowSec = (now.getHours() * 60 + now.getMinutes()) * 60 + now.getSeconds();
+    let rem = shiftSeconds - (nowSec - baseInMin * 60);
+    if (!Number.isFinite(rem)) rem = 0; if (rem < 0) rem = 0;
+    const hh = Math.floor(rem / 3600), mm = Math.floor((rem % 3600) / 60), ss = rem % 60;
+    const cd = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+    if (window.AttendanceUI?.setAttendStatus) window.AttendanceUI.setAttendStatus({ mode: 'checked-in', isArabic: ar, checkInLabel: _to12HourLabel(checkInHHMM), lateMinutes, countdown: cd });
+    else status.textContent = `${ar ? 'دخل الساعة' : 'In at'} ${_to12HourLabel(checkInHHMM)}${lateMinutes > 0 ? (ar ? ` (تأخر ${lateMinutes} د)` : ` (${lateMinutes}m late)`) : ''}${ar ? ` • المتبقي: ${cd}` : ` • Remaining: ${cd}`}`;
+    if (rem <= 0) _clearWorkCountdown();
+  };
   render(); _workCountdownTimer = setInterval(render, 1000);
 }
-function _ensureShiftInfoEl() { let el = document.getElementById('emp-shift-info'); if (el) return el; const btn = document.getElementById('attend-btn'); if (!btn) return null; el = document.createElement('div'); el.id = 'emp-shift-info'; el.style.cssText = 'font-size:12px;font-weight:700;color:var(--green);text-align:center;padding:8px 12px;margin:0 0 12px;background:rgba(0,200,83,.08);border:1px solid rgba(0,200,83,.2);border-radius:12px;direction:rtl'; btn.parentNode.insertBefore(el, btn); return el; }
-
-// ═══════════════════════════════════════════════════════════
-// ✅ Helper: invalidate ALL caches — ES module + fallback shim
-// ═══════════════════════════════════════════════════════════
-function _invalidateAllCaches(table) {
-  // supabase.js ES module cache
-  if (typeof invalidateCache === 'function') try { invalidateCache(table); } catch (_) {}
-  // window.invalidateCache (set by app.js)
-  if (typeof window.invalidateCache === 'function' && window.invalidateCache !== invalidateCache) try { window.invalidateCache(table); } catch (_) {}
-  // fallbacks.js shim function
-  if (typeof _cacheInvalidate === 'function') try { _cacheInvalidate(table); } catch (_) {}
-  // fallbacks.js global _cache object (direct wipe)
-  if (typeof _cache === 'object' && _cache) {
-    Object.keys(_cache).forEach(function (k) { if (k.indexOf(table + '|') === 0) delete _cache[k]; });
-  }
+function _ensureShiftInfoEl() {
+  let el = document.getElementById('emp-shift-info'); if (el) return el;
+  const btn = document.getElementById('attend-btn'); if (!btn) return null;
+  el = document.createElement('div'); el.id = 'emp-shift-info';
+  el.style.cssText = 'font-size:12px;font-weight:700;color:var(--green);text-align:center;padding:8px 12px;margin:0 0 12px;background:rgba(0,200,83,.08);border:1px solid rgba(0,200,83,.2);border-radius:12px;direction:rtl';
+  btn.parentNode.insertBefore(el, btn); return el;
 }
 
-// ═══════════════════════════════════════════════════════════
-// ✅ FIX: loadEmpData — invalidate cache FIRST
-// المشكلة: لما التطبيق يفتح، الكاش القديم بيرجع [] فالزرار يظهر "تسجيل دخول"
-// الحل: نمسح كاش الحضور أول حاجة قبل ما نقرأ
-// ═══════════════════════════════════════════════════════════
 async function loadEmpData() {
   if (!currentUser) return;
   try {
-    // ✅ KEY FIX: invalidate attendance cache BEFORE reading
-    _invalidateAllCaches('attendance');
-    _invalidateAllCaches('sales');
-
     const today = todayStr(), pm = getPayrollMonth();
+
+    // ✅ الحضور غير قابل للكاش الآن في fallbacks.js — كل GET بيروح للسرفر
     const todayAtt = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`).catch(() => []);
     updateAttendBtn(todayAtt && todayAtt.length > 0 ? todayAtt[0] : null);
 
@@ -100,15 +92,27 @@ function updateAttendBtn(record) {
   const btn = document.getElementById('attend-btn'), status = document.getElementById('attend-status'); if (!btn) return;
   const ar = currentLang === 'ar', iconEl = btn.querySelector('.attend-icon'), labelEl = btn.querySelector('.attend-label');
   if (record && record.check_in && !record.check_out) {
-    btn.classList.add('checked-in'); if (iconEl) iconEl.textContent = '🔴'; if (labelEl) labelEl.textContent = ar ? 'تسجيل خروج' : 'Check Out'; btn.onclick = handleAttendClick; _startWorkCountdown(record.check_in, record.late_minutes || 0);
+    btn.classList.add('checked-in');
+    if (iconEl) iconEl.textContent = '🔴';
+    if (labelEl) labelEl.textContent = ar ? 'تسجيل خروج' : 'Check Out';
+    btn.onclick = handleAttendClick;
+    _startWorkCountdown(record.check_in, record.late_minutes || 0);
   } else if (record && record.check_out) {
-    _clearWorkCountdown(); btn.classList.remove('checked-in'); if (iconEl) iconEl.textContent = '✅'; if (labelEl) labelEl.textContent = ar ? 'تم' : 'Done';
+    _clearWorkCountdown();
+    btn.classList.remove('checked-in');
+    if (iconEl) iconEl.textContent = '✅';
+    if (labelEl) labelEl.textContent = ar ? 'تم' : 'Done';
     btn.onclick = () => notify(ar ? '✅ تم تسجيل الحضور والانصراف اليوم' : '✅ Attendance complete for today', 'info');
     if (window.AttendanceUI?.setAttendStatus) window.AttendanceUI.setAttendStatus({ mode: 'done', isArabic: ar, checkInLabel: _to12HourLabel(record.check_in), checkOutLabel: _to12HourLabel(record.check_out) });
     else if (status) status.textContent = `${ar ? 'دخول' : 'In'}: ${_to12HourLabel(record.check_in)} – ${ar ? 'خروج' : 'Out'}: ${_to12HourLabel(record.check_out)}`;
   } else {
-    _clearWorkCountdown(); btn.classList.remove('checked-in'); if (iconEl) iconEl.textContent = '🟢'; if (labelEl) labelEl.textContent = ar ? 'تسجيل دخول' : 'Check In'; btn.onclick = handleAttendClick;
-    if (window.AttendanceUI?.setAttendStatus) window.AttendanceUI.setAttendStatus({ mode: 'none', isArabic: ar }); else if (status) status.textContent = ar ? 'لم يتم تسجيل حضور اليوم' : 'No attendance recorded today';
+    _clearWorkCountdown();
+    btn.classList.remove('checked-in');
+    if (iconEl) iconEl.textContent = '🟢';
+    if (labelEl) labelEl.textContent = ar ? 'تسجيل دخول' : 'Check In';
+    btn.onclick = handleAttendClick;
+    if (window.AttendanceUI?.setAttendStatus) window.AttendanceUI.setAttendStatus({ mode: 'none', isArabic: ar });
+    else if (status) status.textContent = ar ? 'لم يتم تسجيل حضور اليوم' : 'No attendance recorded today';
   }
 }
 
@@ -141,52 +145,79 @@ function closeCamera() { if (videoStream) { videoStream.getTracks().forEach(t =>
 function capturePhoto() { const v = document.getElementById('video'), c = document.getElementById('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; const ctx = c.getContext('2d'); ctx.translate(c.width, 0); ctx.scale(-1, 1); ctx.drawImage(v, 0, 0); capturedPhoto = c.toDataURL('image/jpeg', 0.65); closeCamera(); document.getElementById('selfie-preview-img').src = capturedPhoto; document.getElementById('selfie-modal').classList.add('open'); document.getElementById('confirm-attend-btn').disabled = false; const ar = currentLang === 'ar', ls = document.getElementById('location-status'); if (ls) { if (capturedLocation) ls.innerHTML = `✅ ${ar ? 'تم تحديد الموقع' : 'Location found'} — <a href="https://maps.google.com/?q=${capturedLocation.lat},${capturedLocation.lng}" target="_blank" style="color:var(--green)">${ar ? 'عرض' : 'View'}</a>`; else ls.textContent = ar ? '⚠️ لم يتم تحديد الموقع' : '⚠️ Location unavailable'; } }
 
 // ═══════════════════════════════════════════════════════════
-// ✅ confirmAttendance — handles 409 + immediate update
+// confirmAttendance — مع معالجة 409 + تحديث فوري
 // ═══════════════════════════════════════════════════════════
 let _attendSubmitting = false;
+
 async function confirmAttendance() {
-  if (_attendSubmitting) return; _attendSubmitting = true;
-  const confirmBtn = document.getElementById('confirm-attend-btn'); if (confirmBtn) confirmBtn.disabled = true;
-  const today = todayStr(), now = new Date(), timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }), ar = currentLang === 'ar';
+  if (_attendSubmitting) return;
+  _attendSubmitting = true;
+  const confirmBtn = document.getElementById('confirm-attend-btn');
+  if (confirmBtn) confirmBtn.disabled = true;
+
+  const today = todayStr(), now = new Date();
+  const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+  const ar = currentLang === 'ar';
+
   try {
-    _invalidateAllCaches('attendance');
+    // ✅ GET بيروح للسرفر مباشرة لأن جدول الحضور غير قابل للكاش
     const todayAtt = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`).catch(() => []);
 
     if (attendMode === 'in') {
       if (todayAtt && todayAtt.length > 0) {
         notify(ar ? '⚠️ تم تسجيل دخولك مسبقاً اليوم' : '⚠️ Already checked in today', 'error');
-        updateAttendBtn(todayAtt[0]); closeModal('selfie-modal'); return;
+        updateAttendBtn(todayAtt[0]);
+        closeModal('selfie-modal');
+        return;
       }
-      const dow = now.getDay(), { start: shiftStart } = _getShiftTimes(currentUser.shift || 'morning', dow);
+
+      const dow = now.getDay();
+      const { start: shiftStart } = _getShiftTimes(currentUser.shift || 'morning', dow);
       const [wh, wm] = shiftStart.split(':').map(Number), [ah, am] = timeStr.split(':').map(Number);
       const lateMin = Math.max(0, (ah * 60 + am) - (wh * 60 + wm));
-      const localRecord = { employee_id: currentUser.id, date: today, check_in: timeStr, check_out: null, late_minutes: lateMin, selfie_in: capturedPhoto, location_lat: capturedLocation?.lat, location_lng: capturedLocation?.lng };
+      const localRecord = {
+        employee_id: currentUser.id, date: today, check_in: timeStr,
+        check_out: null, late_minutes: lateMin, selfie_in: capturedPhoto,
+        location_lat: capturedLocation?.lat, location_lng: capturedLocation?.lng
+      };
+
       try {
         await dbPost('attendance', localRecord);
         notify(ar ? 'تم تسجيل الدخول ✅' : 'Checked in ✅', 'success');
         updateAttendBtn(localRecord);
       } catch (postErr) {
+        // معالجة 409 Conflict
         if (postErr && postErr.status === 409) {
           notify(ar ? '⚠️ تم تسجيل دخولك مسبقاً اليوم' : '⚠️ Already checked in today', 'error');
-          _invalidateAllCaches('attendance');
           const fresh = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`).catch(() => []);
           updateAttendBtn(fresh && fresh.length > 0 ? fresh[0] : localRecord);
-          closeModal('selfie-modal'); return;
+          closeModal('selfie-modal');
+          return;
         }
         throw postErr;
       }
+
     } else {
       if (todayAtt && todayAtt.length > 0) {
-        await dbPatch('attendance', { check_out: timeStr, selfie_out: capturedPhoto }, `?employee_id=eq.${currentUser.id}&date=eq.${today}`);
+        await dbPatch('attendance', { check_out: timeStr, selfie_out: capturedPhoto },
+          `?employee_id=eq.${currentUser.id}&date=eq.${today}`);
         notify(ar ? 'تم تسجيل الخروج ✅' : 'Checked out ✅', 'success');
         updateAttendBtn({ ...todayAtt[0], check_out: timeStr, selfie_out: capturedPhoto });
       } else {
         notify(ar ? '⚠️ لم يتم تسجيل دخولك اليوم بعد!' : '⚠️ No check-in found for today!', 'error');
-        closeModal('selfie-modal'); return;
+        closeModal('selfie-modal');
+        return;
       }
     }
-    _invalidateAllCaches('attendance'); closeModal('selfie-modal');
-    setTimeout(() => { _invalidateAllCaches('attendance'); loadEmpData(); }, 800);
-  } catch (e) { console.error('[confirmAttendance]', e); notify((ar ? 'خطأ: ' : 'Error: ') + e.message, 'error');
-  } finally { _attendSubmitting = false; if (confirmBtn) confirmBtn.disabled = false; }
+
+    closeModal('selfie-modal');
+    setTimeout(() => loadEmpData(), 800);
+
+  } catch (e) {
+    console.error('[confirmAttendance]', e);
+    notify((ar ? 'خطأ: ' : 'Error: ') + e.message, 'error');
+  } finally {
+    _attendSubmitting = false;
+    if (confirmBtn) confirmBtn.disabled = false;
+  }
 }

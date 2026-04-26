@@ -1,15 +1,21 @@
 // ═══════════════════════════════════════════════════════════
-// modules/attendance.js — FINAL WORKING VERSION
+// modules/attendance.js — FINAL FIX (state-based)
 // ═══════════════════════════════════════════════════════════
-// الفلسفة: نقرأ من السرفر مباشرة بدون أي كاش، ونحدّث الزرار
-// فوراً بعد كل عملية، ونتأكد منه عند كل visibility change.
+// المشكلة: applyLang() بتعيد قراءة data-ar/data-en من HTML الأصلي
+// وبترجع الزرار لـ "تسجيل دخول" بعد ما حدثناه.
+//
+// الحل: نحتفظ بحالة الزرار في window._lastAttRecord ونعيد
+// تطبيقها بعد أي تغيير لغة أو بعد أي visibility change.
 // ═══════════════════════════════════════════════════════════
 
 const _SB_URL = 'https://lmszelfnosejdemxhodm.supabase.co';
 const _SB_KEY = 'sb_publishable_HCOQxXf5sEyulaPkqlSEzg_IK7elCQb';
 
+// ✅ State: آخر سجل حضور معروف للموظف اليوم
+window._lastAttRecord = window._lastAttRecord || null;
+
 // ═══════════════════════════════════════════════════════════
-// ✅ Direct fetch - bypasses ALL caches (no service worker, no _cache, no module cache)
+// Direct fetch — bypasses ALL caches
 // ═══════════════════════════════════════════════════════════
 async function _attFetchToday(empId) {
   if (!empId) return [];
@@ -24,13 +30,9 @@ async function _attFetchToday(empId) {
         Authorization: 'Bearer ' + _SB_KEY,
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         Pragma: 'no-cache',
-        'X-Requested-At': String(Date.now()),
       },
     });
-    if (!res.ok) {
-      console.error('[_attFetchToday] HTTP', res.status);
-      return [];
-    }
+    if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data) ? data : [];
   } catch (e) {
@@ -157,22 +159,33 @@ function _ensureShiftInfoEl() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// ✅ updateAttendBtn — يحدّث الزرار (يحافظ على SVG icon)
+// ✅ updateAttendBtn — يحدث الزرار + يحدث data-ar/data-en
+// ═══════════════════════════════════════════════════════════
+//
+// المهم هنا: نحدث attribute data-ar و data-en كمان
+// عشان لما applyLang() تتنادي بعدين، تقرا القيم الجديدة
+// مش الافتراضية في HTML.
 // ═══════════════════════════════════════════════════════════
 function updateAttendBtn(record) {
   const btn = document.getElementById('attend-btn');
   const status = document.getElementById('attend-status');
   if (!btn) return;
+
+  // ✅ احفظ السجل في الـ state
+  window._lastAttRecord = record || null;
+
   const ar = currentLang === 'ar';
   const labelEl = btn.querySelector('.attend-label');
 
   // ✅ State 1: مسجل دخول، لسه ما خرجش
   if (record && record.check_in && !record.check_out) {
     btn.classList.add('checked-in');
+    btn.classList.remove('attend-done');
     if (labelEl) {
-      labelEl.textContent = ar ? 'تسجيل خروج' : 'Check Out';
+      // ✅ KEY FIX: حدث data attributes كمان
       labelEl.setAttribute('data-ar', 'تسجيل خروج');
       labelEl.setAttribute('data-en', 'Check Out');
+      labelEl.textContent = ar ? 'تسجيل خروج' : 'Check Out';
     }
     btn.onclick = handleAttendClick;
     btn.style.pointerEvents = '';
@@ -180,15 +193,15 @@ function updateAttendBtn(record) {
     return;
   }
 
-  // ✅ State 2: مسجل دخول وخروج (تم)
+  // ✅ State 2: مسجل دخول وخروج
   if (record && record.check_in && record.check_out) {
     _clearWorkCountdown();
     btn.classList.remove('checked-in');
     btn.classList.add('attend-done');
     if (labelEl) {
-      labelEl.textContent = ar ? 'تم اليوم' : 'Done';
       labelEl.setAttribute('data-ar', 'تم اليوم');
       labelEl.setAttribute('data-en', 'Done');
+      labelEl.textContent = ar ? 'تم اليوم' : 'Done';
     }
     btn.onclick = () => notify(ar ? '✅ تم تسجيل الحضور والانصراف اليوم' : '✅ Attendance complete for today', 'info');
     btn.style.pointerEvents = '';
@@ -199,44 +212,84 @@ function updateAttendBtn(record) {
         checkOutLabel: _to12HourLabel(record.check_out),
       });
     } else if (status) {
-      status.textContent = `${ar ? 'دخول' : 'In'}: ${_to12HourLabel(record.check_in)} – ${ar ? 'خروج' : 'Out'}: ${_to12HourLabel(record.check_out)}`;
+      const txt = `${ar ? 'دخول' : 'In'}: ${_to12HourLabel(record.check_in)} – ${ar ? 'خروج' : 'Out'}: ${_to12HourLabel(record.check_out)}`;
+      status.removeAttribute('data-ar');
+      status.removeAttribute('data-en');
+      status.textContent = txt;
     }
     return;
   }
 
-  // ✅ State 3: لا يوجد سجل — افتراضي "تسجيل دخول"
+  // ✅ State 3: لا يوجد سجل — افتراضي
   _clearWorkCountdown();
   btn.classList.remove('checked-in', 'attend-done');
   if (labelEl) {
-    labelEl.textContent = ar ? 'تسجيل دخول' : 'Check In';
     labelEl.setAttribute('data-ar', 'تسجيل دخول');
     labelEl.setAttribute('data-en', 'Check In');
+    labelEl.textContent = ar ? 'تسجيل دخول' : 'Check In';
   }
   btn.onclick = handleAttendClick;
   btn.style.pointerEvents = '';
   if (window.AttendanceUI?.setAttendStatus) {
     window.AttendanceUI.setAttendStatus({ mode: 'none', isArabic: ar });
   } else if (status) {
+    status.setAttribute('data-ar', 'لم يتم تسجيل حضور اليوم');
+    status.setAttribute('data-en', 'No attendance recorded today');
     status.textContent = ar ? 'لم يتم تسجيل حضور اليوم' : 'No attendance recorded today';
   }
 }
 
 // ═══════════════════════════════════════════════════════════
-// ✅ Refresh attendance state from server — used everywhere
+// ✅ Refresh attendance — يجيب من السرفر ويحدث الزرار
 // ═══════════════════════════════════════════════════════════
 async function _refreshAttendanceState() {
-  if (!currentUser || currentUser.role !== 'employee') return;
+  if (!currentUser || currentUser.role !== 'employee') return null;
   const today = await _attFetchToday(currentUser.id);
-  updateAttendBtn(today.length > 0 ? today[0] : null);
+  const record = today.length > 0 ? today[0] : null;
+  updateAttendBtn(record);
+  return record;
 }
 
 // ═══════════════════════════════════════════════════════════
-// ✅ loadEmpData — يستخدم direct fetch للحضور
+// ✅ KEY FIX: يعيد تطبيق آخر حالة معروفة للزرار
+// يتنادي عند:
+//   - بعد applyLang() (لما اللغة تتغير)
+//   - بعد ما الـ DOM يتعدل
+// ═══════════════════════════════════════════════════════════
+function _reapplyAttendButton() {
+  if (window._lastAttRecord !== undefined) {
+    updateAttendBtn(window._lastAttRecord);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// ✅ Wrap applyLang to re-apply the attendance button after language change
+// ═══════════════════════════════════════════════════════════
+(function _wrapApplyLang() {
+  if (window._applyLangWrapped) return;
+  window._applyLangWrapped = true;
+
+  const orig = window.applyLang;
+  if (typeof orig !== 'function') return;
+
+  window.applyLang = function () {
+    const result = orig.apply(this, arguments);
+    // بعد ما applyLang تخلص، نعيد تطبيق حالة زرار الحضور
+    setTimeout(() => {
+      if (window.currentUser && window.currentUser.role === 'employee') {
+        _reapplyAttendButton();
+      }
+    }, 0);
+    return result;
+  };
+})();
+
+// ═══════════════════════════════════════════════════════════
+// loadEmpData
 // ═══════════════════════════════════════════════════════════
 async function loadEmpData() {
   if (!currentUser) return;
   try {
-    // ✅ الحضور أهم حاجة — اقراها أول
     await _refreshAttendanceState();
 
     const pm = getPayrollMonth();
@@ -281,13 +334,16 @@ async function loadEmpData() {
       if (window.AttendanceUI?.setShiftInfo) window.AttendanceUI.setShiftInfo(ar ? labelAr : labelEn);
       else shiftInfoEl.textContent = ar ? labelAr : labelEn;
     }
+
+    // ✅ تأكيد نهائي: أعد تطبيق حالة الزرار
+    _reapplyAttendButton();
   } catch (e) {
     console.error('[loadEmpData]', e);
   }
 }
 
 // ═══════════════════════════════════════════════════════════
-// handleAttendClick — يفتح الكاميرا
+// handleAttendClick
 // ═══════════════════════════════════════════════════════════
 function handleAttendClick() {
   const btn = document.getElementById('attend-btn');
@@ -328,7 +384,7 @@ function handleAttendClick() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// renderAttendHistory + loadEmpWarnings + loadEmpDailyLog + loadEmpMonthlyReport
+// History & Reports
 // ═══════════════════════════════════════════════════════════
 function renderAttendHistory(records) {
   if (window.AttendanceUI?.renderAttendHistory) {
@@ -443,7 +499,7 @@ function capturePhoto() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// ✅ confirmAttendance — direct fetch + immediate update + 409 handling
+// confirmAttendance
 // ═══════════════════════════════════════════════════════════
 let _attendSubmitting = false;
 
@@ -459,11 +515,9 @@ async function confirmAttendance() {
   const ar = currentLang === 'ar';
 
   try {
-    // ✅ اقرأ السجل الحالي مباشرة من السرفر
     const todayAtt = await _attFetchToday(currentUser.id);
 
     if (attendMode === 'in') {
-      // ✅ لو فيه سجل أصلاً، لا نعمل POST تاني
       if (todayAtt.length > 0) {
         notify(ar ? '⚠️ تم تسجيل دخولك مسبقاً اليوم' : '⚠️ Already checked in today', 'error');
         updateAttendBtn(todayAtt[0]);
@@ -491,10 +545,8 @@ async function confirmAttendance() {
         const result = await _attPostCheckIn(newRecord);
         const savedRecord = Array.isArray(result) && result[0] ? result[0] : newRecord;
         notify(ar ? 'تم تسجيل الدخول ✅' : 'Checked in ✅', 'success');
-        // ✅ حدّث الزرار فوراً بالسجل المحفوظ
         updateAttendBtn(savedRecord);
       } catch (postErr) {
-        // ✅ معالجة 409 — السجل موجود بالفعل
         if (postErr.status === 409) {
           notify(ar ? '⚠️ تم تسجيل دخولك مسبقاً اليوم' : '⚠️ Already checked in today', 'error');
           const fresh = await _attFetchToday(currentUser.id);
@@ -507,7 +559,6 @@ async function confirmAttendance() {
       closeModal('selfie-modal');
 
     } else {
-      // ✅ تسجيل خروج
       if (todayAtt.length === 0) {
         notify(ar ? '⚠️ لم يتم تسجيل دخولك اليوم بعد!' : '⚠️ No check-in found for today!', 'error');
         closeModal('selfie-modal');
@@ -528,7 +579,6 @@ async function confirmAttendance() {
       closeModal('selfie-modal');
     }
 
-    // ✅ تحديث الإحصائيات في الخلفية
     setTimeout(() => loadEmpData(), 1000);
 
   } catch (e) {
@@ -541,19 +591,16 @@ async function confirmAttendance() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// ✅ Auto-refresh الزرار عند:
-//   - فتح التطبيق من جديد (visibilitychange)
-//   - الرجوع لتاب التطبيق (focus)
-//   - استعادة الصفحة من الـ bfcache (pageshow)
+// ✅ Auto-refresh on visibility change
 // ═══════════════════════════════════════════════════════════
 (function _setupAutoRefresh() {
   if (window.__attRefreshSetup) return;
   window.__attRefreshSetup = true;
 
   let _lastRefresh = 0;
-  const _MIN_INTERVAL = 1000; // مرة كل ثانية على الأكثر
+  const _MIN_INTERVAL = 1000;
 
-  async function _maybeRefresh(reason) {
+  async function _maybeRefresh() {
     const now = Date.now();
     if (now - _lastRefresh < _MIN_INTERVAL) return;
     _lastRefresh = now;
@@ -561,7 +608,6 @@ async function confirmAttendance() {
     if (!window.currentUser || window.currentUser.role !== 'employee') return;
     if (document.visibilityState === 'hidden') return;
 
-    // تأكد إن صفحة الموظف مفتوحة (مش admin أو login)
     const empApp = document.getElementById('emp-app');
     if (!empApp || getComputedStyle(empApp).display === 'none') return;
 
@@ -573,16 +619,14 @@ async function confirmAttendance() {
   }
 
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') _maybeRefresh('visibility');
+    if (document.visibilityState === 'visible') _maybeRefresh();
   });
-  window.addEventListener('focus', () => _maybeRefresh('focus'));
+  window.addEventListener('focus', _maybeRefresh);
   window.addEventListener('pageshow', (e) => {
-    if (e.persisted) _maybeRefresh('pageshow-bfcache');
+    if (e.persisted) _maybeRefresh();
   });
 
-  // كمان لو الزرار اتركب جديد في الـ DOM، نتأكد من حالته
-  // (مفيد لو فيه navigation داخل التطبيق)
   document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => _maybeRefresh('initial'), 500);
+    setTimeout(_maybeRefresh, 500);
   });
 })();

@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════
-// core/fallbacks.js — Early boot shims (load order: before app.js)
-// ✅ FINAL FIX: expose _cacheInvalidate on window
+// core/fallbacks.js — Early boot shims
+// ✅ FINAL FIX: attendance/sales NEVER cached — always fresh
 // ═══════════════════════════════════════════════════════════
 
 const _SUPABASE_URL = 'https://lmszelfnosejdemxhodm.supabase.co';
@@ -17,19 +17,37 @@ if (typeof window.dbGet !== 'function') {
     'Content-Type': 'application/json',
   };
 
+  // ✅ KEY FIX: Tables that should NEVER be cached
+  // الحضور والمبيعات بيتغيروا كتير، الكاش بيسبب bugs
+  var _NO_CACHE_TABLES = ['attendance', 'sales', 'leave_requests', 'warnings'];
+
   var _cache = {};
   var _CACHE_TTL = 30000;
 
-  function _cacheKey(table, q) { return table + '|' + (q || ''); }
-  function _cacheGet(table, q) { var k = _cacheKey(table, q); var entry = _cache[k]; if (!entry) return null; if (Date.now() - entry.t > _CACHE_TTL) { delete _cache[k]; return null; } return entry.v; }
-  function _cacheSet(table, q, v) { _cache[_cacheKey(table, q)] = { v: v, t: Date.now() }; }
-  function _cacheInvalidate(table) {
-    Object.keys(_cache).forEach(function(k) { if (k.indexOf(table + '|') === 0) delete _cache[k]; });
-    if (typeof window.invalidateCache === 'function') { try { window.invalidateCache(table); } catch(_) {} }
+  function _isCacheable(table) {
+    return _NO_CACHE_TABLES.indexOf(table) === -1;
   }
 
-  // ✅ KEY FIX: expose cache invalidation on window
-  // so attendance.js (and other classic scripts) can call it
+  function _cacheKey(table, q) { return table + '|' + (q || ''); }
+  function _cacheGet(table, q) {
+    if (!_isCacheable(table)) return null;
+    var k = _cacheKey(table, q);
+    var entry = _cache[k];
+    if (!entry) return null;
+    if (Date.now() - entry.t > _CACHE_TTL) { delete _cache[k]; return null; }
+    return entry.v;
+  }
+  function _cacheSet(table, q, v) {
+    if (!_isCacheable(table)) return;
+    _cache[_cacheKey(table, q)] = { v: v, t: Date.now() };
+  }
+  function _cacheInvalidate(table) {
+    Object.keys(_cache).forEach(function(k) { if (k.indexOf(table + '|') === 0) delete _cache[k]; });
+    if (typeof window.invalidateCache === 'function') {
+      try { window.invalidateCache(table); } catch(_) {}
+    }
+  }
+
   window._cacheInvalidate = _cacheInvalidate;
   window._cacheClear = function() { _cache = {}; };
 
@@ -37,28 +55,45 @@ if (typeof window.dbGet !== 'function') {
     q = q || '';
     var cached = _cacheGet(table, q);
     if (cached !== null) return cached;
-    var res = await fetch(_SUPABASE_URL + '/rest/v1/' + table + q, { headers: _hdr });
-    if (!res.ok) throw new Error('DB GET failed ' + res.status);
+
+    // ✅ FIX: Add cache-busting param for no-cache tables to bypass any HTTP/SW cache
+    var url = _SUPABASE_URL + '/rest/v1/' + table + q;
+    var fetchOpts = { headers: _hdr };
+    if (!_isCacheable(table)) {
+      // إضافة timestamp للـ URL لو الجدول حساس — يمنع أي layer يكاش الـ response
+      url += (q.indexOf('?') >= 0 ? '&' : '?') + '_t=' + Date.now();
+      fetchOpts.cache = 'no-store';
+    }
+
+    var res = await fetch(url, fetchOpts);
+    if (!res.ok) {
+      var err = new Error('DB GET ' + table + ' failed (' + res.status + ')');
+      err.status = res.status;
+      throw err;
+    }
     var data = await res.json();
     _cacheSet(table, q, data);
     return data;
   };
+
   window.dbPost = async function (table, body) {
     var res = await fetch(_SUPABASE_URL + '/rest/v1/' + table, {
       method: 'POST',
       headers: Object.assign({}, _hdr, { Prefer: 'return=representation' }),
       body: JSON.stringify(body),
+      cache: 'no-store',
     });
     if (!res.ok) {
       var err = new Error('DB POST ' + table + ' failed (' + res.status + ')');
       err.status = res.status;
+      try { err.detail = await res.text(); } catch(_) {}
       throw err;
     }
     _cacheInvalidate(table);
     return res.json();
   };
+
   window.dbPatch = async function (table, bodyOrQuery, queryOrBody) {
-    // ✅ FIX: handle both call orders
     var query, body;
     if (typeof bodyOrQuery === 'string') { query = bodyOrQuery; body = queryOrBody; }
     else { body = bodyOrQuery; query = queryOrBody || ''; }
@@ -66,6 +101,7 @@ if (typeof window.dbGet !== 'function') {
       method: 'PATCH',
       headers: Object.assign({}, _hdr, { Prefer: 'return=representation' }),
       body: JSON.stringify(body),
+      cache: 'no-store',
     });
     if (!res.ok) {
       var err = new Error('DB PATCH ' + table + ' failed (' + res.status + ')');
@@ -75,8 +111,11 @@ if (typeof window.dbGet !== 'function') {
     _cacheInvalidate(table);
     return res.status === 204 ? null : res.json();
   };
+
   window.dbDel = async function (table, query) {
-    var res = await fetch(_SUPABASE_URL + '/rest/v1/' + table + (query || ''), { method: 'DELETE', headers: _hdr });
+    var res = await fetch(_SUPABASE_URL + '/rest/v1/' + table + (query || ''), {
+      method: 'DELETE', headers: _hdr, cache: 'no-store'
+    });
     if (!res.ok) throw new Error('DB DELETE failed ' + res.status);
     _cacheInvalidate(table);
     return null;

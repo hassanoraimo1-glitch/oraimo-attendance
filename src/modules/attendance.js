@@ -1,7 +1,40 @@
 // ═══════════════════════════════════════════════════════════
-// modules/attendance.js — FINAL FIX
-// ✅ يعتمد على إن fallbacks.js مش بيكاش جدول الحضور
+// modules/attendance.js — FINAL FIX v6
+// ✅ console logs for debugging
+// ✅ retry on initial load if first GET returns empty
+// ✅ direct fetch bypassing all caches for critical reads
 // ═══════════════════════════════════════════════════════════
+
+const _SUPABASE_URL_ATT = 'https://lmszelfnosejdemxhodm.supabase.co';
+const _SUPABASE_KEY_ATT = 'sb_publishable_HCOQxXf5sEyulaPkqlSEzg_IK7elCQb';
+
+// ✅ Direct fetch — bypasses dbGet entirely. الحل النهائي للكاش
+async function _fetchTodayAttDirect(empId) {
+  const today = todayStr();
+  const url = `${_SUPABASE_URL_ATT}/rest/v1/attendance?employee_id=eq.${empId}&date=eq.${today}&select=*&_t=${Date.now()}`;
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        apikey: _SUPABASE_KEY_ATT,
+        Authorization: 'Bearer ' + _SUPABASE_KEY_ATT,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+      },
+      cache: 'no-store',
+    });
+    if (!res.ok) {
+      console.error('[_fetchTodayAttDirect] HTTP', res.status);
+      return [];
+    }
+    const data = await res.json();
+    console.log('[_fetchTodayAttDirect] result:', data);
+    return data || [];
+  } catch (e) {
+    console.error('[_fetchTodayAttDirect] error:', e);
+    return [];
+  }
+}
 
 function _getShiftTimes(shift, dayOfWeek) {
   const isThurFri = (dayOfWeek === 4 || dayOfWeek === 5);
@@ -50,15 +83,20 @@ function _ensureShiftInfoEl() {
   btn.parentNode.insertBefore(el, btn); return el;
 }
 
+// ═══════════════════════════════════════════════════════════
+// ✅ KEY FIX: loadEmpData uses direct fetch for today's attendance
+// كده الكاش مش هيخدع الموظف أبداً
+// ═══════════════════════════════════════════════════════════
 async function loadEmpData() {
   if (!currentUser) return;
+  console.log('[loadEmpData] start, user:', currentUser.id);
   try {
-    const today = todayStr(), pm = getPayrollMonth();
-
-    // ✅ الحضور غير قابل للكاش الآن في fallbacks.js — كل GET بيروح للسرفر
-    const todayAtt = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`).catch(() => []);
+    // ✅ Direct fetch — bypasses all caches
+    const todayAtt = await _fetchTodayAttDirect(currentUser.id);
+    console.log('[loadEmpData] todayAtt:', todayAtt);
     updateAttendBtn(todayAtt && todayAtt.length > 0 ? todayAtt[0] : null);
 
+    const pm = getPayrollMonth();
     const [monthAtt, monthSales] = await Promise.all([
       dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`).catch(() => []),
       dbGet('sales', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`).catch(() => [])
@@ -85,11 +123,27 @@ async function loadEmpData() {
     if (typeof loadTodaySales === 'function') loadTodaySales();
     const shiftInfoEl = _ensureShiftInfoEl();
     if (shiftInfoEl) { const ar = currentLang === 'ar', dow = new Date().getDay(), shift = currentUser.shift || 'morning'; const { labelAr, labelEn } = _getShiftTimes(shift, dow); if (window.AttendanceUI?.setShiftInfo) window.AttendanceUI.setShiftInfo(ar ? labelAr : labelEn); else shiftInfoEl.textContent = ar ? labelAr : labelEn; }
+
+    // ✅ SAFETY NET: re-check after 2 seconds in case the first fetch was racing with login
+    setTimeout(async () => {
+      const recheck = await _fetchTodayAttDirect(currentUser.id);
+      console.log('[loadEmpData recheck] todayAtt:', recheck);
+      if (recheck && recheck.length > 0) {
+        const btn = document.getElementById('attend-btn');
+        const iconEl = btn?.querySelector('.attend-icon');
+        // لو الزرار لسه أخضر مع إن فيه سجل → حدّث
+        if (iconEl && iconEl.textContent === '🟢') {
+          console.warn('[loadEmpData] Button still green but record exists — fixing!');
+          updateAttendBtn(recheck[0]);
+        }
+      }
+    }, 2000);
   } catch (e) { console.error('[loadEmpData]', e); }
 }
 
 function updateAttendBtn(record) {
   const btn = document.getElementById('attend-btn'), status = document.getElementById('attend-status'); if (!btn) return;
+  console.log('[updateAttendBtn] record:', record);
   const ar = currentLang === 'ar', iconEl = btn.querySelector('.attend-icon'), labelEl = btn.querySelector('.attend-label');
   if (record && record.check_in && !record.check_out) {
     btn.classList.add('checked-in');
@@ -138,6 +192,31 @@ async function loadEmpDailyLog() { const pm = getPayrollMonth(), ar = currentLan
 async function loadEmpMonthlyReport() { const pm = getPayrollMonth(), ar = currentLang === 'ar'; const [att, sales] = await Promise.all([dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`).catch(() => []), dbGet('sales', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`).catch(() => [])]); let salesTotal = 0; (sales || []).forEach(s => salesTotal += s.total_amount); let lateTotal = 0; (att || []).forEach(a => lateTotal += (a.late_minutes || 0)); if (window.AttendanceUI?.renderMonthlyReport) { window.AttendanceUI.renderMonthlyReport({ isArabic: ar, payrollLabel: pm.label, attendanceCount: (att || []).length, lateTotal, salesTotal, transactionsCount: (sales || []).length }); return; } const el = document.getElementById('monthly-report-emp'); if (!el) return; el.innerHTML = ''; }
 
 // ═══════════════════════════════════════════════════════════
+// ✅ Refresh on tab focus / visibility change
+// لو الموظف خرج من التطبيق ورجع، نعيد تحميل الحضور
+// ═══════════════════════════════════════════════════════════
+(function _setupAttendanceRefresh() {
+  if (window._attendanceRefreshSetup) return;
+  window._attendanceRefreshSetup = true;
+
+  const refresh = async () => {
+    if (!window.currentUser || window.currentUser.role !== 'employee') return;
+    if (document.visibilityState === 'hidden') return;
+    console.log('[attendance] tab visible — refreshing');
+    const att = await _fetchTodayAttDirect(window.currentUser.id);
+    if (att && att.length > 0) {
+      updateAttendBtn(att[0]);
+    } else {
+      updateAttendBtn(null);
+    }
+  };
+
+  document.addEventListener('visibilitychange', refresh);
+  window.addEventListener('focus', refresh);
+  window.addEventListener('pageshow', refresh);
+})();
+
+// ═══════════════════════════════════════════════════════════
 // CAMERA
 // ═══════════════════════════════════════════════════════════
 async function openCamera() { try { videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'user' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }); const v = document.getElementById('video'); v.srcObject = videoStream; v.setAttribute('playsinline', ''); v.setAttribute('autoplay', ''); v.muted = true; await v.play().catch(() => {}); document.getElementById('camera-modal').classList.add('open'); } catch (e) { try { videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); const v = document.getElementById('video'); v.srcObject = videoStream; v.setAttribute('playsinline', ''); v.muted = true; await v.play().catch(() => {}); document.getElementById('camera-modal').classList.add('open'); } catch (e2) { notify((currentLang === 'ar' ? '❌ خطأ في الكاميرا: ' : '❌ Camera error: ') + e2.message, 'error'); } } }
@@ -145,7 +224,7 @@ function closeCamera() { if (videoStream) { videoStream.getTracks().forEach(t =>
 function capturePhoto() { const v = document.getElementById('video'), c = document.getElementById('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; const ctx = c.getContext('2d'); ctx.translate(c.width, 0); ctx.scale(-1, 1); ctx.drawImage(v, 0, 0); capturedPhoto = c.toDataURL('image/jpeg', 0.65); closeCamera(); document.getElementById('selfie-preview-img').src = capturedPhoto; document.getElementById('selfie-modal').classList.add('open'); document.getElementById('confirm-attend-btn').disabled = false; const ar = currentLang === 'ar', ls = document.getElementById('location-status'); if (ls) { if (capturedLocation) ls.innerHTML = `✅ ${ar ? 'تم تحديد الموقع' : 'Location found'} — <a href="https://maps.google.com/?q=${capturedLocation.lat},${capturedLocation.lng}" target="_blank" style="color:var(--green)">${ar ? 'عرض' : 'View'}</a>`; else ls.textContent = ar ? '⚠️ لم يتم تحديد الموقع' : '⚠️ Location unavailable'; } }
 
 // ═══════════════════════════════════════════════════════════
-// confirmAttendance — مع معالجة 409 + تحديث فوري
+// ✅ confirmAttendance — uses direct fetch + handles 409
 // ═══════════════════════════════════════════════════════════
 let _attendSubmitting = false;
 
@@ -160,8 +239,9 @@ async function confirmAttendance() {
   const ar = currentLang === 'ar';
 
   try {
-    // ✅ GET بيروح للسرفر مباشرة لأن جدول الحضور غير قابل للكاش
-    const todayAtt = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`).catch(() => []);
+    // ✅ Direct fetch — 100% guaranteed fresh
+    const todayAtt = await _fetchTodayAttDirect(currentUser.id);
+    console.log('[confirmAttendance] todayAtt:', todayAtt);
 
     if (attendMode === 'in') {
       if (todayAtt && todayAtt.length > 0) {
@@ -186,10 +266,9 @@ async function confirmAttendance() {
         notify(ar ? 'تم تسجيل الدخول ✅' : 'Checked in ✅', 'success');
         updateAttendBtn(localRecord);
       } catch (postErr) {
-        // معالجة 409 Conflict
-        if (postErr && postErr.status === 409) {
+        if (postErr && (postErr.status === 409 || (postErr.message || '').includes('409'))) {
           notify(ar ? '⚠️ تم تسجيل دخولك مسبقاً اليوم' : '⚠️ Already checked in today', 'error');
-          const fresh = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`).catch(() => []);
+          const fresh = await _fetchTodayAttDirect(currentUser.id);
           updateAttendBtn(fresh && fresh.length > 0 ? fresh[0] : localRecord);
           closeModal('selfie-modal');
           return;

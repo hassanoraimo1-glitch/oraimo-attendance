@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════
 // modules/attendance.js — Attendance, selfie, camera, daily log
-// ✅ FINAL FIX v2: تحديث الزرار فوراً + invalidate كل الكاشات
+// ✅ FINAL FIX v3: handles 409 conflict + immediate button update
 // ═══════════════════════════════════════════════════════════
 
 function _getShiftTimes(shift, dayOfWeek) {
@@ -43,8 +43,7 @@ function _startWorkCountdown(checkInHHMM, lateMinutes = 0) {
     else status.textContent = `${currentLang === 'ar' ? 'دخل الساعة' : 'In at'} ${_to12HourLabel(checkInHHMM)}`;
     return;
   }
-  const baseInMin = inH * 60 + inM;
-  const shiftSeconds = 8 * 60 * 60;
+  const baseInMin = inH * 60 + inM, shiftSeconds = 8 * 60 * 60;
   const render = () => {
     const ar = currentLang === 'ar', now = new Date();
     const nowSec = (now.getHours() * 60 + now.getMinutes()) * 60 + now.getSeconds();
@@ -75,18 +74,21 @@ function _ensureShiftInfoEl() {
 
 // ✅ Helper: invalidate ALL caches — ES module + fallback shim
 function _invalidateAllCaches(table) {
-  // ES module cache (supabase.js)
   if (typeof invalidateCache === 'function') try { invalidateCache(table); } catch (_) {}
-  // Also exposed on window by app.js
   if (typeof window.invalidateCache === 'function') try { window.invalidateCache(table); } catch (_) {}
-  // Fallback shim cache (fallbacks.js) — uses _cache object
   if (typeof _cacheInvalidate === 'function') try { _cacheInvalidate(table); } catch (_) {}
-  // Fallback shim uses a global _cache map
   if (typeof _cache === 'object' && _cache) {
-    Object.keys(_cache).forEach(function (k) {
-      if (k.indexOf(table + '|') === 0) delete _cache[k];
-    });
+    Object.keys(_cache).forEach(function (k) { if (k.indexOf(table + '|') === 0) delete _cache[k]; });
   }
+}
+
+// ✅ Helper: fetch today's record fresh (bypass all caches)
+async function _fetchTodayAttFresh() {
+  const today = todayStr();
+  _invalidateAllCaches('attendance');
+  // Small delay to let cache invalidation propagate
+  await new Promise(r => setTimeout(r, 100));
+  return dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`).catch(() => []);
 }
 
 async function loadEmpData() {
@@ -252,17 +254,13 @@ function capturePhoto() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// ✅ FINAL FIX: confirmAttendance
+// ✅ FINAL FIX v3: confirmAttendance
 //
-// المشكلة الجذرية:
-//   1. dbPost ينجح ← الحضور يتسجل في السرفر ✓
-//   2. loadEmpData تتنادي ← بتعمل dbGet من الكاش
-//   3. الكاش لسه فيه [] (فاضي) ← الزرار يفضل "تسجيل دخول" ✗
-//   4. الموظف يضغط تاني ← "تم تسجيل دخولك مسبقاً" ← بس الزرار لسه أخضر!
-//
-// الحل:
-//   بعد dbPost ناجح → updateAttendBtn فوراً بالـ record المحلي
-//   بدون ما نستنى loadEmpData ترجع من السرفر
+// يعالج كل السيناريوهات:
+//   1. تسجيل دخول أول مرة → POST → تحديث الزرار فوراً
+//   2. ضغط تاني والكاش قديم → check في السرفر → لقى سجل → يحدّث الزرار
+//   3. POST يفشل بـ 409 (سجل موجود) → يجيب السجل من السرفر → يحدّث الزرار
+//   4. تسجيل خروج → PATCH → تحديث الزرار فوراً
 // ═══════════════════════════════════════════════════════════
 let _attendSubmitting = false;
 
@@ -283,9 +281,9 @@ async function confirmAttendance() {
     const todayAtt = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`).catch(() => []);
 
     if (attendMode === 'in') {
+      // ── CHECK: already checked in? ──
       if (todayAtt && todayAtt.length > 0) {
         notify(ar ? '⚠️ تم تسجيل دخولك مسبقاً اليوم' : '⚠️ Already checked in today', 'error');
-        // ✅ FIX: حدّث الزرار بالسجل الموجود فعلاً
         updateAttendBtn(todayAtt[0]);
         closeModal('selfie-modal');
         return;
@@ -296,29 +294,56 @@ async function confirmAttendance() {
       const [wh, wm] = shiftStart.split(':').map(Number), [ah, am] = timeStr.split(':').map(Number);
       const lateMin = Math.max(0, (ah * 60 + am) - (wh * 60 + wm));
 
-      await dbPost('attendance', {
-        employee_id: currentUser.id, date: today, check_in: timeStr,
-        late_minutes: lateMin, selfie_in: capturedPhoto,
-        location_lat: capturedLocation?.lat, location_lng: capturedLocation?.lng
-      });
+      try {
+        await dbPost('attendance', {
+          employee_id: currentUser.id, date: today, check_in: timeStr,
+          late_minutes: lateMin, selfie_in: capturedPhoto,
+          location_lat: capturedLocation?.lat, location_lng: capturedLocation?.lng
+        });
 
-      notify(ar ? 'تم تسجيل الدخول ✅' : 'Checked in ✅', 'success');
+        notify(ar ? 'تم تسجيل الدخول ✅' : 'Checked in ✅', 'success');
 
-      // ✅ KEY FIX: تحديث الزرار فوراً — مستنيش loadEmpData
-      updateAttendBtn({
-        employee_id: currentUser.id, date: today, check_in: timeStr,
-        check_out: null, late_minutes: lateMin, selfie_in: capturedPhoto,
-        location_lat: capturedLocation?.lat, location_lng: capturedLocation?.lng
-      });
+        // ✅ تحديث الزرار فوراً بالبيانات المحلية
+        updateAttendBtn({
+          employee_id: currentUser.id, date: today, check_in: timeStr,
+          check_out: null, late_minutes: lateMin, selfie_in: capturedPhoto,
+          location_lat: capturedLocation?.lat, location_lng: capturedLocation?.lng
+        });
+
+      } catch (postErr) {
+        // ═══════════════════════════════════════════════════
+        // ✅ KEY FIX: Handle 409 Conflict
+        // يعني فيه سجل موجود أصلاً (unique constraint)
+        // نجيب السجل من السرفر ونحدّث الزرار
+        // ═══════════════════════════════════════════════════
+        if (postErr && postErr.status === 409) {
+          console.warn('[confirmAttendance] 409 Conflict — record already exists, recovering...');
+          notify(ar ? '⚠️ تم تسجيل دخولك مسبقاً اليوم' : '⚠️ Already checked in today', 'error');
+
+          // جيب السجل الحقيقي من السرفر (bypass cache)
+          const freshAtt = await _fetchTodayAttFresh();
+          if (freshAtt && freshAtt.length > 0) {
+            updateAttendBtn(freshAtt[0]);
+          } else {
+            // Fallback: حدّث بـ record محلي على الأقل
+            updateAttendBtn({
+              employee_id: currentUser.id, date: today, check_in: timeStr,
+              check_out: null, late_minutes: lateMin
+            });
+          }
+          closeModal('selfie-modal');
+          return;
+        }
+        // أي خطأ تاني → ارميه
+        throw postErr;
+      }
 
     } else {
+      // ── CHECK OUT ──
       if (todayAtt && todayAtt.length > 0) {
         await dbPatch('attendance', { check_out: timeStr, selfie_out: capturedPhoto },
           `?employee_id=eq.${currentUser.id}&date=eq.${today}`);
-
         notify(ar ? 'تم تسجيل الخروج ✅' : 'Checked out ✅', 'success');
-
-        // ✅ KEY FIX: تحديث الزرار فوراً
         updateAttendBtn({ ...todayAtt[0], check_out: timeStr, selfie_out: capturedPhoto });
       } else {
         notify(ar ? '⚠️ لم يتم تسجيل دخولك اليوم بعد!' : '⚠️ No check-in found for today!', 'error');
@@ -327,11 +352,10 @@ async function confirmAttendance() {
       }
     }
 
-    // ✅ Invalidate after write
     _invalidateAllCaches('attendance');
     closeModal('selfie-modal');
 
-    // ✅ Background refresh for stats — الزرار اتحدّث فعلاً فوق
+    // Background refresh for stats
     setTimeout(() => { _invalidateAllCaches('attendance'); loadEmpData(); }, 800);
 
   } catch (e) {

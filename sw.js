@@ -1,7 +1,7 @@
 // Service Worker for Oraimo HR PWA
-// This handles offline caching and push notifications
+// ✅ FIXED: v17 — فرض تحديث الكاش + عدم كاش requests الـ API
 
-const CACHE_NAME = 'oraimo-hr-v16';
+const CACHE_NAME = 'oraimo-hr-v17'; // ✅ FIX: bumped من v16 عشان يفرض تحديث كل الملفات
 const urlsToCache = [
   '/',
   '/index.html',
@@ -14,7 +14,7 @@ const urlsToCache = [
 
 // Install event - cache core assets
 self.addEventListener('install', event => {
-  console.log('[SW] Install');
+  console.log('[SW] Install v17');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -30,7 +30,7 @@ self.addEventListener('install', event => {
 
 // Activate event - clean up old caches
 self.addEventListener('activate', event => {
-  console.log('[SW] Activate');
+  console.log('[SW] Activate v17');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
@@ -47,17 +47,23 @@ self.addEventListener('activate', event => {
 });
 
 // Fetch event strategy:
+// - API/external: passthrough (never cache)
 // - Navigations: network-first with cached index fallback
-// - Scripts: network-first (then update cache) so new *.js files are never stuck behind old cache
-// - Other static (style/image/font): cache-first
-// - API/external requests: passthrough
+// - Scripts: network-first (update cache on success)
+// - Other static: cache-first
 self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
   const isSameOrigin = url.origin === self.location.origin;
-  const isExternal = req.url.includes('supabase') || req.url.includes('onesignal') || req.url.includes('googleapis');
+  const isExternal = req.url.includes('supabase') || req.url.includes('onesignal') || req.url.includes('googleapis') || req.url.includes('esm.sh');
 
+  // ✅ FIX: أي request فيه supabase أو external → passthrough بدون كاش
   if (!isSameOrigin || isExternal) {
+    return;
+  }
+
+  // ✅ FIX: أي POST/PATCH/DELETE → passthrough
+  if (req.method !== 'GET') {
     return;
   }
 
@@ -84,6 +90,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // ✅ FIX: Scripts → always network-first, ثم cache fallback
   if (dest === 'script') {
     event.respondWith(
       fetch(req)
@@ -102,6 +109,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // Other static assets → cache-first
   event.respondWith(
     caches.match(req).then(cached => {
       if (cached) return cached;
@@ -114,7 +122,6 @@ self.addEventListener('fetch', event => {
         const contentType = (response.headers.get('content-type') || '').toLowerCase();
         const expectsHtml = dest === 'document';
         const gotHtml = contentType.includes('text/html');
-        // Protect against caching HTML into JS/CSS/image requests.
         if (!expectsHtml && gotHtml) return response;
 
         const responseToCache = response.clone();
@@ -165,13 +172,11 @@ self.addEventListener('notificationclick', event => {
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then(windowClients => {
-        // If a window client is already open, focus it
         for (let client of windowClients) {
           if (client.url === '/' || client.url.includes('/index.html')) {
             return client.focus();
           }
         }
-        // Otherwise open a new window
         return clients.openWindow('/');
       })
   );

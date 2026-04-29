@@ -15,38 +15,38 @@
 <link rel="manifest" href="/manifest.json">
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    await OneSignal.init({
-      appId: "f3330b43-2859-4fe3-9236-0d9dd40fddb7",
-      serviceWorkerParam: { scope: "/" },
-      serviceWorkerPath: "OneSignalSDK.sw.js",
-      notifyButton: { enable: false },
-      promptOptions: {
-        slidedown: {
-          prompts: [{
-            type: "push",
-            autoPrompt: true,
-            text: {
-              actionMessage: "اسمح بالإشعارات لتلقي الرسائل",
-              acceptButton: "اسمح",
-              cancelButton: "لا"
-            },
-            delay: { pageViews: 1, timeDelay: 3 }
-          }]
-        }
-      }
-    });
-  });
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function(OneSignal) {
+await OneSignal.init({
+appId: "f3330b43-2859-4fe3-9236-0d9dd40fddb7",
+serviceWorkerParam: { scope: "/" },
+serviceWorkerPath: "OneSignalSDK.sw.js",
+notifyButton: { enable: false },
+promptOptions: {
+slidedown: {
+prompts: [{
+type: "push",
+autoPrompt: true,
+text: {
+actionMessage: "اسمح بالإشعارات لتلقي الرسائل",
+acceptButton: "اسمح",
+cancelButton: "لا"
+},
+delay: { pageViews: 1, timeDelay: 3 }
+}]
+}
+}
+});
+});
 </script>
 <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then(reg => console.log('التطبيق جاهز للعمل'))
-        .catch(err => console.log('فشل تسجيل الخدمة', err));
-    });
-  }
+if ('serviceWorker' in navigator) {
+window.addEventListener('load', () => {
+navigator.serviceWorker.register('/sw.js')
+.then(reg => console.log('التطبيق جاهز للعمل'))
+.catch(err => console.log('فشل تسجيل الخدمة', err));
+});
+}
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./src/styles/main.css">
@@ -55,925 +55,881 @@
 
 <!-- ORAIMO BACKGROUND -->
 <div class="oraimo-bg">
-  <div class="oraimo-bg-dots"></div>
-  <div class="oraimo-corner tl">O</div>
-  <div class="oraimo-corner br">O</div>
+<div class="oraimo-bg-dots"></div>
+<div class="oraimo-corner tl">O</div>
+<div class="oraimo-corner br">O</div>
 </div>
 
 <!-- SPLASH -->
 <div id="splash">
-  <div class="oraimo-bg"><div class="oraimo-bg-dots"></div></div>
-  <div class="splash-inner">
-    <div class="splash-clock" id="splash-clock">--:--</div>
-    <div class="splash-ring">
-      <img src="/icon-512.png" style="width:92px;height:92px;border-radius:22px;object-fit:contain;position:relative;z-index:1" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
-      <div class="splash-o" style="display:none">O</div>
-    </div>
-    <div class="splash-brand">ORAIMO HR</div>
-    <div class="splash-sub" id="splash-sub">Attendance & Sales</div>
-    <div class="splash-bar"><div class="splash-fill"></div></div>
-  </div>
-  <div class="splash-tagline">POWERED BY ORAIMO</div>
+<div class="oraimo-bg"><div class="oraimo-bg-dots"></div></div>
+<div class="splash-inner">
+<div class="splash-clock" id="splash-clock">--:--</div>
+<div class="splash-ring">
+<img src="/icon-512.png" style="width:92px;height:92px;border-radius:22px;object-fit:contain;position:relative;z-index:1" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+<div class="splash-o" style="display:none">O</div>
+</div>
+<div class="splash-brand">ORAIMO HR</div>
+<div class="splash-sub" id="splash-sub">Attendance & Sales</div>
+<div class="splash-bar"><div class="splash-fill"></div></div>
+</div>
+<div class="splash-tagline">POWERED BY ORAIMO</div>
 </div>
 
 <!-- SELFIE FULLSCREEN -->
 <div id="selfie-fullscreen">
-  <span class="close-fs" onclick="document.getElementById('selfie-fullscreen').classList.remove('open')">✕</span>
-  <img id="selfie-fs-img" src="" alt="">
+<span class="close-fs" onclick="document.getElementById('selfie-fullscreen').classList.remove('open')">✕</span>
+<img id="selfie-fs-img" src="" alt="">
 </div>
 
 <!-- CAMERA -->
 <div id="camera-modal">
-  <video id="video" autoplay playsinline muted webkit-playsinline x-webkit-airplay="allow" style="-webkit-transform:scaleX(-1);transform:scaleX(-1)"></video>
-  <canvas id="canvas"></canvas>
-  <div class="camera-overlay">
-    <div style="color:#fff;font-size:13px;margin-bottom:18px;font-weight:700" id="camera-label">📸 التقط سيلفي للتحقق</div>
-    <button class="capture-btn" onclick="capturePhoto()"></button>
-    <div style="color:rgba(255,255,255,.65);font-size:13px;margin-top:16px;cursor:pointer" onclick="closeCamera()" id="camera-cancel">إلغاء</div>
-  </div>
+<video id="video" autoplay playsinline muted webkit-playsinline x-webkit-airplay="allow" style="-webkit-transform:scaleX(-1);transform:scaleX(-1)"></video>
+<canvas id="canvas"></canvas>
+<div class="camera-overlay">
+<div style="color:#fff;font-size:13px;margin-bottom:18px;font-weight:700" id="camera-label">📸 التقط سيلفي للتحقق</div>
+<button class="capture-btn" onclick="capturePhoto()"></button>
+<div style="color:rgba(255,255,255,.65);font-size:13px;margin-top:16px;cursor:pointer" onclick="closeCamera()" id="camera-cancel">إلغاء</div>
+</div>
 </div>
 
 <!-- ═══════════════ LOGIN ═══════════════ -->
 <div id="login-page" class="page active">
-  <div style="position:absolute;top:16px;left:16px;z-index:10">
-    <button class="lang-btn" onclick="toggleLang()" id="lang-toggle-btn">
-      <span class="lang-flag">🌐</span>
-      <span id="lang-toggle-label">EN</span>
-    </button>
-  </div>
-  <div class="login-card">
-    <div class="login-logo"><div class="login-o">O</div></div>
-    <div class="login-brand">ORAIMO HR</div>
-    <div class="login-sub" data-ar="نظام إدارة الحضور والمبيعات" data-en="Attendance & Sales Management">نظام إدارة الحضور والمبيعات</div>
-    <div class="inp-grp">
-      <label data-ar="اسم المستخدم" data-en="Username">اسم المستخدم</label>
-      <input type="text" id="login-user" placeholder="أدخل اسم المستخدم" data-ar-ph="أدخل اسم المستخدم" data-en-ph="Enter username" inputmode="text" autocomplete="username" autocapitalize="none" spellcheck="false">
-    </div>
-    <div class="inp-grp">
-      <label data-ar="كلمة المرور" data-en="Password">كلمة المرور</label>
-      <input type="password" id="login-pass" placeholder="أدخل كلمة المرور" data-ar-ph="أدخل كلمة المرور" data-en-ph="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <button class="btn btn-green" onclick="doLogin()" data-ar="تسجيل الدخول" data-en="Sign In">تسجيل الدخول</button>
-    <div class="err-msg" id="login-err"></div>
-  </div>
+<div style="position:absolute;top:16px;left:16px;z-index:10">
+<button class="lang-btn" onclick="toggleLang()" id="lang-toggle-btn">
+<span class="lang-flag">🌐</span>
+<span id="lang-toggle-label">EN</span>
+</button>
+</div>
+<div class="login-card">
+<div class="login-logo"><div class="login-o">O</div></div>
+<div class="login-brand">ORAIMO HR</div>
+<div class="login-sub" data-ar="نظام إدارة الحضور والمبيعات" data-en="Attendance & Sales Management">نظام إدارة الحضور والمبيعات</div>
+<div class="inp-grp">
+<label data-ar="اسم المستخدم" data-en="Username">اسم المستخدم</label>
+<input type="text" id="login-user" placeholder="أدخل اسم المستخدم" data-ar-ph="أدخل اسم المستخدم" data-en-ph="Enter username" inputmode="text" autocomplete="username" autocapitalize="none" spellcheck="false">
+</div>
+<div class="inp-grp">
+<label data-ar="كلمة المرور" data-en="Password">كلمة المرور</label>
+<input type="password" id="login-pass" placeholder="أدخل كلمة المرور" data-ar-ph="أدخل كلمة المرور" data-en-ph="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+</div>
+<button class="btn btn-green" onclick="doLogin()" data-ar="تسجيل الدخول" data-en="Sign In">تسجيل الدخول</button>
+<div class="err-msg" id="login-err"></div>
+</div>
 </div>
 
 <!-- ═══════════════ EMPLOYEE APP ═══════════════ -->
 <div id="emp-app" class="page">
-  <div class="topbar">
-    <div class="topbar-left">
-      <div class="topbar-logo">O</div>
-      <div>
-        <div class="topbar-brand">ORAIMO HR</div>
-        <div class="topbar-title" id="emp-name-top">موظف</div>
-      </div>
-    </div>
-    <div class="topbar-right">
-      <button class="lang-btn" onclick="toggleLang()" id="lang-btn-emp"><span class="lang-flag">🌐</span><span id="lang-label-emp">EN</span></button>
-      <span class="badge badge-green role-chip" data-ar="موظف" data-en="Employee">موظف</span>
-      <button class="icon-btn" onclick="doLogout()" title="خروج">🚪</button>
-    </div>
-  </div>
+<div class="topbar">
+<div class="topbar-left">
+<div class="topbar-logo">O</div>
+<div>
+<div class="topbar-brand">ORAIMO HR</div>
+<div class="topbar-title" id="emp-name-top">موظف</div>
+</div>
+</div>
+<div class="topbar-right">
+<button class="lang-btn" onclick="toggleLang()" id="lang-btn-emp"><span class="lang-flag">🌐</span><span id="lang-label-emp">EN</span></button>
+<span class="badge badge-green role-chip" data-ar="موظف" data-en="Employee">موظف</span>
+<button class="icon-btn" onclick="doLogout()" title="خروج">🚪</button>
+</div>
+</div>
 
-  <!-- HOME TAB -->
-  <div id="emp-home" class="content" style="padding-top:70px">
-    <div class="attend-wrap">
-      <div class="attend-time" id="live-clock">00:00:00</div>
-      <div class="attend-date" id="live-date"></div>
-      <br>
-      <div class="attend-btn" id="attend-btn" onclick="handleAttendClick()">
-        <div class="attend-icon">🟢</div>
-        <div class="attend-label" data-ar="تسجيل دخول" data-en="Check In">تسجيل دخول</div>
-      </div>
-      <div style="margin-top:14px;font-size:12px;color:var(--muted);text-align:center" id="attend-status" data-ar="لم يتم تسجيل حضور اليوم" data-en="No attendance recorded today">لم يتم تسجيل حضور اليوم</div>
-      <div id="emp-shift-info" style="margin-top:6px;font-size:11px;color:var(--green);text-align:center;font-weight:700"></div>
-    </div>
+<!-- HOME TAB -->
+<div id="emp-home" class="content" style="padding-top:70px">
+<div class="attend-wrap">
+<div class="attend-time" id="live-clock">00:00:00</div>
+<div class="attend-date" id="live-date"></div>
+<br>
+<div class="attend-btn" id="attend-btn" onclick="handleAttendClick()">
+<div class="attend-icon">🟢</div>
+<div class="attend-label" data-ar="تسجيل دخول" data-en="Check In">تسجيل دخول</div>
+</div>
+<div style="margin-top:14px;font-size:12px;color:var(--muted);text-align:center" id="attend-status" data-ar="لم يتم تسجيل حضور اليوم" data-en="No attendance recorded today">لم يتم تسجيل حضور اليوم</div>
+<div id="emp-shift-info" style="margin-top:6px;font-size:11px;color:var(--green);text-align:center;font-weight:700"></div>
+</div>
 
-    <div class="stats-grid">
-      <div class="stat-card"><div class="stat-label" data-ar="أيام الحضور" data-en="Attendance">أيام الحضور</div><div class="stat-val" style="color:var(--green)" id="emp-attend-count">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="أيام الغياب" data-en="Absent">أيام الغياب</div><div class="stat-val" style="color:var(--red)" id="emp-absent-count">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="إجمالي المبيعات" data-en="Total Sales">إجمالي المبيعات</div><div class="stat-val" style="color:var(--green);font-size:15px" id="emp-sales-total">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="دقائق التأخير" data-en="Late (min)">دقائق التأخير</div><div class="stat-val" style="color:var(--yellow)" id="emp-late-total">0</div></div>
-    </div>
+<div class="stats-grid">
+<div class="stat-card"><div class="stat-label" data-ar="أيام الحضور" data-en="Attendance">أيام الحضور</div><div class="stat-val" style="color:var(--green)" id="emp-attend-count">0</div></div>
+<div class="stat-card"><div class="stat-label" data-ar="أيام الغياب" data-en="Absent">أيام الغياب</div><div class="stat-val" style="color:var(--red)" id="emp-absent-count">0</div></div>
+<div class="stat-card"><div class="stat-label" data-ar="إجمالي المبيعات" data-en="Total Sales">إجمالي المبيعات</div><div class="stat-val" style="color:var(--green);font-size:15px" id="emp-sales-total">0</div></div>
+<div class="stat-card"><div class="stat-label" data-ar="دقائق التأخير" data-en="Late (min)">دقائق التأخير</div><div class="stat-val" style="color:var(--yellow)" id="emp-late-total">0</div></div>
+</div>
 
-    <div class="card card-glow">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-weight:800;font-size:13px" data-ar="🎯 التارجت الشهري" data-en="🎯 Monthly Target">🎯 التارجت الشهري</span>
-        <span id="target-pct" style="color:var(--green);font-weight:800;font-size:14px">0%</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px">
-        <span id="target-achieved">EGP 0</span>
-        <span id="target-goal" data-ar-pre="التارجت:" data-en-pre="Target:">التارجت: EGP 0</span>
-      </div>
-      <div class="target-bar"><div class="target-fill" id="target-fill" style="width:0%"></div></div>
-      <div id="kmodel-row" style="display:none;margin-top:10px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px">
-          <span style="color:var(--purple);font-weight:700">K Model</span>
-          <span id="kmodel-pct" style="color:var(--purple);font-weight:800">0%</span>
-        </div>
-        <div class="target-bar"><div id="kmodel-fill" style="height:100%;width:0%;background:var(--purple);border-radius:4px;transition:width .6s ease"></div></div>
-      </div>
-    </div>
+<div class="card card-glow">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+<span style="font-weight:800;font-size:13px" data-ar="🎯 التارجت الشهري" data-en="🎯 Monthly Target">🎯 التارجت الشهري</span>
+<span id="target-pct" style="color:var(--green);font-weight:800;font-size:14px">0%</span>
+</div>
+<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px">
+<span id="target-achieved">EGP 0</span>
+<span id="target-goal" data-ar-pre="التارجت:" data-en-pre="Target:">التارجت: EGP 0</span>
+</div>
+<div class="target-bar"><div class="target-fill" id="target-fill" style="width:0%"></div></div>
+<div id="kmodel-row" style="display:none;margin-top:10px">
+<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px">
+<span style="color:var(--purple);font-weight:700">K Model</span>
+<span id="kmodel-pct" style="color:var(--purple);font-weight:800">0%</span>
+</div>
+<div class="target-bar"><div id="kmodel-fill" style="height:100%;width:0%;background:var(--purple);border-radius:4px;transition:width .6s ease"></div></div>
+</div>
+</div>
 
-    <div id="model-target-alert"></div>
+<div id="model-target-alert"></div>
 
-    <div class="card">
-      <div class="sh"><div class="sh-title" data-ar="مبيعات الشهر" data-en="Monthly Sales">مبيعات الشهر</div></div>
-      <div class="daily-grid" id="daily-sales-grid"></div>
-    </div>
+<div class="card">
+<div class="sh"><div class="sh-title" data-ar="مبيعات الشهر" data-en="Monthly Sales">مبيعات الشهر</div></div>
+<div class="daily-grid" id="daily-sales-grid"></div>
+</div>
 
-    <div class="card">
-      <div class="sh"><div class="sh-title" data-ar="مخطط الأداء" data-en="Performance Chart">مخطط الأداء</div></div>
-      <div class="chart-wrap" id="emp-perf-chart"></div>
-    </div>
+<div class="card">
+<div class="sh"><div class="sh-title" data-ar="مخطط الأداء" data-en="Performance Chart">مخطط الأداء</div></div>
+<div class="chart-wrap" id="emp-perf-chart"></div>
+</div>
 
-    <div class="card">
-      <div class="sh"><div class="sh-title">📋 طلب إذن تأخير</div></div>
-      <div class="inp-grp">
-        <label data-ar="المدة" data-en="Duration">المدة</label>
-        <select id="leave-duration">
-          <option value="30">30 دقيقة</option>
-          <option value="60">ساعة</option>
-          <option value="90">ساعة ونصف</option>
-          <option value="120">ساعتين</option>
-        </select>
-      </div>
-      <div class="inp-grp">
-        <label data-ar="السبب" data-en="Reason">السبب</label>
-        <input type="text" id="leave-reason" placeholder="أدخل السبب..." data-ar-ph="أدخل السبب..." data-en-ph="Enter reason...">
-      </div>
-      <button class="btn btn-outline" onclick="sendLeaveRequest('permission')" style="width:auto;padding:9px 18px">📤 إرسال طلب الإذن</button>
-    </div>
+<div class="card">
+<div class="sh"><div class="sh-title">📋 طلب إذن تأخير</div></div>
+<div class="inp-grp">
+<label data-ar="المدة" data-en="Duration">المدة</label>
+<select id="leave-duration">
+<option value="30">30 دقيقة</option>
+<option value="60">ساعة</option>
+<option value="90">ساعة ونصف</option>
+<option value="120">ساعتين</option>
+</select>
+</div>
+<div class="inp-grp">
+<label data-ar="السبب" data-en="Reason">السبب</label>
+<input type="text" id="leave-reason" placeholder="أدخل السبب..." data-ar-ph="أدخل السبب..." data-en-ph="Enter reason...">
+</div>
+<button class="btn btn-outline" onclick="sendLeaveRequest('permission')" style="width:auto;padding:9px 18px">📤 إرسال طلب الإذن</button>
+</div>
 
-    <div class="card">
-      <div class="sh"><div class="sh-title">🏖️ طلب إجازة يوم</div></div>
-      <div class="inp-grp">
-        <label>تاريخ الإجازة</label>
-        <input type="date" id="vacation-date" style="width:100%;padding:13px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none">
-      </div>
-      <div class="inp-grp">
-        <label data-ar="السبب" data-en="Reason">السبب</label>
-        <input type="text" id="vacation-reason" placeholder="أدخل السبب..." data-ar-ph="أدخل السبب..." data-en-ph="Enter reason...">
-      </div>
-      <button class="btn btn-green" onclick="sendLeaveRequest('vacation')" style="width:auto;padding:9px 18px">📤 إرسال طلب الإجازة</button>
-    </div>
+<div class="card">
+<div class="sh"><div class="sh-title">🏖️ طلب إجازة يوم</div></div>
+<div class="inp-grp">
+<label>تاريخ الإجازة</label>
+<input type="date" id="vacation-date" style="width:100%;padding:13px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none">
+</div>
+<div class="inp-grp">
+<label data-ar="السبب" data-en="Reason">السبب</label>
+<input type="text" id="vacation-reason" placeholder="أدخل السبب..." data-ar-ph="أدخل السبب..." data-en-ph="Enter reason...">
+</div>
+<button class="btn btn-green" onclick="sendLeaveRequest('vacation')" style="width:auto;padding:9px 18px">📤 إرسال طلب الإجازة</button>
+</div>
 
-    <div class="card">
-      <div class="sh"><div class="sh-title" data-ar="📋 سجل الحضور الأخير" data-en="📋 Recent Attendance">📋 سجل الحضور الأخير</div></div>
-      <div id="emp-attend-history"></div>
-    </div>
+<div class="card">
+<div class="sh"><div class="sh-title" data-ar="📋 سجل الحضور الأخير" data-en="📋 Recent Attendance">📋 سجل الحضور الأخير</div></div>
+<div id="emp-attend-history"></div>
+</div>
 
-    <div class="card" id="emp-warnings-card" style="display:none">
-      <div class="sh"><div class="sh-title" style="color:var(--yellow)" data-ar="⚠️ التحذيرات" data-en="⚠️ Warnings">⚠️ التحذيرات</div></div>
-      <div id="emp-warnings-list"></div>
-    </div>
-  </div>
+<div class="card" id="emp-warnings-card" style="display:none">
+<div class="sh"><div class="sh-title" style="color:var(--yellow)" data-ar="⚠️ التحذيرات" data-en="⚠️ Warnings">⚠️ التحذيرات</div></div>
+<div id="emp-warnings-list"></div>
+</div>
+</div>
 
-  <!-- SALES TAB -->
-  <div id="emp-sales" class="content" style="display:none">
-    <div class="sh">
-      <div class="sh-title" data-ar="🛒 بيع جديد" data-en="🛒 New Sale">🛒 بيع جديد</div>
-      <div id="emp-today-total" style="color:var(--green);font-weight:800;font-size:12px">اليوم: EGP 0</div>
-    </div>
-    <input class="product-search" id="product-search" placeholder="🔍 ابحث عن منتج..." oninput="filterProducts()" data-ar-ph="🔍 ابحث عن منتج..." data-en-ph="🔍 Search product...">
-    <div class="product-list" id="product-list"></div>
-    <div id="sale-form-wrap" style="display:none" onclick="if(event.target===this)cancelSale()">
-      <div class="sale-form" style="border-radius:22px 22px 0 0;width:100%;border-top:2px solid rgba(0,200,83,.3)">
-        <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:8px" id="selected-product-name"></div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
-          <span data-ar="السعر:" data-en="Price:">السعر:</span>
-          <span id="selected-product-price" style="color:var(--text);font-weight:700"></span> EGP
-        </div>
-        <div class="qty-row">
-          <button class="qty-btn" onclick="changeQty(-1)">−</button>
-          <div class="qty-val" id="qty-val">1</div>
-          <button class="qty-btn" onclick="changeQty(1)">+</button>
-        </div>
-        <div class="total-row">
-          <span style="font-size:13px;color:var(--muted)" data-ar="الإجمالي" data-en="Total">الإجمالي</span>
-          <span style="font-size:22px;font-weight:800;color:var(--green)" id="sale-total">0 EGP</span>
-        </div>
-        <button class="btn btn-green" onclick="submitSale()" style="margin-top:8px" data-ar="✅ تسجيل البيع" data-en="✅ Record Sale">✅ تسجيل البيع</button>
-        <button class="btn btn-outline" onclick="cancelSale()" style="margin-top:6px" data-ar="إلغاء" data-en="Cancel">إلغاء</button>
-      </div>
-    </div>
-    <div style="margin-top:16px">
-      <div class="sh"><div class="sh-title" data-ar="مبيعات اليوم" data-en="Today's Sales">مبيعات اليوم</div></div>
-      <div id="emp-sales-list"></div>
-    </div>
-  </div>
+<!-- SALES TAB -->
+<div id="emp-sales" class="content" style="display:none">
+<div class="sh">
+<div class="sh-title" data-ar="🛒 بيع جديد" data-en="🛒 New Sale">🛒 بيع جديد</div>
+<div id="emp-today-total" style="color:var(--green);font-weight:800;font-size:12px">اليوم: EGP 0</div>
+</div>
+<input class="product-search" id="product-search" placeholder="🔍 ابحث عن منتج..." oninput="filterProducts()" data-ar-ph="🔍 ابحث عن منتج..." data-en-ph="🔍 Search product...">
+<div class="product-list" id="product-list"></div>
+<div id="sale-form-wrap" style="display:none" onclick="if(event.target===this)cancelSale()">
+<div class="sale-form" style="border-radius:22px 22px 0 0;width:100%;border-top:2px solid rgba(0,200,83,.3)">
+<div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:8px" id="selected-product-name"></div>
+<div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+<span data-ar="السعر:" data-en="Price:">السعر:</span>
+<span id="selected-product-price" style="color:var(--text);font-weight:700"></span> EGP
+</div>
+<div class="qty-row">
+<button class="qty-btn" onclick="changeQty(-1)">−</button>
+<div class="qty-val" id="qty-val">1</div>
+<button class="qty-btn" onclick="changeQty(1)">+</button>
+</div>
+<div class="total-row">
+<span style="font-size:13px;color:var(--muted)" data-ar="الإجمالي" data-en="Total">الإجمالي</span>
+<span style="font-size:22px;font-weight:800;color:var(--green)" id="sale-total">0 EGP</span>
+</div>
+<button class="btn btn-green" onclick="submitSale()" style="margin-top:8px" data-ar="✅ تسجيل البيع" data-en="✅ Record Sale">✅ تسجيل البيع</button>
+<button class="btn btn-outline" onclick="cancelSale()" style="margin-top:6px" data-ar="إلغاء" data-en="Cancel">إلغاء</button>
+</div>
+</div>
+<div style="margin-top:16px">
+<div class="sh"><div class="sh-title" data-ar="مبيعات اليوم" data-en="Today's Sales">مبيعات اليوم</div></div>
+<div id="emp-sales-list"></div>
+</div>
+</div>
 
-  <!-- PROFILE TAB -->
-  <div id="emp-profile" class="content" style="display:none">
-    <div class="card" style="text-align:center;padding:24px">
-      <div style="position:relative;width:80px;margin:0 auto 12px;cursor:pointer" onclick="document.getElementById('profile-photo-input').click()">
-        <div id="profile-avatar-wrap" style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:28px;border:3px solid rgba(0,200,83,.3);overflow:hidden">
-          <img id="profile-avatar-img" src="" style="display:none;width:100%;height:100%;object-fit:cover">
-          <span id="profile-avatar-icon">👤</span>
-        </div>
-        <div style="position:absolute;bottom:0;right:0;width:26px;height:26px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid var(--black)">📷</div>
-        <input type="file" id="profile-photo-input" accept="image/*" style="display:none" onchange="uploadProfilePhoto(event)">
-      </div>
-      <div style="font-size:18px;font-weight:800" id="profile-name">-</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:3px" id="profile-branch">-</div>
-      <div style="margin-top:8px" id="profile-dayoff"></div>
-    </div>
-    <div class="card">
-      <div class="sh-title" style="margin-bottom:12px" data-ar="📅 سجل الحضور" data-en="📅 Attendance Log">📅 سجل الحضور</div>
-      <div id="emp-daily-log"></div>
-    </div>
-    <div class="card">
-      <div class="sh-title" style="margin-bottom:12px" data-ar="📊 ملخص الشهر" data-en="📊 Monthly Summary">📊 ملخص الشهر</div>
-      <div id="monthly-report-emp"></div>
-    </div>
-    <button class="btn btn-outline" onclick="doLogout()" style="margin-top:8px" data-ar="🚪 تسجيل الخروج" data-en="🚪 Sign Out">🚪 تسجيل الخروج</button>
-  </div>
+<!-- PROFILE TAB -->
+<div id="emp-profile" class="content" style="display:none">
+<div class="card" style="text-align:center;padding:24px">
+<div style="position:relative;width:80px;margin:0 auto 12px;cursor:pointer" onclick="document.getElementById('profile-photo-input').click()">
+<div id="profile-avatar-wrap" style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:28px;border:3px solid rgba(0,200,83,.3);overflow:hidden">
+<img id="profile-avatar-img" src="" style="display:none;width:100%;height:100%;object-fit:cover">
+<span id="profile-avatar-icon">👤</span>
+</div>
+<div style="position:absolute;bottom:0;right:0;width:26px;height:26px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid var(--black)">📷</div>
+<input type="file" id="profile-photo-input" accept="image/*" style="display:none" onchange="uploadProfilePhoto(event)">
+</div>
+<div style="font-size:18px;font-weight:800" id="profile-name">-</div>
+<div style="font-size:12px;color:var(--muted);margin-top:3px" id="profile-branch">-</div>
+<div style="margin-top:8px" id="profile-dayoff"></div>
+</div>
+<div class="card">
+<div class="sh-title" style="margin-bottom:12px" data-ar="📅 سجل الحضور" data-en="📅 Attendance Log">📅 سجل الحضور</div>
+<div id="emp-daily-log"></div>
+</div>
+<div class="card">
+<div class="sh-title" style="margin-bottom:12px" data-ar="📊 ملخص الشهر" data-en="📊 Monthly Summary">📊 ملخص الشهر</div>
+<div id="monthly-report-emp"></div>
+</div>
+<button class="btn btn-outline" onclick="doLogout()" style="margin-top:8px" data-ar="🚪 تسجيل الخروج" data-en="🚪 Sign Out">🚪 تسجيل الخروج</button>
+</div>
 
-  <!-- VISITS TAB -->
-  <!-- DISPLAY TAB (Employee) -->
-  <div id="emp-display" class="content" style="display:none">
-    <div class="card card-glow">
-      <div style="font-size:14px;font-weight:800;margin-bottom:12px">🖼️ رفع صور الديسبلاي اليومي</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="display-date-label"></div>
-      <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">صور الديسبلاي (max 3)</label>
-      <div class="photo-previews" id="display-photo-previews"></div>
-      <div class="photo-upload-zone" id="display-upload-zone" onclick="openDisplayCamera()">
-        <div style="font-size:28px">📷</div>
-        <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لفتح الكاميرا</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور يومياً - كاميرا فقط</div>
-      </div>
-      <div class="inp-grp" style="margin-top:10px">
-        <label>ملاحظة (اختياري)</label>
-        <textarea id="display-note" rows="2" style="width:100%;padding:11px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl"></textarea>
-      </div>
-      <button class="btn btn-green" onclick="submitDisplayPhotos()">✅ رفع صور الديسبلاي</button>
-    </div>
-    <div class="sh" style="margin-top:8px"><div class="sh-title">📋 سجل الديسبلاي</div></div>
-    <div id="display-history-list"></div>
-  </div>
+<!-- VISITS TAB -->
+<!-- DISPLAY TAB (Employee) -->
+<div id="emp-display" class="content" style="display:none">
+<div class="card card-glow">
+<div style="font-size:14px;font-weight:800;margin-bottom:12px">🖼️ رفع صور الديسبلاي اليومي</div>
+<div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="display-date-label"></div>
+<label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">صور الديسبلاي (max 3)</label>
+<div class="photo-previews" id="display-photo-previews"></div>
+<div class="photo-upload-zone" id="display-upload-zone" onclick="showPhotoSourceModal('display-photo-input')">
+<input type="file" id="display-photo-input" accept="image/*" style="display:none" onchange="addDisplayPhoto(event)">
+<div style="font-size:28px">📷</div>
+<div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
+<div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور يومياً</div>
+</div>
+<div class="inp-grp" style="margin-top:10px">
+<label>ملاحظة (اختياري)</label>
+<textarea id="display-note" rows="2" style="width:100%;padding:11px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl"></textarea>
+</div>
+<button class="btn btn-green" onclick="submitDisplayPhotos()">✅ رفع صور الديسبلاي</button>
+</div>
+<div class="sh" style="margin-top:8px"><div class="sh-title">📋 سجل الديسبلاي</div></div>
+<div id="display-history-list"></div>
+</div>
 
-  <div id="emp-visits" class="content" style="display:none">
-    <div class="sh">
-      <div class="sh-title">📸 زيارات الفروع</div>
-      <div id="emp-visits-count" style="color:var(--green);font-weight:800;font-size:12px">0 / 150</div>
-    </div>
+<div id="emp-visits" class="content" style="display:none">
+<div class="sh">
+<div class="sh-title">📸 زيارات الفروع</div>
+<div id="emp-visits-count" style="color:var(--green);font-weight:800;font-size:12px">0 / 150</div>
+</div>
 
-    <!-- Stats -->
-    <div class="visit-stats-row">
-      <div class="visit-stat"><div class="visit-stat-val" id="vis-done">0</div><div class="visit-stat-label">زيارة هذا الشهر</div></div>
-      <div class="visit-stat"><div class="visit-stat-val" style="color:var(--yellow)" id="vis-remain">150</div><div class="visit-stat-label">متبقي</div></div>
-      <div class="visit-stat"><div class="visit-stat-val" style="color:var(--blue)" id="vis-photos">0</div><div class="visit-stat-label">صورة مرفوعة</div></div>
-    </div>
+<!-- Stats -->
+<div class="visit-stats-row">
+<div class="visit-stat"><div class="visit-stat-val" id="vis-done">0</div><div class="visit-stat-label">زيارة هذا الشهر</div></div>
+<div class="visit-stat"><div class="visit-stat-val" style="color:var(--yellow)" id="vis-remain">150</div><div class="visit-stat-label">متبقي</div></div>
+<div class="visit-stat"><div class="visit-stat-val" style="color:var(--blue)" id="vis-photos">0</div><div class="visit-stat-label">صورة مرفوعة</div></div>
+</div>
 
-    <!-- New Visit Form -->
-    <div class="card card-glow">
-      <div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ تسجيل زيارة جديدة</div>
-      <div class="inp-grp">
-        <label>الفرع</label>
-        <select id="visit-branch-select"><option value="">-- اختر الفرع --</option></select>
-      </div>
-      <div class="inp-grp">
-        <label>ملاحظة (اختياري)</label>
-        <textarea id="visit-note-input" placeholder="حالة الديسبلاي، ملاحظات الفرع..." rows="2"
-          style="width:100%;padding:11px 14px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl;transition:.2s"></textarea>
-      </div>
-      <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">صور الديسبلاي (max 3)</label>
-      <div class="photo-previews" id="visit-photo-previews"></div>
-      <div class="photo-upload-zone" id="visit-upload-zone" onclick="showPhotoSourceModal('visit-photo-input')">
-        <input type="file" id="visit-photo-input" accept="image/*" style="display:none" onchange="addVisitPhoto(event)">
-        <div style="font-size:28px">📷</div>
-        <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور للزيارة</div>
-      </div>
-      <button class="btn btn-green" onclick="submitVisit()">✅ حفظ الزيارة</button>
-    </div>
+<!-- New Visit Form -->
+<div class="card card-glow">
+<div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ تسجيل زيارة جديدة</div>
+<div class="inp-grp">
+<label>الفرع</label>
+<select id="visit-branch-select"><option value="">-- اختر الفرع --</option></select>
+</div>
+<div class="inp-grp">
+<label>ملاحظة (اختياري)</label>
+<textarea id="visit-note-input" placeholder="حالة الديسبلاي، ملاحظات الفرع..." rows="2"
+style="width:100%;padding:11px 14px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl;transition:.2s"></textarea>
+</div>
+<label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">صور الديسبلاي (max 3)</label>
+<div class="photo-previews" id="visit-photo-previews"></div>
+<div class="photo-upload-zone" id="visit-upload-zone" onclick="showPhotoSourceModal('visit-photo-input')">
+<input type="file" id="visit-photo-input" accept="image/*" style="display:none" onchange="addVisitPhoto(event)">
+<div style="font-size:28px">📷</div>
+<div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
+<div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور للزيارة</div>
+</div>
+<button class="btn btn-green" onclick="submitVisit()">✅ حفظ الزيارة</button>
+</div>
+<!-- Visit History -->
+<div class="sh" style="margin-top:4px"><div class="sh-title">📋 زياراتي هذا الشهر</div></div>
+<div id="visit-history-list"></div>
+</div>
 
-    <!-- Visit History -->
-    <div class="sh" style="margin-top:4px"><div class="sh-title">📋 زياراتي هذا الشهر</div></div>
-    <div id="visit-history-list"></div>
-  </div>
+<!-- SPECS TAB (Employee) -->
+<div id="emp-specs" class="content" style="display:none">
+<div class="sh"><div class="sh-title">📱 موديلات Oraimo</div></div>
+<input class="product-search" id="specs-search" placeholder="🔍 ابحث عن موديل..." oninput="filterSpecs()" style="margin-bottom:12px">
+<div id="specs-list"></div>
+</div>
 
-  <!-- SPECS TAB (Employee) -->
-  <div id="emp-specs" class="content" style="display:none">
-    <div class="sh"><div class="sh-title">📱 موديلات Oraimo</div></div>
-    <input class="product-search" id="specs-search" placeholder="🔍 ابحث عن موديل..." oninput="filterSpecs()" style="margin-bottom:12px">
-    <div id="specs-list"></div>
-  </div>
+<!-- CHAT TAB (Employee) -->
+<div id="emp-chat" class="content" style="display:none">
+<div style="display:flex;flex-direction:column;height:calc(100vh - 130px)">
+<div style="font-size:14px;font-weight:800;margin-bottom:10px">💬 المحادثات</div>
+<!-- Chat with Admin -->
+<div class="card" onclick="openChat('admin','الإدارة')" style="cursor:pointer;display:flex;align-items:center;gap:12px;margin-bottom:8px">
+<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--red),#cc0000);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👑</div>
+<div style="flex:1;text-align:right">
+<div style="font-size:14px;font-weight:700">الإدارة</div>
+<div style="font-size:11px;color:var(--muted)" id="last-msg-admin">اضغط للمحادثة</div>
+</div>
+</div>
+<!-- Group Chat -->
+<div class="card" onclick="openChat('group','B.tech team')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👥</div>
+<div style="flex:1">
+<div style="font-size:14px;font-weight:700">B.tech team</div>
+<div style="font-size:11px;color:var(--muted)" id="last-msg-group">اضغط للمحادثة</div>
+</div>
+</div>
+</div>
+</div>
 
-
-
-  <!-- CHAT TAB (Employee) -->
-  <div id="emp-chat" class="content" style="display:none">
-    <div style="display:flex;flex-direction:column;height:calc(100vh - 130px)">
-      <div style="font-size:14px;font-weight:800;margin-bottom:10px">💬 المحادثات</div>
-      <!-- Chat with Admin -->
-      <div class="card" onclick="openChat('admin','الإدارة')" style="cursor:pointer;display:flex;align-items:center;gap:12px;margin-bottom:8px">
-        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--red),#cc0000);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👑</div>
-        <div style="flex:1;text-align:right">
-          <div style="font-size:14px;font-weight:700">الإدارة</div>
-          <div style="font-size:11px;color:var(--muted)" id="last-msg-admin">اضغط للمحادثة</div>
-        </div>
-      </div>
-      <!-- Group Chat -->
-      <div class="card" onclick="openChat('group','B.tech team')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
-        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👥</div>
-        <div style="flex:1">
-          <div style="font-size:14px;font-weight:700">B.tech team</div>
-          <div style="font-size:11px;color:var(--muted)" id="last-msg-group">اضغط للمحادثة</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="bottom-nav">
-    <div class="nav-item active" onclick="empTab('home',this)">
-      <div class="nav-icon">🏠</div><div class="nav-label" data-ar="الرئيسية" data-en="Home">الرئيسية</div>
-    </div>
-    <div class="nav-item" onclick="empTab('sales',this)">
-      <div class="nav-icon">🛒</div><div class="nav-label" data-ar="المبيعات" data-en="Sales">المبيعات</div>
-    </div>
-    <div class="nav-item" id="emp-display-nav" onclick="empTab('display',this)">
-      <div class="nav-icon">🖼️</div><div class="nav-label" data-ar="ديسبلاي" data-en="Display">ديسبلاي</div>
-    </div>
-    <div class="nav-item" onclick="empTab('specs',this)">
-      <div class="nav-icon">📱</div><div class="nav-label" data-ar="الموديلات" data-en="Models">الموديلات</div>
-    </div>
-    <div class="nav-item" onclick="empTab('chat',this)">
-      <div class="nav-icon">💬</div><div class="nav-label" data-ar="الشات" data-en="Chat">الشات</div>
-    </div>
-    <div class="nav-item" onclick="empTab('profile',this)">
-      <div class="nav-icon">👤</div><div class="nav-label" data-ar="الملف" data-en="Profile">الملف</div>
-    </div>
-  </div>
+<div class="bottom-nav">
+<div class="nav-item active" onclick="empTab('home',this)">
+<div class="nav-icon">🏠</div><div class="nav-label" data-ar="الرئيسية" data-en="Home">الرئيسية</div>
+</div>
+<div class="nav-item" onclick="empTab('sales',this)">
+<div class="nav-icon">🛒</div><div class="nav-label" data-ar="المبيعات" data-en="Sales">المبيعات</div>
+</div>
+<div class="nav-item" id="emp-display-nav" onclick="empTab('display',this)">
+<div class="nav-icon">🖼️</div><div class="nav-label" data-ar="ديسبلاي" data-en="Display">ديسبلاي</div>
+</div>
+<div class="nav-item" onclick="empTab('specs',this)">
+<div class="nav-icon">📱</div><div class="nav-label" data-ar="الموديلات" data-en="Models">الموديلات</div>
+</div>
+<div class="nav-item" onclick="empTab('chat',this)">
+<div class="nav-icon">💬</div><div class="nav-label" data-ar="الشات" data-en="Chat">الشات</div>
+</div>
+<div class="nav-item" onclick="empTab('profile',this)">
+<div class="nav-icon">👤</div><div class="nav-label" data-ar="الملف" data-en="Profile">الملف</div>
+</div>
+</div>
 </div>
 
 <!-- ═══════════════ ADMIN APP ═══════════════ -->
 <div id="admin-app" class="page">
-  <div class="topbar">
-    <div class="topbar-left">
-      <div class="topbar-logo" style="background:linear-gradient(135deg,#00C853,#007a2a);box-shadow:0 0 16px rgba(0,200,83,.3)">O</div>
-      <div>
-        <div class="topbar-brand">ORAIMO HR</div>
-        <div class="topbar-title" id="admin-name-top" data-ar="لوحة الإدارة" data-en="Dashboard">لوحة الإدارة</div>
-      </div>
-    </div>
-    <div class="topbar-right">
-      <button class="lang-btn" onclick="toggleLang()" id="lang-btn-adm"><span class="lang-flag">🌐</span><span id="lang-label-adm">ع</span></button>
-      <span class="role-chip badge" id="admin-role-chip">Admin</span>
-      <button class="icon-btn" onclick="doLogout()" title="خروج">🚪</button>
-    </div>
-  </div>
+<div class="topbar">
+<div class="topbar-left">
+<div class="topbar-logo" style="background:linear-gradient(135deg,#00C853,#007a2a);box-shadow:0 0 16px rgba(0,200,83,.3)">O</div>
+<div>
+<div class="topbar-brand">ORAIMO HR</div>
+<div class="topbar-title" id="admin-name-top" data-ar="لوحة الإدارة" data-en="Dashboard">لوحة الإدارة</div>
+</div>
+</div>
+<div class="topbar-right">
+<button class="lang-btn" onclick="toggleLang()" id="lang-btn-adm"><span class="lang-flag">🌐</span><span id="lang-label-adm">ع</span></button>
+<span class="role-chip badge" id="admin-role-chip">Admin</span>
+<button class="icon-btn" onclick="doLogout()" title="خروج">🚪</button>
+</div>
+</div>
 
-  <!-- DASHBOARD -->
-  <div id="admin-dashboard" class="content">
-    <div id="dash-loader" style="display:none;visibility:hidden;align-items:center;justify-content:center;padding:40px;gap:10px;color:var(--muted);font-size:13px">
-      <div class="loader"></div> <span data-ar="جاري التحميل..." data-en="Loading...">جاري التحميل...</span>
-    </div>
-    <div id="dash-content" style="display:block">
-    <div class="stats-grid">
-      <div class="stat-card"><div class="stat-label" data-ar="حاضر اليوم" data-en="Present Today">حاضر اليوم</div><div class="stat-val" style="color:var(--green);cursor:pointer" id="adm-present" onclick="showAttList('present','today')">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="غائب اليوم" data-en="Absent Today">غائب اليوم</div><div class="stat-val" style="color:var(--red);cursor:pointer" id="adm-absent" onclick="showAttList('absent','today')">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="حاضر أمس" data-en="Present Yesterday">حاضر أمس</div><div class="stat-val" style="color:var(--green);cursor:pointer" id="adm-present-yest" onclick="showAttList('present','yesterday')">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="غائب أمس" data-en="Absent Yesterday">غائب أمس</div><div class="stat-val" style="color:var(--red);cursor:pointer" id="adm-absent-yest" onclick="showAttList('absent','yesterday')">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="مبيعات اليوم" data-en="Today Sales">مبيعات اليوم</div><div class="stat-val" style="color:var(--green);font-size:14px" id="adm-sales-today">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="مبيعات الشهر" data-en="Month Sales">مبيعات الشهر</div><div class="stat-val" style="color:var(--green);font-size:14px" id="adm-sales-month">0</div></div>
-    </div>
-    <div class="sh"><div class="sh-title" data-ar="🏆 ترتيب الأداء" data-en="🏆 Performance">🏆 ترتيب الأداء</div></div>
-    <div class="card" id="adm-performance-list"></div>
-    <div class="sh" style="margin-top:12px"><div class="sh-title" data-ar="👥 فريق اليوم" data-en="👥 Today's Team">👥 فريق اليوم</div></div>
-    <div id="adm-emp-today"></div>
-    <div class="sh" style="margin-top:12px"><div class="sh-title" data-ar="⏳ طلبات التأخير" data-en="⏳ Late Requests">⏳ طلبات التأخير</div></div>
-    <div id="adm-leave-requests"></div>
-  </div><!-- end dash-content -->
-  </div>
+<!-- DASHBOARD -->
+<div id="admin-dashboard" class="content">
+<div id="dash-loader" style="display:none;visibility:hidden;align-items:center;justify-content:center;padding:40px;gap:10px;color:var(--muted);font-size:13px">
+<div class="loader"></div> <span data-ar="جاري التحميل..." data-en="Loading...">جاري التحميل...</span>
+</div>
+<div id="dash-content" style="display:block">
+<div class="stats-grid">
+<div class="stat-card"><div class="stat-label" data-ar="حاضر اليوم" data-en="Present Today">حاضر اليوم</div><div class="stat-val" style="color:var(--green);cursor:pointer" id="adm-present" onclick="showAttList('present','today')">0</div></div>
+<div class="stat-card"><div class="stat-label" data-ar="غائب اليوم" data-en="Absent Today">غائب اليوم</div><div class="stat-val" style="color:var(--red);cursor:pointer" id="adm-absent" onclick="showAttList('absent','today')">0</div></div>
+<div class="stat-card"><div class="stat-label" data-ar="حاضر أمس" data-en="Present Yesterday">حاضر أمس</div><div class="stat-val" style="color:var(--green);cursor:pointer" id="adm-present-yest" onclick="showAttList('present','yesterday')">0</div></div>
+<div class="stat-card"><div class="stat-label" data-ar="غائب أمس" data-en="Absent Yesterday">غائب أمس</div><div class="stat-val" style="color:var(--red);cursor:pointer" id="adm-absent-yest" onclick="showAttList('absent','yesterday')">0</div></div>
+<div class="stat-card"><div class="stat-label" data-ar="مبيعات اليوم" data-en="Today Sales">مبيعات اليوم</div><div class="stat-val" style="color:var(--green);font-size:14px" id="adm-sales-today">0</div></div>
+<div class="stat-card"><div class="stat-label" data-ar="مبيعات الشهر" data-en="Month Sales">مبيعات الشهر</div><div class="stat-val" style="color:var(--green);font-size:14px" id="adm-sales-month">0</div></div>
+</div>
+<div class="sh"><div class="sh-title" data-ar="🏆 ترتيب الأداء" data-en="🏆 Performance">🏆 ترتيب الأداء</div></div>
+<div class="card" id="adm-performance-list"></div>
+<div class="sh" style="margin-top:12px"><div class="sh-title" data-ar="👥 فريق اليوم" data-en="👥 Today's Team">👥 فريق اليوم</div></div>
+<div id="adm-emp-today"></div>
+<div class="sh" style="margin-top:12px"><div class="sh-title" data-ar="⏳ طلبات التأخير" data-en="⏳ Late Requests">⏳ طلبات التأخير</div></div>
+<div id="adm-leave-requests"></div>
+</div><!-- end dash-content -->
+</div>
 
-  <!-- EMPLOYEES -->
-  <div id="admin-employees" class="content" style="display:none">
-    <div class="sh">
-      <div class="sh-title" data-ar="إدارة الفريق" data-en="Team Management">إدارة الفريق</div>
-      <div class="sh-action" id="add-emp-btn" onclick="openAddEmp()" data-ar="+ إضافة موظف" data-en="+ Add Employee">+ إضافة موظف</div>
-    </div>
-    <div id="adm-emp-list"></div>
-  </div>
+<!-- EMPLOYEES -->
+<div id="admin-employees" class="content" style="display:none">
+<div class="sh">
+<div class="sh-title" data-ar="إدارة الفريق" data-en="Team Management">إدارة الفريق</div>
+<div class="sh-action" id="add-emp-btn" onclick="openAddEmp()" data-ar="+ إضافة موظف" data-en="+ Add Employee">+ إضافة موظف</div>
+</div>
+<div id="adm-emp-list"></div>
+</div>
 
-  <!-- BRANCHES DASHBOARD -->
-  <div id="admin-branches" class="content" style="display:none">
-    <div class="tabs" id="branch-dash-tabs">
-      <button class="tab active" onclick="branchDashTab('overview',this)" data-ar="عام" data-en="Overview">عام</button>
-      <button class="tab" onclick="branchDashTab('s-tier',this)">🥇 S</button>
-      <button class="tab" onclick="branchDashTab('a-tier',this)">🥈 A</button>
-      <button class="tab" onclick="branchDashTab('b-tier',this)">🥉 B</button>
-      <button class="tab" onclick="branchDashTab('no-sales',this)" data-ar="بدون مبيعات" data-en="No Sales">بدون مبيعات</button>
-      <button class="tab" onclick="branchDashTab('upload',this)">📤</button>
-    </div>
+<!-- BRANCHES DASHBOARD -->
+<div id="admin-branches" class="content" style="display:none">
+<div class="tabs" id="branch-dash-tabs">
+<button class="tab active" onclick="branchDashTab('overview',this)" data-ar="عام" data-en="Overview">عام</button>
+<button class="tab" onclick="branchDashTab('s-tier',this)">🥇 S</button>
+<button class="tab" onclick="branchDashTab('a-tier',this)">🥈 A</button>
+<button class="tab" onclick="branchDashTab('b-tier',this)">🥉 B</button>
+<button class="tab" onclick="branchDashTab('no-sales',this)" data-ar="بدون مبيعات" data-en="No Sales">بدون مبيعات</button>
+<button class="tab" onclick="branchDashTab('upload',this)">📤</button>
+</div>
 
-    <div id="branch-overview">
-      <div class="kpi-row">
-        <div class="kpi-card" style="border-color:rgba(255,215,0,.2)">
-          <div class="kpi-val" style="color:var(--gold)" id="kpi-s-count">-</div>
-          <div class="kpi-label">S 🥇</div>
-        </div>
-        <div class="kpi-card" style="border-color:rgba(184,196,204,.2)">
-          <div class="kpi-val" style="color:var(--silver)" id="kpi-a-count">-</div>
-          <div class="kpi-label">A 🥈</div>
-        </div>
-        <div class="kpi-card" style="border-color:rgba(205,127,50,.2)">
-          <div class="kpi-val" style="color:var(--bronze)" id="kpi-b-count">-</div>
-          <div class="kpi-label">B 🥉</div>
-        </div>
-      </div>
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label" data-ar="مبيعات أبريل (EGP)" data-en="April Sales (EGP)">مبيعات أبريل (EGP)</div>
-          <div class="stat-val" style="color:var(--green);font-size:16px" id="kpi-curr-rev">-</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label" data-ar="مبيعات الشهر السابق" data-en="Prev Month Sales">مبيعات الشهر السابق</div>
-          <div class="stat-val" style="font-size:16px" id="kpi-prev-rev">-</div>
-        </div>
-      </div>
-      <div class="card" style="border-color:rgba(255,59,59,.2);background:rgba(255,59,59,.04);margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <div style="font-size:12px;font-weight:700" data-ar="التغيير مقارنة بالشهر السابق" data-en="Change vs Last Month">التغيير مقارنة بالشهر السابق</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px" data-ar="إجمالي كل الفروع" data-en="All branches total">إجمالي كل الفروع</div>
-          </div>
-          <div id="kpi-change" style="font-size:22px;font-weight:800">-</div>
-        </div>
-      </div>
-      <div class="sh"><div class="sh-title" data-ar="🏪 أفضل الفروع" data-en="🏪 Top Branches">🏪 أفضل الفروع</div></div>
-      <div id="branch-top-list"></div>
-    </div>
+<div id="branch-overview">
+<div class="kpi-row">
+<div class="kpi-card" style="border-color:rgba(255,215,0,.2)">
+<div class="kpi-val" style="color:var(--gold)" id="kpi-s-count">-</div>
+<div class="kpi-label">S 🥇</div>
+</div>
+<div class="kpi-card" style="border-color:rgba(184,196,204,.2)">
+<div class="kpi-val" style="color:var(--silver)" id="kpi-a-count">-</div>
+<div class="kpi-label">A 🥈</div>
+</div>
+<div class="kpi-card" style="border-color:rgba(205,127,50,.2)">
+<div class="kpi-val" style="color:var(--bronze)" id="kpi-b-count">-</div>
+<div class="kpi-label">B 🥉</div>
+</div>
+</div>
+<div class="stats-grid">
+<div class="stat-card">
+<div class="stat-label" data-ar="مبيعات أبريل (EGP)" data-en="April Sales (EGP)">مبيعات أبريل (EGP)</div>
+<div class="stat-val" style="color:var(--green);font-size:16px" id="kpi-curr-rev">-</div>
+</div>
+<div class="stat-card">
+<div class="stat-label" data-ar="مبيعات الشهر السابق" data-en="Prev Month Sales">مبيعات الشهر السابق</div>
+<div class="stat-val" style="font-size:16px" id="kpi-prev-rev">-</div>
+</div>
+</div>
+<div class="card" style="border-color:rgba(255,59,59,.2);background:rgba(255,59,59,.04);margin-bottom:10px">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<div>
+<div style="font-size:12px;font-weight:700" data-ar="التغيير مقارنة بالشهر السابق" data-en="Change vs Last Month">التغيير مقارنة بالشهر السابق</div>
+<div style="font-size:11px;color:var(--muted);margin-top:2px" data-ar="إجمالي كل الفروع" data-en="All branches total">إجمالي كل الفروع</div>
+</div>
+<div id="kpi-change" style="font-size:22px;font-weight:800">-</div>
+</div>
+</div>
+<div class="sh"><div class="sh-title" data-ar="🏪 أفضل الفروع" data-en="🏪 Top Branches">🏪 أفضل الفروع</div></div>
+<div id="branch-top-list"></div>
+</div>
 
-    <div id="branch-s-tier" style="display:none">
-      <div class="card" style="border-color:rgba(255,215,0,.3);background:rgba(255,215,0,.04)">
-        <div style="font-size:13px;font-weight:800;color:var(--gold)" data-ar="🥇 S تير — الأعلى أداءً" data-en="🥇 S Tier — Top Performers">🥇 S تير — الأعلى أداءً</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px" id="s-tier-subtitle"></div>
-      </div>
-      <div id="s-tier-list"></div>
-    </div>
+<div id="branch-s-tier" style="display:none">
+<div class="card" style="border-color:rgba(255,215,0,.3);background:rgba(255,215,0,.04)">
+<div style="font-size:13px;font-weight:800;color:var(--gold)" data-ar="🥇 S تير — الأعلى أداءً" data-en="🥇 S Tier — Top Performers">🥇 S تير — الأعلى أداءً</div>
+<div style="font-size:11px;color:var(--muted);margin-top:3px" id="s-tier-subtitle"></div>
+</div>
+<div id="s-tier-list"></div>
+</div>
 
-    <div id="branch-a-tier" style="display:none">
-      <div class="card" style="border-color:rgba(184,196,204,.3);background:rgba(184,196,204,.04)">
-        <div style="font-size:13px;font-weight:800;color:var(--silver)" data-ar="🥈 A تير — متوسط الأداء" data-en="🥈 A Tier — Average">🥈 A تير — متوسط الأداء</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px" id="a-tier-subtitle"></div>
-      </div>
-      <div id="a-tier-list"></div>
-    </div>
+<div id="branch-a-tier" style="display:none">
+<div class="card" style="border-color:rgba(184,196,204,.3);background:rgba(184,196,204,.04)">
+<div style="font-size:13px;font-weight:800;color:var(--silver)" data-ar="🥈 A تير — متوسط الأداء" data-en="🥈 A Tier — Average">🥈 A تير — متوسط الأداء</div>
+<div style="font-size:11px;color:var(--muted);margin-top:3px" id="a-tier-subtitle"></div>
+</div>
+<div id="a-tier-list"></div>
+</div>
 
-    <div id="branch-b-tier" style="display:none">
-      <div class="card" style="border-color:rgba(205,127,50,.3);background:rgba(205,127,50,.04)">
-        <div style="font-size:13px;font-weight:800;color:var(--bronze)" data-ar="🥉 B تير — يحتاج تطوير" data-en="🥉 B Tier — Needs Improvement">🥉 B تير — يحتاج تطوير</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px" id="b-tier-subtitle"></div>
-      </div>
-      <div id="b-tier-list"></div>
-    </div>
+<div id="branch-b-tier" style="display:none">
+<div class="card" style="border-color:rgba(205,127,50,.3);background:rgba(205,127,50,.04)">
+<div style="font-size:13px;font-weight:800;color:var(--bronze)" data-ar="🥉 B تير — يحتاج تطوير" data-en="🥉 B Tier — Needs Improvement">🥉 B تير — يحتاج تطوير</div>
+<div style="font-size:11px;color:var(--muted);margin-top:3px" id="b-tier-subtitle"></div>
+</div>
+<div id="b-tier-list"></div>
+</div>
 
-    <div id="branch-no-sales" style="display:none">
-      <div class="card">
-        <div style="font-size:13px;font-weight:800;color:var(--muted)" data-ar="🏪 فروع بدون مبيعات — أبريل حتى الآن" data-en="🏪 No Sales — April so far">🏪 فروع بدون مبيعات — أبريل حتى الآن</div>
-      </div>
-      <div id="ns-tier-list"></div>
-    </div>
+<div id="branch-no-sales" style="display:none">
+<div class="card">
+<div style="font-size:13px;font-weight:800;color:var(--muted)" data-ar="🏪 فروع بدون مبيعات — أبريل حتى الآن" data-en="🏪 No Sales — April so far">🏪 فروع بدون مبيعات — أبريل حتى الآن</div>
+</div>
+<div id="ns-tier-list"></div>
+</div>
 
-    <div id="branch-upload" style="display:none">
-      <div class="card">
-        <div style="font-size:14px;font-weight:800;margin-bottom:8px" data-ar="📤 رفع بيانات الفروع الأسبوعية" data-en="📤 Weekly Branch Upload">📤 رفع بيانات الفروع الأسبوعية</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:14px" data-ar="ارفع CSV: اسم الفرع، المبيعات" data-en="Upload CSV: branch name, sales">ارفع CSV: اسم الفرع، المبيعات</div>
-        <div class="upload-zone" onclick="document.getElementById('upload-file').click()">
-          <input type="file" id="upload-file" accept=".csv,.xlsx,.xls" onchange="handleBranchUpload(event)">
-          <div style="font-size:32px;margin-bottom:8px">📊</div>
-          <div style="font-size:13px;font-weight:700;margin-bottom:4px" data-ar="اضغط لرفع ملف" data-en="Tap to upload">اضغط لرفع ملف</div>
-          <div style="font-size:11px;color:var(--muted)">.csv</div>
-        </div>
-        <div id="upload-result"></div>
-      </div>
-      <div class="card">
-        <div style="font-size:13px;font-weight:700;margin-bottom:10px" data-ar="📋 سجل الرفع" data-en="📋 Upload History">📋 سجل الرفع</div>
-        <div id="upload-history-list"><div style="color:var(--muted);font-size:12px" data-ar="لا يوجد سجل بعد" data-en="No history yet">لا يوجد سجل بعد</div></div>
-      </div>
-    </div>
-  </div>
+<div id="branch-upload" style="display:none">
+<div class="card">
+<div style="font-size:14px;font-weight:800;margin-bottom:8px" data-ar="📤 رفع بيانات الفروع الأسبوعية" data-en="📤 Weekly Branch Upload">📤 رفع بيانات الفروع الأسبوعية</div>
+<div style="font-size:12px;color:var(--muted);margin-bottom:14px" data-ar="ارفع CSV: اسم الفرع، المبيعات" data-en="Upload CSV: branch name, sales">ارفع CSV: اسم الفرع، المبيعات</div>
+<div class="upload-zone" onclick="document.getElementById('upload-file').click()">
+<input type="file" id="upload-file" accept=".csv,.xlsx,.xls" onchange="handleBranchUpload(event)">
+<div style="font-size:32px;margin-bottom:8px">📊</div>
+<div style="font-size:13px;font-weight:700;margin-bottom:4px" data-ar="اضغط لرفع ملف" data-en="Tap to upload">اضغط لرفع ملف</div>
+<div style="font-size:11px;color:var(--muted)">.csv</div>
+</div>
+<div id="upload-result"></div>
+</div>
+<div class="card">
+<div style="font-size:13px;font-weight:700;margin-bottom:10px" data-ar="📋 سجل الرفع" data-en="📋 Upload History">📋 سجل الرفع</div>
+<div id="upload-history-list"><div style="color:var(--muted);font-size:12px" data-ar="لا يوجد سجل بعد" data-en="No history yet">لا يوجد سجل بعد</div></div>
+</div>
+</div>
+</div>
 
-  <!-- REPORTS -->
-  <div id="admin-reports" class="content" style="display:none">
-    <div class="tabs" id="report-tabs">
-      <button class="tab active" onclick="reportTab('employee',this)" data-ar="موظف" data-en="Employee">موظف</button>
-      <button class="tab" onclick="reportTab('products',this)" data-ar="منتجات" data-en="Products">منتجات</button>
-      <button class="tab" onclick="reportTab('branch',this)" data-ar="الفروع" data-en="Branches">الفروع</button>
-      <button class="tab" onclick="reportTab('display',this)" data-ar="🖼️ ديسبلاي" data-en="🖼️ Display">🖼️ ديسبلاي</button>
-      <button class="tab" onclick="reportTab('visits',this)" data-ar="📸 زيارات" data-en="📸 Visits">📸 زيارات</button>
-    </div>
-    <div id="report-employee">
-      <div class="card">
-        <div class="inp-grp">
-          <label data-ar="اختر الموظف" data-en="Select Employee">اختر الموظف</label>
-          <select id="report-emp-select" onchange="loadEmpReport()">
-            <option value="" data-ar="-- اختر موظف --" data-en="-- Select Employee --">-- اختر موظف --</option>
-          </select>
-        </div>
-      </div>
-      <div id="report-content"></div>
-      <div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
-      <div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
-        <button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
-      </div>
-    </div>
-    </div>
-    <div id="report-products" style="display:none"><div id="products-report-content"></div><div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
-      <div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
-        <button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
-      </div>
-    </div></div>
-    <div id="report-branch" style="display:none"><div id="branch-report-content"></div><div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
-      <div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
-        <button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
-      </div>
-    </div></div>
-    <div id="report-display" style="display:none">
-      <div class="card" style="margin-bottom:10px">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <select id="display-report-emp" style="flex:1;padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px">
-            <option value="">كل الموظفين</option>
-          </select>
-          <input type="month" id="display-report-month" style="padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px">
-          <button onclick="loadDisplayReport()" class="btn btn-green" style="width:auto;padding:9px 16px;font-size:13px">بحث</button>
-        </div>
-      </div>
-      <div id="display-report-content"></div>
-    </div>
+<!-- REPORTS -->
+<div id="admin-reports" class="content" style="display:none">
+<div class="tabs" id="report-tabs">
+<button class="tab active" onclick="reportTab('employee',this)" data-ar="موظف" data-en="Employee">موظف</button>
+<button class="tab" onclick="reportTab('products',this)" data-ar="منتجات" data-en="Products">منتجات</button>
+<button class="tab" onclick="reportTab('branch',this)" data-ar="الفروع" data-en="Branches">الفروع</button>
+<button class="tab" onclick="reportTab('display',this)" data-ar="🖼️ ديسبلاي" data-en="🖼️ Display">🖼️ ديسبلاي</button>
+<button class="tab" onclick="reportTab('visits',this)" data-ar="📸 زيارات" data-en="📸 Visits">📸 زيارات</button>
+</div>
+<div id="report-employee">
+<div class="card">
+<div class="inp-grp">
+<label data-ar="اختر الموظف" data-en="Select Employee">اختر الموظف</label>
+<select id="report-emp-select" onchange="loadEmpReport()">
+<option value="" data-ar="-- اختر موظف --" data-en="-- Select Employee --">-- اختر موظف --</option>
+</select>
+</div>
+</div>
+<div id="report-content"></div>
+<div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
+<div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
+<button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
+</div>
+</div>
+</div>
+<div id="report-products" style="display:none"><div id="products-report-content"></div><div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
+<div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
+<button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
+</div>
+</div></div>
+<div id="report-branch" style="display:none"><div id="branch-report-content"></div><div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
+<div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
+<button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
+</div>
+</div></div>
+<div id="report-display" style="display:none">
+<div class="card" style="margin-bottom:10px">
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<select id="display-report-emp" style="flex:1;padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px">
+<option value="">كل الموظفين</option>
+</select>
+<input type="month" id="display-report-month" style="padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px">
+<button onclick="loadDisplayReport()" class="btn btn-green" style="width:auto;padding:9px 16px;font-size:13px">بحث</button>
+</div>
+</div>
+<div id="display-report-content"></div>
+</div>
+<div id="report-visits" style="display:none">
+<div class="card" style="margin-bottom:10px">
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<select id="visit-report-emp" style="flex:1;padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px">
+<option value="">كل تيم ليدر</option>
+</select>
+<input type="month" id="visit-report-month" style="padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px">
+<button onclick="loadVisitsReport()" class="btn btn-green" style="width:auto;padding:9px 16px;font-size:13px">بحث</button>
+</div>
+</div>
+<div id="visits-report-content"></div>
+</div>
+</div>
 
-        <div id="report-visits" style="display:none">
-      <div class="card" style="margin-bottom:10px">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <select id="visit-report-emp" style="flex:1;padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px">
-            <option value="">كل تيم ليدر</option>
-          </select>
-          <input type="month" id="visit-report-month" style="padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px">
-          <button onclick="loadVisitsReport()" class="btn btn-green" style="width:auto;padding:9px 16px;font-size:13px">بحث</button>
-        </div>
-      </div>
-      <div id="visits-report-content"></div>
-    </div>
-  </div>
-
-  <!-- SETTINGS -->
-  <div id="admin-settings" class="content" style="display:none">
-    <!-- Team (moved from nav) -->
-    <div class="acc-item" id="acc-team-item">
-      <div class="acc-hdr" onclick="toggleAcc('acc-team')">
-        <span>👥 <span data-ar="إدارة الفريق" data-en="Team Management">إدارة الفريق</span></span>
-        <span class="acc-arrow" id="acc-team-arrow">▼</span>
-      </div>
-      <div class="acc-body" id="acc-team" style="display:none">
-        <div class="sh" style="margin-bottom:10px">
-          <div></div>
-          <div class="sh-action" onclick="openAddEmp()" data-ar="+ إضافة موظف" data-en="+ Add Employee">+ إضافة موظف</div>
-        </div>
-        <div id="settings-emp-list"></div>
-      </div>
-    </div>
-    <!-- Work Hours -->
-    <div class="acc-item">
-      <div class="acc-hdr" onclick="toggleAcc('acc-hours')">
-        <span>⏰ <span data-ar="ساعات العمل" data-en="Work Hours">ساعات العمل</span></span>
-        <span class="acc-arrow" id="acc-hours-arrow">▼</span>
-      </div>
-      <div class="acc-body" id="acc-hours" style="display:none">
-        <div class="inp-grp"><label data-ar="وقت البداية" data-en="Start Time">وقت البداية</label><input type="time" id="work-start" value="14:00"></div>
-        <div class="inp-grp"><label data-ar="وقت النهاية" data-en="End Time">وقت النهاية</label><input type="time" id="work-end" value="22:00"></div>
-        <button class="btn btn-green" style="width:auto;padding:9px 18px" onclick="saveWorkTime()" data-ar="حفظ" data-en="Save">حفظ</button>
-      </div>
-    </div>
-    <!-- Branches -->
-    <div class="acc-item">
-      <div class="acc-hdr" onclick="toggleAcc('acc-branches')">
-        <span>🏪 <span data-ar="إدارة الفروع" data-en="Manage Branches">إدارة الفروع</span></span>
-        <span class="acc-arrow" id="acc-branches-arrow">▼</span>
-      </div>
-      <div class="acc-body" id="acc-branches" style="display:none">
-        <div class="sh" style="margin-bottom:10px">
-          <div></div>
-          <div class="sh-action" onclick="openAddBranch()" data-ar="+ إضافة فرع" data-en="+ Add Branch">+ إضافة فرع</div>
-        </div>
-        <div id="branches-list"></div>
-      </div>
-    </div>
-    <!-- Products -->
-    <div class="acc-item">
-      <div class="acc-hdr" onclick="toggleAcc('acc-products')">
-        <span>📦 <span data-ar="أسعار المنتجات" data-en="Product Prices">أسعار المنتجات</span></span>
-        <span class="acc-arrow" id="acc-products-arrow">▼</span>
-      </div>
-      <div class="acc-body" id="acc-products" style="display:none">
-        <div id="products-settings-list"></div>
-      </div>
-    </div>
-    <!-- Targets -->
-    <div class="acc-item">
-      <div class="acc-hdr" onclick="toggleAcc('acc-targets')">
-        <span>🎯 <span data-ar="التارجتات الشهرية" data-en="Monthly Targets">التارجتات الشهرية</span></span>
-        <span class="acc-arrow" id="acc-targets-arrow">▼</span>
-      </div>
-      <div class="acc-body" id="acc-targets" style="display:none">
-        <div class="sh" style="margin-bottom:10px">
-          <div></div>
-          <div class="sh-action" onclick="openTargetModal()" data-ar="+ تعيين تارجت" data-en="+ Set Target">+ تعيين تارجت</div>
-        </div>
-        <div id="targets-list"></div>
-      </div>
-    </div>
-    <!-- Admins (superadmin only) -->
-    <div class="acc-item" id="admins-section" style="display:none">
-      <div class="acc-hdr" onclick="toggleAcc('acc-admins')">
-        <span>👑 <span data-ar="إدارة المسؤولين" data-en="Manage Admins">إدارة المسؤولين</span></span>
-        <span class="acc-arrow" id="acc-admins-arrow">▼</span>
-      </div>
-      <div class="acc-body" id="acc-admins" style="display:none">
-        <div class="sh" style="margin-bottom:10px">
-          <div></div>
-          <div class="sh-action" onclick="openAddAdmin()" data-ar="+ إضافة مسؤول" data-en="+ Add Admin">+ إضافة مسؤول</div>
-        </div>
-        <div id="admins-list"></div>
-      </div>
-    </div>
-    <!-- Clear Photos -->
-    <div class="acc-item" style="border-color:rgba(255,59,59,.2)">
-      <div class="acc-hdr" onclick="toggleAcc('acc-danger')" style="color:var(--red)">
-        <span>🗑️ <span data-ar="منطقة الخطر" data-en="Danger Zone">منطقة الخطر</span></span>
-        <span class="acc-arrow" id="acc-danger-arrow">▼</span>
-      </div>
-      <div class="acc-body" id="acc-danger" style="display:none">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:12px" data-ar="حذف صور السيلفي الأقدم من 30 يوم لتوفير المساحة" data-en="Remove selfie photos older than 30 days to save space">حذف صور السيلفي الأقدم من 30 يوم لتوفير المساحة</div>
-        <button class="btn btn-outline" style="width:auto;padding:9px 18px;border-color:var(--red);color:var(--red)" onclick="clearOldPhotos()" data-ar="حذف الصور القديمة" data-en="Clear Old Photos">حذف الصور القديمة</button>
-      </div>
-    </div>
-  </div>
+<!-- SETTINGS -->
+<div id="admin-settings" class="content" style="display:none">
+<!-- Team (moved from nav) -->
+<div class="acc-item" id="acc-team-item">
+<div class="acc-hdr" onclick="toggleAcc('acc-team')">
+<span>👥 <span data-ar="إدارة الفريق" data-en="Team Management">إدارة الفريق</span></span>
+<span class="acc-arrow" id="acc-team-arrow">▼</span>
+</div>
+<div class="acc-body" id="acc-team" style="display:none">
+<div class="sh" style="margin-bottom:10px">
+<div></div>
+<div class="sh-action" onclick="openAddEmp()" data-ar="+ إضافة موظف" data-en="+ Add Employee">+ إضافة موظف</div>
+</div>
+<div id="settings-emp-list"></div>
+</div>
+</div>
+<!-- Work Hours -->
+<div class="acc-item">
+<div class="acc-hdr" onclick="toggleAcc('acc-hours')">
+<span>⏰ <span data-ar="ساعات العمل" data-en="Work Hours">ساعات العمل</span></span>
+<span class="acc-arrow" id="acc-hours-arrow">▼</span>
+</div>
+<div class="acc-body" id="acc-hours" style="display:none">
+<div class="inp-grp"><label data-ar="وقت البداية" data-en="Start Time">وقت البداية</label><input type="time" id="work-start" value="14:00"></div>
+<div class="inp-grp"><label data-ar="وقت النهاية" data-en="End Time">وقت النهاية</label><input type="time" id="work-end" value="22:00"></div>
+<button class="btn btn-green" style="width:auto;padding:9px 18px" onclick="saveWorkTime()" data-ar="حفظ" data-en="Save">حفظ</button>
+</div>
+</div>
+<!-- Branches -->
+<div class="acc-item">
+<div class="acc-hdr" onclick="toggleAcc('acc-branches')">
+<span>🏪 <span data-ar="إدارة الفروع" data-en="Manage Branches">إدارة الفروع</span></span>
+<span class="acc-arrow" id="acc-branches-arrow">▼</span>
+</div>
+<div class="acc-body" id="acc-branches" style="display:none">
+<div class="sh" style="margin-bottom:10px">
+<div></div>
+<div class="sh-action" onclick="openAddBranch()" data-ar="+ إضافة فرع" data-en="+ Add Branch">+ إضافة فرع</div>
+</div>
+<div id="branches-list"></div>
+</div>
+</div>
+<!-- Products -->
+<div class="acc-item">
+<div class="acc-hdr" onclick="toggleAcc('acc-products')">
+<span>📦 <span data-ar="أسعار المنتجات" data-en="Product Prices">أسعار المنتجات</span></span>
+<span class="acc-arrow" id="acc-products-arrow">▼</span>
+</div>
+<div class="acc-body" id="acc-products" style="display:none">
+<div id="products-settings-list"></div>
+</div>
+</div>
+<!-- Targets -->
+<div class="acc-item">
+<div class="acc-hdr" onclick="toggleAcc('acc-targets')">
+<span>🎯 <span data-ar="التارجتات الشهرية" data-en="Monthly Targets">التارجتات الشهرية</span></span>
+<span class="acc-arrow" id="acc-targets-arrow">▼</span>
+</div>
+<div class="acc-body" id="acc-targets" style="display:none">
+<div class="sh" style="margin-bottom:10px">
+<div></div>
+<div class="sh-action" onclick="openTargetModal()" data-ar="+ تعيين تارجت" data-en="+ Set Target">+ تعيين تارجت</div>
+</div>
+<div id="targets-list"></div>
+</div>
+</div>
+<!-- Admins (superadmin only) -->
+<div class="acc-item" id="admins-section" style="display:none">
+<div class="acc-hdr" onclick="toggleAcc('acc-admins')">
+<span>👑 <span data-ar="إدارة المسؤولين" data-en="Manage Admins">إدارة المسؤولين</span></span>
+<span class="acc-arrow" id="acc-admins-arrow">▼</span>
+</div>
+<div class="acc-body" id="acc-admins" style="display:none">
+<div class="sh" style="margin-bottom:10px">
+<div></div>
+<div class="sh-action" onclick="openAddAdmin()" data-ar="+ إضافة مسؤول" data-en="+ Add Admin">+ إضافة مسؤول</div>
+</div>
+<div id="admins-list"></div>
+</div>
+</div>
+<!-- Clear Photos -->
+<div class="acc-item" style="border-color:rgba(255,59,59,.2)">
+<div class="acc-hdr" onclick="toggleAcc('acc-danger')" style="color:var(--red)">
+<span>🗑️ <span data-ar="منطقة الخطر" data-en="Danger Zone">منطقة الخطر</span></span>
+<span class="acc-arrow" id="acc-danger-arrow">▼</span>
+</div>
+<div class="acc-body" id="acc-danger" style="display:none">
+<div style="font-size:12px;color:var(--muted);margin-bottom:12px" data-ar="حذف صور السيلفي الأقدم من 30 يوم لتوفير المساحة" data-en="Remove selfie photos older than 30 days to save space">حذف صور السيلفي الأقدم من 30 يوم لتوفير المساحة</div>
+<button class="btn btn-outline" style="width:auto;padding:9px 18px;border-color:var(--red);color:var(--red)" onclick="clearOldPhotos()" data-ar="حذف الصور القديمة" data-en="Clear Old Photos">حذف الصور القديمة</button>
+</div>
+</div>
+</div>
 
 
-  <!-- TEAM LEADER VISITS TAB -->
-  <div id="admin-visits" class="content" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div style="font-size:16px;font-weight:800">📸 صور الديسبلاي</div>
-      <div style="font-size:12px;color:var(--green);font-weight:700" id="tl-visit-count">0 / 150</div>
-    </div>
-    <div class="stats-grid" style="margin-bottom:12px">
-      <div class="stat-card"><div class="stat-label">زيارة هذا الشهر</div><div class="stat-val" style="color:var(--green)" id="tl-vis-done">0</div></div>
-      <div class="stat-card"><div class="stat-label">متبقي</div><div class="stat-val" style="color:var(--yellow)" id="tl-vis-remain">150</div></div>
-    </div>
-    <div class="card card-glow">
-      <div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ تسجيل زيارة جديدة</div>
-      <div class="inp-grp">
-        <label>الفرع</label>
-        <select id="tl-visit-branch" style="width:100%;padding:13px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none"></select>
-      </div>
-      <div class="inp-grp">
-        <label>ملاحظة (اختياري)</label>
-        <textarea id="tl-visit-note" rows="2" style="width:100%;padding:11px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl"></textarea>
-      </div>
-      <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">صور الديسبلاي (max 3)</label>
-      <div class="photo-previews" id="tl-visit-previews"></div>
-      <div class="photo-upload-zone" id="tl-visit-zone" onclick="showPhotoSourceModal('tl-visit-input')">
-        <input type="file" id="tl-visit-input" accept="image/*" style="display:none" onchange="addTLVisitPhoto(event)">
-        <div style="font-size:28px">📷</div>
-        <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور للزيارة</div>
-      </div>
-      <button class="btn btn-green" onclick="submitTLVisit()" style="margin-top:10px">✅ حفظ الزيارة</button>
-    </div>
-    <div class="sh" style="margin-top:8px"><div class="sh-title">📋 زياراتي هذا الشهر</div></div>
-    <div id="tl-visit-history"></div>
-  </div>
+<!-- TEAM LEADER VISITS TAB -->
+<div id="admin-visits" class="content" style="display:none">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+<div style="font-size:16px;font-weight:800">📸 صور الديسبلاي</div>
+<div style="font-size:12px;color:var(--green);font-weight:700" id="tl-visit-count">0 / 150</div>
+</div>
+<div class="stats-grid" style="margin-bottom:12px">
+<div class="stat-card"><div class="stat-label">زيارة هذا الشهر</div><div class="stat-val" style="color:var(--green)" id="tl-vis-done">0</div></div>
+<div class="stat-card"><div class="stat-label">متبقي</div><div class="stat-val" style="color:var(--yellow)" id="tl-vis-remain">150</div></div>
+</div>
+<div class="card card-glow">
+<div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ تسجيل زيارة جديدة</div>
+<div class="inp-grp">
+<label>الفرع</label>
+<select id="tl-visit-branch" style="width:100%;padding:13px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none"></select>
+</div>
+<div class="inp-grp">
+<label>ملاحظة (اختياري)</label>
+<textarea id="tl-visit-note" rows="2" style="width:100%;padding:11px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl"></textarea>
+</div>
+<label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">صور الديسبلاي (max 3)</label>
+<div class="photo-previews" id="tl-visit-previews"></div>
+<div class="photo-upload-zone" id="tl-visit-zone" onclick="showPhotoSourceModal('tl-visit-input')">
+<input type="file" id="tl-visit-input" accept="image/*" style="display:none" onchange="addTLVisitPhoto(event)">
+<div style="font-size:28px">📷</div>
+<div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
+<div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور للزيارة</div>
+</div>
+<button class="btn btn-green" onclick="submitTLVisit()" style="margin-top:10px">✅ حفظ الزيارة</button>
+</div>
+<div class="sh" style="margin-top:8px"><div class="sh-title">📋 زياراتي هذا الشهر</div></div>
+<div id="tl-visit-history"></div>
+</div>
 
-  <!-- ADMIN CHAT TAB -->
-  <div id="admin-chat" class="content" style="display:none">
-    <div style="font-size:14px;font-weight:800;margin-bottom:12px">💬 المحادثات</div>
-    <!-- Group Chat -->
-    <div class="card" onclick="openChat('group','B.tech team')" style="cursor:pointer;display:flex;align-items:center;gap:12px;margin-bottom:8px">
-      <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👥</div>
-      <div><div style="font-size:14px;font-weight:700">B.tech team</div><div style="font-size:11px;color:var(--muted)">جميع الموظفين</div></div>
-    </div>
-    <!-- Individual chats -->
-    <div style="font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 8px">محادثات فردية</div>
-    <div id="admin-chat-list"></div>
-  </div>
+<!-- ADMIN CHAT TAB -->
+<div id="admin-chat" class="content" style="display:none">
+<div style="font-size:14px;font-weight:800;margin-bottom:12px">💬 المحادثات</div>
+<!-- Group Chat -->
+<div class="card" onclick="openChat('group','B.tech team')" style="cursor:pointer;display:flex;align-items:center;gap:12px;margin-bottom:8px">
+<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👥</div>
+<div><div style="font-size:14px;font-weight:700">B.tech team</div><div style="font-size:11px;color:var(--muted)">جميع الموظفين</div></div>
+</div>
+<!-- Individual chats -->
+<div style="font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 8px">محادثات فردية</div>
+<div id="admin-chat-list"></div>
+</div>
 
-  <div class="bottom-nav">
-    <div class="nav-item active" onclick="adminTab('dashboard',this)">
-      <div class="nav-icon">📊</div><div class="nav-label" data-ar="الرئيسية" data-en="Home">الرئيسية</div>
-    </div>
-    <div class="nav-item" id="adm-branches-nav" onclick="adminTab('branches',this)">
-      <div class="nav-icon">🏪</div><div class="nav-label" data-ar="الفروع" data-en="Branches">الفروع</div>
-    </div>
-    <div class="nav-item" id="adm-visits-nav" onclick="adminTab('visits',this)" style="display:none">
-      <div class="nav-icon">📸</div><div class="nav-label" data-ar="الزيارات" data-en="Visits">الزيارات</div>
-    </div>
-    <div class="nav-item" onclick="adminTab('chat',this)">
-      <div class="nav-icon">💬</div><div class="nav-label" data-ar="الشات" data-en="Chat">الشات</div>
-    </div>
-    <div class="nav-item" onclick="adminTab('reports',this)">
-      <div class="nav-icon">📈</div><div class="nav-label" data-ar="التقارير" data-en="Reports">التقارير</div>
-    </div>
-    <div class="nav-item" id="settings-nav-item" onclick="adminTab('settings',this)">
-      <div class="nav-icon">⚙️</div><div class="nav-label" data-ar="الإعدادات" data-en="Settings">الإعدادات</div>
-    </div>
-  </div>
+<div class="bottom-nav">
+<div class="nav-item active" onclick="adminTab('dashboard',this)">
+<div class="nav-icon">📊</div><div class="nav-label" data-ar="الرئيسية" data-en="Home">الرئيسية</div>
+</div>
+<div class="nav-item" id="adm-branches-nav" onclick="adminTab('branches',this)">
+<div class="nav-icon">🏪</div><div class="nav-label" data-ar="الفروع" data-en="Branches">الفروع</div>
+</div>
+<div class="nav-item" id="adm-visits-nav" onclick="adminTab('visits',this)" style="display:none">
+<div class="nav-icon">📸</div><div class="nav-label" data-ar="الزيارات" data-en="Visits">الزيارات</div>
+</div>
+<div class="nav-item" onclick="adminTab('chat',this)">
+<div class="nav-icon">💬</div><div class="nav-label" data-ar="الشات" data-en="Chat">الشات</div>
+</div>
+<div class="nav-item" onclick="adminTab('reports',this)">
+<div class="nav-icon">📈</div><div class="nav-label" data-ar="التقارير" data-en="Reports">التقارير</div>
+</div>
+<div class="nav-item" id="settings-nav-item" onclick="adminTab('settings',this)">
+<div class="nav-icon">⚙️</div><div class="nav-label" data-ar="الإعدادات" data-en="Settings">الإعدادات</div>
+</div>
+</div>
 </div>
 
 <div id="chat-modal">
-  <div class="chat-header-bar">
-    <button class="chat-back-btn" onclick="closeChat()">←</button>
-    <div class="chat-header-avatar">💬</div>
-    <div class="chat-header-info">
-      <div class="chat-header-title" id="chat-title">المحادثة</div>
-      <div class="chat-header-status" data-ar="متصل" data-en="Online">متصل</div>
-    </div>
-  </div>
-  <div id="chat-messages"></div>
-  <div class="chat-input-bar">
-    <input type="text" id="chat-input" placeholder="اكتب رسالة..." onkeydown="if(event.key==='Enter')sendMessage()">
-    <button class="chat-send-btn" onclick="sendMessage()">➤</button>
-  </div>
+<div class="chat-header-bar">
+<button class="chat-back-btn" onclick="closeChat()">←</button>
+<div class="chat-header-avatar">💬</div>
+<div class="chat-header-info">
+<div class="chat-header-title" id="chat-title">المحادثة</div>
+<div class="chat-header-status" data-ar="متصل" data-en="Online">متصل</div>
+</div>
+</div>
+<div id="chat-messages"></div>
+<div class="chat-input-bar">
+<input type="text" id="chat-input" placeholder="اكتب رسالة..." onkeydown="if(event.key==='Enter')sendMessage()">
+<button class="chat-send-btn" onclick="sendMessage()">➤</button>
+</div>
 </div>
 
 <!-- ═══════════════ MODALS ═══════════════ -->
 <div class="modal-overlay" id="add-emp-modal">
-  <div class="modal">
-    <span class="modal-close" onclick="closeModal('add-emp-modal')">✕</span>
-    <h2 id="emp-modal-title" data-ar="إضافة موظف" data-en="Add Employee">إضافة موظف</h2>
-    <input type="hidden" id="edit-emp-id">
-    <div class="inp-grp"><label data-ar="الاسم الكامل" data-en="Full Name">الاسم الكامل</label><input type="text" id="emp-form-name" placeholder="اسم الموظف" data-ar-ph="اسم الموظف" data-en-ph="Employee name"></div>
-    <div class="inp-grp"><label data-ar="اسم المستخدم" data-en="Username">اسم المستخدم</label><input type="text" id="emp-form-username" placeholder="للدخول" data-ar-ph="للدخول" data-en-ph="Login username"></div>
-    <div class="inp-grp" id="emp-pass-group"><label data-ar="كلمة المرور" data-en="Password">كلمة المرور</label><input type="password" id="emp-form-pass" placeholder="كلمة المرور" data-ar-ph="كلمة المرور" data-en-ph="Password"></div>
-    <div class="inp-grp">
-      <label data-ar="الدور الوظيفي" data-en="Role">الدور الوظيفي</label>
-      <select id="emp-form-role" onchange="toggleEmpBranchField()">
-        <option value="employee">👤 موظف</option>
-        <option value="team_leader">🎯 تيم ليدر</option>
-      </select>
-    </div>
-    <div class="inp-grp" id="emp-branch-group"><label data-ar="الفرع" data-en="Branch">الفرع</label><select id="emp-form-branch"></select></div>
-    <div class="inp-grp">
-      <label data-ar="الشيفت" data-en="Shift">الشيفت</label>
-      <select id="emp-form-shift">
-        <option value="morning">🌅 صباحي (10ص – 6م)</option>
-        <option value="evening">🌙 مسائي (2م – 10م)</option>
-      </select>
-    </div>
-    <div class="inp-grp">
-      <label data-ar="يوم الإجازة" data-en="Day Off">يوم الإجازة</label>
-      <div class="day-off-select" id="dayoff-picker">
-        <div class="day-chip" data-day="0" onclick="selectDay(0)" data-ar="الأحد" data-en="Sun">الأحد</div>
-        <div class="day-chip" data-day="1" onclick="selectDay(1)" data-ar="الاثنين" data-en="Mon">الاثنين</div>
-        <div class="day-chip" data-day="2" onclick="selectDay(2)" data-ar="الثلاثاء" data-en="Tue">الثلاثاء</div>
-        <div class="day-chip" data-day="3" onclick="selectDay(3)" data-ar="الأربعاء" data-en="Wed">الأربعاء</div>
-        <div class="day-chip" data-day="4" onclick="selectDay(4)" data-ar="الخميس" data-en="Thu">الخميس</div>
-        <div class="day-chip" data-day="5" onclick="selectDay(5)" data-ar="الجمعة" data-en="Fri">الجمعة</div>
-        <div class="day-chip" data-day="6" onclick="selectDay(6)" data-ar="السبت" data-en="Sat">السبت</div>
-      </div>
-    </div>
-    <button class="btn btn-green" onclick="saveEmployee()" data-ar="حفظ" data-en="Save">حفظ</button>
-  </div>
+<div class="modal">
+<span class="modal-close" onclick="closeModal('add-emp-modal')">✕</span>
+<h2 id="emp-modal-title" data-ar="إضافة موظف" data-en="Add Employee">إضافة موظف</h2>
+<input type="hidden" id="edit-emp-id">
+<div class="inp-grp"><label data-ar="الاسم الكامل" data-en="Full Name">الاسم الكامل</label><input type="text" id="emp-form-name" placeholder="اسم الموظف" data-ar-ph="اسم الموظف" data-en-ph="Employee name"></div>
+<div class="inp-grp"><label data-ar="اسم المستخدم" data-en="Username">اسم المستخدم</label><input type="text" id="emp-form-username" placeholder="للدخول" data-ar-ph="للدخول" data-en-ph="Login username"></div>
+<div class="inp-grp" id="emp-pass-group"><label data-ar="كلمة المرور" data-en="Password">كلمة المرور</label><input type="password" id="emp-form-pass" placeholder="كلمة المرور" data-ar-ph="كلمة المرور" data-en-ph="Password"></div>
+<div class="inp-grp">
+<label data-ar="الدور الوظيفي" data-en="Role">الدور الوظيفي</label>
+<select id="emp-form-role" onchange="toggleEmpBranchField()">
+<option value="employee">👤 موظف</option>
+<option value="team_leader">🎯 تيم ليدر</option>
+</select>
 </div>
-
+<div class="inp-grp" id="emp-branch-group"><label data-ar="الفرع" data-en="Branch">الفرع</label><select id="emp-form-branch"></select></div>
+<div class="inp-grp">
+<label data-ar="الشيفت" data-en="Shift">الشيفت</label>
+<select id="emp-form-shift">
+<option value="morning">🌅 صباحي (10ص – 6م)</option>
+<option value="evening">🌙 مسائي (2م – 10م)</option>
+</select>
+</div>
+<div class="inp-grp">
+<label data-ar="يوم الإجازة" data-en="Day Off">يوم الإجازة</label>
+<div class="day-off-select" id="dayoff-picker">
+<div class="day-chip" data-day="0" onclick="selectDay(0)" data-ar="الأحد" data-en="Sun">الأحد</div>
+<div class="day-chip" data-day="1" onclick="selectDay(1)" data-ar="الاثنين" data-en="Mon">الاثنين</div>
+<div class="day-chip" data-day="2" onclick="selectDay(2)" data-ar="الثلاثاء" data-en="Tue">الثلاثاء</div>
+<div class="day-chip" data-day="3" onclick="selectDay(3)" data-ar="الأربعاء" data-en="Wed">الأربعاء</div>
+<div class="day-chip" data-day="4" onclick="selectDay(4)" data-ar="الخميس" data-en="Thu">الخميس</div>
+<div class="day-chip" data-day="5" onclick="selectDay(5)" data-ar="الجمعة" data-en="Fri">الجمعة</div>
+<div class="day-chip" data-day="6" onclick="selectDay(6)" data-ar="السبت" data-en="Sat">السبت</div>
+</div>
+</div>
+<button class="btn btn-green" onclick="saveEmployee()" data-ar="حفظ" data-en="Save">حفظ</button>
+</div>
+</div>
 <div class="modal-overlay" id="add-admin-modal">
-  <div class="modal">
-    <span class="modal-close" onclick="closeModal('add-admin-modal')">✕</span>
-    <h2 id="admin-modal-title">إضافة مسؤول</h2>
-    <input type="hidden" id="edit-admin-id">
-    <div class="inp-grp"><label>الاسم</label><input type="text" id="admin-form-name" placeholder="اسم المسؤول"></div>
-    <div class="inp-grp"><label>اسم المستخدم</label><input type="text" id="admin-form-username"></div>
-    <div class="inp-grp" id="admin-pass-group"><label>كلمة المرور</label><input type="password" id="admin-form-pass"></div>
-    <div class="inp-grp"><label>الدور</label>
-      <select id="admin-form-role">
-        <option value="admin">Admin</option>
-        <option value="manager">Team Leader</option>
-        <option value="viewer">Viewer</option>
-      </select>
-    </div>
-    <button class="btn btn-green" onclick="saveAdmin()">حفظ</button>
-  </div>
+<div class="modal">
+<span class="modal-close" onclick="closeModal('add-admin-modal')">✕</span>
+<h2 id="admin-modal-title">إضافة مسؤول</h2>
+<input type="hidden" id="edit-admin-id">
+<div class="inp-grp"><label>الاسم</label><input type="text" id="admin-form-name" placeholder="اسم المسؤول"></div>
+<div class="inp-grp"><label>اسم المستخدم</label><input type="text" id="admin-form-username"></div>
+<div class="inp-grp" id="admin-pass-group"><label>كلمة المرور</label><input type="password" id="admin-form-pass"></div>
+<div class="inp-grp"><label>الدور</label>
+<select id="admin-form-role">
+<option value="admin">Admin</option>
+<option value="manager">Team Leader</option>
+<option value="viewer">Viewer</option>
+</select>
+</div>
+<button class="btn btn-green" onclick="saveAdmin()">حفظ</button>
+</div>
 </div>
 
 
 <div class="modal-overlay" id="manager-team-modal">
-  <div class="modal">
-    <span class="modal-close" onclick="closeModal('manager-team-modal')">✕</span>
-    <h2 id="manager-team-title">👥 فريق التيم ليدر</h2>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px" id="manager-team-subtitle"></div>
-    <div id="manager-team-list" style="max-height:340px;overflow-y:auto"></div>
-    <button class="btn btn-green" onclick="saveManagerTeam()" style="margin-top:14px">💾 حفظ الفريق</button>
-  </div>
+<div class="modal">
+<span class="modal-close" onclick="closeModal('manager-team-modal')">✕</span>
+<h2 id="manager-team-title">👥 فريق التيم ليدر</h2>
+<div style="font-size:12px;color:var(--muted);margin-bottom:12px" id="manager-team-subtitle"></div>
+<div id="manager-team-list" style="max-height:340px;overflow-y:auto"></div>
+<button class="btn btn-green" onclick="saveManagerTeam()" style="margin-top:14px">💾 حفظ الفريق</button>
+</div>
 </div>
 
 <div class="modal-overlay" id="add-branch-modal">
-  <div class="modal">
-    <span class="modal-close" onclick="closeModal('add-branch-modal')">✕</span>
-    <h2 id="branch-modal-title">إضافة فرع</h2>
-    <input type="hidden" id="edit-branch-id">
-    <div class="inp-grp"><label>اسم الفرع</label><input type="text" id="branch-form-name" placeholder="اسم الفرع"></div>
-    <button class="btn btn-green" onclick="saveBranch()">حفظ</button>
-  </div>
+<div class="modal">
+<span class="modal-close" onclick="closeModal('add-branch-modal')">✕</span>
+<h2 id="branch-modal-title">إضافة فرع</h2>
+<input type="hidden" id="edit-branch-id">
+<div class="inp-grp"><label>اسم الفرع</label><input type="text" id="branch-form-name" placeholder="اسم الفرع"></div>
+<button class="btn btn-green" onclick="saveBranch()">حفظ</button>
+</div>
 </div>
 
 <div class="modal-overlay" id="target-modal">
-  <div class="modal">
-    <span class="modal-close" onclick="closeModal('target-modal')">✕</span>
-    <h2 data-ar="🎯 تعيين التارجت" data-en="🎯 Set Target">🎯 تعيين التارجت</h2>
-    <div class="inp-grp"><label data-ar="الموظف" data-en="Employee">الموظف</label><select id="target-emp-select"></select></div>
-    <div class="inp-grp"><label data-ar="الشهر" data-en="Month">الشهر</label><input type="month" id="target-month"></div>
-    <div class="inp-grp"><label data-ar="التارجت الإجمالي (EGP)" data-en="Total Target (EGP)">التارجت الإجمالي (EGP)</label><input type="number" id="target-amount" placeholder="50000"></div>
-    <div style="margin-bottom:10px">
-      <label style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.5px;display:block;margin-bottom:8px">🎯 تارجت الموديلات (كمية قطع)</label>
-      <div id="model-targets-list" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:7px"></div>
-      <button onclick="addModelTargetRow()" style="margin-top:8px;background:var(--card2);border:1.5px dashed var(--border);color:var(--green);border-radius:10px;padding:8px;width:100%;font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">+ إضافة موديل</button>
-    </div>
-    <button class="btn btn-green" onclick="saveTarget()" data-ar="حفظ التارجت" data-en="Save Target">حفظ التارجت</button>
-  </div>
+<div class="modal">
+<span class="modal-close" onclick="closeModal('target-modal')">✕</span>
+<h2 data-ar="🎯 تعيين التارجت" data-en="🎯 Set Target">🎯 تعيين التارجت</h2>
+<div class="inp-grp"><label data-ar="الموظف" data-en="Employee">الموظف</label><select id="target-emp-select"></select></div>
+<div class="inp-grp"><label data-ar="الشهر" data-en="Month">الشهر</label><input type="month" id="target-month"></div>
+<div class="inp-grp"><label data-ar="التارجت الإجمالي (EGP)" data-en="Total Target (EGP)">التارجت الإجمالي (EGP)</label><input type="number" id="target-amount" placeholder="50000"></div>
+<div style="margin-bottom:10px">
+<label style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.5px;display:block;margin-bottom:8px">🎯 تارجت الموديلات (كمية قطع)</label>
+<div id="model-targets-list" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:7px"></div>
+<button onclick="addModelTargetRow()" style="margin-top:8px;background:var(--card2);border:1.5px dashed var(--border);color:var(--green);border-radius:10px;padding:8px;width:100%;font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">+ إضافة موديل</button>
+</div>
+<button class="btn btn-green" onclick="saveTarget()" data-ar="حفظ التارجت" data-en="Save Target">حفظ التارجت</button>
+</div>
 </div>
 
-<div class="modal-overlay" id="camera-modal" style="padding:0;background:#000;z-index:99999">
-  <div style="position:fixed;inset:0;width:100vw;height:100vh;background:#000;display:flex;flex-direction:column;justify-content:center;align-items:center">
-    <video
-      id="video"
-      autoplay
-      playsinline
-      muted
-      webkit-playsinline
-      x-webkit-airplay="allow"
-      style="width:100vw;height:100vh;object-fit:cover;-webkit-transform:scaleX(-1);transform:scaleX(-1);background:#000">
-    </video>
-
-    <canvas id="canvas" style="display:none"></canvas>
-
-    <div class="camera-overlay" style="position:fixed;inset:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding:30px 20px;background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,.1), rgba(0,0,0,.2));pointer-events:none">
-      <div id="camera-label" style="color:#fff;font-size:13px;margin-bottom:18px;font-weight:700;pointer-events:auto">
-        📸 التقط سيلفي للتحقق
-      </div>
-
-      <button class="capture-btn" type="button" onclick="capturePhoto()" style="pointer-events:auto"></button>
-
-      <div id="camera-cancel" onclick="closeCamera()" style="color:rgba(255,255,255,.8);font-size:13px;margin-top:16px;cursor:pointer;pointer-events:auto">
-        إلغاء
-      </div>
-    </div>
-  </div>
+<div class="modal-overlay" id="selfie-modal">
+<div class="modal" style="text-align:center">
+<h2 id="selfie-modal-title">تأكيد الحضور</h2>
+<img id="selfie-preview-img" style="width:150px;height:150px;border-radius:50%;object-fit:cover;border:3px solid var(--green);margin:14px auto;display:block;box-shadow:0 0 24px var(--green-glow)" src="">
+<div id="location-status" style="font-size:12px;color:var(--muted);margin-bottom:14px">📍 جاري تحديد الموقع...</div>
+<button class="btn btn-green" onclick="confirmAttendance()" id="confirm-attend-btn" data-ar="✅ تأكيد" data-en="✅ Confirm">✅ تأكيد</button>
+<button class="btn btn-outline" onclick="closeModal('selfie-modal')" style="margin-top:6px" data-ar="إعادة التصوير" data-en="Retake">إعادة التصوير</button>
 </div>
-
+</div>
 
 <div class="modal-overlay" id="selfie-view-modal">
-  <div class="modal">
-    <span class="modal-close" onclick="closeModal('selfie-view-modal')">✕</span>
-    <h2 id="selfie-view-title"></h2>
-    <div id="selfie-view-content"></div>
-  </div>
+<div class="modal">
+<span class="modal-close" onclick="closeModal('selfie-view-modal')">✕</span>
+<h2 id="selfie-view-title"></h2>
+<div id="selfie-view-content"></div>
+</div>
 </div>
 
 <div class="modal-overlay" id="warning-modal">
-  <div class="modal">
-    <span class="modal-close" onclick="closeModal('warning-modal')">✕</span>
-    <h2 data-ar="⚠️ إرسال تحذير" data-en="⚠️ Send Warning">⚠️ إرسال تحذير</h2>
-    <div class="inp-grp"><label data-ar="الموظف" data-en="Employee">الموظف</label><select id="warn-emp-select"></select></div>
-    <div class="inp-grp">
-      <label data-ar="نص التحذير" data-en="Warning Text">نص التحذير</label>
-      <textarea id="warn-text" rows="3" style="width:100%;padding:11px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:'Cairo',sans-serif;font-size:13px;resize:none;outline:none;transition:.2s" placeholder="اكتب التحذير..."></textarea>
-    </div>
-    <div style="margin-bottom:12px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:6px" data-ar="قوالب سريعة:" data-en="Quick templates:">قوالب سريعة:</div>
-      <div class="warn-tpl" onclick="setWarnTemplate(1)">⚠️ تحذير: تأخرت اليوم. يرجى الالتزام بمواعيد العمل.</div>
-      <div class="warn-tpl" onclick="setWarnTemplate(2)">🔴 تحذير رسمي: تكرار التأخير. يرجى مراجعة الإدارة.</div>
-      <div class="warn-tpl" onclick="setWarnTemplate(3)">📋 تذكير: الالتزام بالمواعيد أو سيحتسب غياباً.</div>
-    </div>
-    <button class="btn btn-green" onclick="sendWarning()" data-ar="📤 إرسال التحذير" data-en="📤 Send Warning">📤 إرسال التحذير</button>
-  </div>
+<div class="modal">
+<span class="modal-close" onclick="closeModal('warning-modal')">✕</span>
+<h2 data-ar="⚠️ إرسال تحذير" data-en="⚠️ Send Warning">⚠️ إرسال تحذير</h2>
+<div class="inp-grp"><label data-ar="الموظف" data-en="Employee">الموظف</label><select id="warn-emp-select"></select></div>
+<div class="inp-grp">
+<label data-ar="نص التحذير" data-en="Warning Text">نص التحذير</label>
+<textarea id="warn-text" rows="3" style="width:100%;padding:11px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:'Cairo',sans-serif;font-size:13px;resize:none;outline:none;transition:.2s" placeholder="اكتب التحذير..."></textarea>
 </div>
-
-<div class="modal-overlay" id="display-camera-modal" style="padding:0;background:#000;z-index:99999">
-  <div style="position:fixed;inset:0;width:100vw;height:100vh;background:#000;display:flex;flex-direction:column;justify-content:center;align-items:center">
-    
-    <video id="display-camera-video" autoplay playsinline muted
-      style="position:absolute;inset:0;width:100vw;height:100vh;object-fit:cover;background:#000"></video>
-
-    <canvas id="display-camera-canvas" style="display:none"></canvas>
-
-    <div style="position:absolute;top:20px;left:20px;right:20px;z-index:2;display:flex;justify-content:space-between;align-items:center">
-      <div style="color:#fff;font-size:16px;font-weight:800">📷 تصوير الديسبلاي</div>
-      <button onclick="closeDisplayCamera()" style="background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.2);color:#fff;width:42px;height:42px;border-radius:50%;font-size:20px;cursor:pointer">✕</button>
-    </div>
-
-    <div style="position:absolute;bottom:35px;left:0;right:0;z-index:2;display:flex;justify-content:center;align-items:center">
-      <button onclick="captureDisplayPhoto()" style="width:86px;height:86px;border-radius:50%;border:5px solid #fff;background:#00C853;box-shadow:0 0 25px rgba(0,200,83,.45);cursor:pointer"></button>
-    </div>
-    
-  </div>
+<div style="margin-bottom:12px">
+<div style="font-size:11px;color:var(--muted);margin-bottom:6px" data-ar="قوالب سريعة:" data-en="Quick templates:">قوالب سريعة:</div>
+<div class="warn-tpl" onclick="setWarnTemplate(1)">⚠️ تحذير: تأخرت اليوم. يرجى الالتزام بمواعيد العمل.</div>
+<div class="warn-tpl" onclick="setWarnTemplate(2)">🔴 تحذير رسمي: تكرار التأخير. يرجى مراجعة الإدارة.</div>
+<div class="warn-tpl" onclick="setWarnTemplate(3)">📋 تذكير: الالتزام بالمواعيد أو سيحتسب غياباً.</div>
 </div>
-
+<button class="btn btn-green" onclick="sendWarning()" data-ar="📤 إرسال التحذير" data-en="📤 Send Warning">📤 إرسال التحذير</button>
+</div>
+</div>
 
 <!-- APP (module الوحيد) -->
 <script type="module" src="./src/app.js"></script>

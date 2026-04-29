@@ -1,5 +1,5 @@
 // ────────────────────────────────────────────────────────────
-// APP ENTRY POINT  (v3 + FIX VISITS ACCESS + FIX dbPatch)
+// APP ENTRY POINT  (v3 + FIX VISITS ACCESS)
 // ────────────────────────────────────────────────────────────
 
 import { state, loadUserFromStorage } from './state.js';
@@ -29,26 +29,11 @@ Object.assign(window, {
   dbGet: db.get,
   dbPost: db.post,
 
-  // ✅ FIX: dbPatch wrapper — كان بيعكس ترتيب body و query
-  // db.patch الأصلي: (table, query_string, body_object)
-  // الكود كله بيستدعي: dbPatch(table, body_object, query_string)
-  // الـ wrapper القديم كان بيبعت الـ object كـ query والـ string كـ body
-  dbPatch: async (table, bodyOrQuery, queryOrBody) => {
-    let query, body;
-    if (typeof bodyOrQuery === 'string') {
-      // استدعاء بترتيب db.patch الأصلي: (table, query, body)
-      query = bodyOrQuery;
-      body = queryOrBody;
-    } else if (typeof bodyOrQuery === 'object' && bodyOrQuery !== null) {
-      // استدعاء بالترتيب الشائع في الكود: (table, body, query)
-      body = bodyOrQuery;
-      query = queryOrBody || '';
-    } else {
-      // fallback آمن
-      body = bodyOrQuery;
-      query = queryOrBody || '';
+  dbPatch: async (table, body, query) => {
+    if (typeof body === 'string') {
+      return db.patch(table, body, query);
     }
-    return db.patch(table, String(query), body);
+    return db.patch(table, query, body);
   },
 
   dbDel: db.delete,

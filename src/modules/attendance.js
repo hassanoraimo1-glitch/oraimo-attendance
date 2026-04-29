@@ -47,7 +47,38 @@ function _ensureAttendCountdownEl() {
   return el;
 }
 
-function startAttendanceCountdown(checkInTime) {
+async function getApprovedLatePermissionMinutes(dateStr = todayStr()) {
+  if (!currentUser?.id) return 0;
+
+  const possibleQueries = [
+    {
+      table: 'late_permissions',
+      query: `?employee_id=eq.${currentUser.id}&date=eq.${dateStr}&status=eq.approved&select=minutes,duration_minutes,late_minutes`
+    },
+    {
+      table: 'permissions',
+      query: `?employee_id=eq.${currentUser.id}&date=eq.${dateStr}&type=eq.late&status=eq.approved&select=minutes,duration_minutes,late_minutes`
+    },
+    {
+      table: 'requests',
+      query: `?employee_id=eq.${currentUser.id}&date=eq.${dateStr}&request_type=eq.late&status=eq.approved&select=minutes,duration_minutes,late_minutes`
+    }
+  ];
+
+  for (const item of possibleQueries) {
+    try {
+      const rows = await dbGet(item.table, item.query).catch(() => []) || [];
+      if (rows.length > 0) {
+        const row = rows[0];
+        return Number(row.minutes || row.duration_minutes || row.late_minutes || 0) || 0;
+      }
+    } catch (_) {}
+  }
+
+  return 0;
+}
+
+async function startAttendanceCountdown(checkInTime, dateStr = todayStr()) {
   const el = _ensureAttendCountdownEl();
   if (!el || !checkInTime) return;
 
@@ -56,15 +87,16 @@ function startAttendanceCountdown(checkInTime) {
     attendCountdownTimer = null;
   }
 
-  const today = todayStr();
-  const checkInDate = new Date(`${today}T${checkInTime}:00`);
+  const checkInDate = new Date(`${dateStr}T${checkInTime}:00`);
 
   if (isNaN(checkInDate.getTime())) {
     el.style.display = 'none';
     return;
   }
 
-  const endTime = new Date(checkInDate.getTime() + (8 * 60 * 60 * 1000));
+  const approvedLateMinutes = await getApprovedLatePermissionMinutes(dateStr);
+  const requiredMinutes = Math.max(0, (8 * 60) - approvedLateMinutes);
+  const endTime = new Date(checkInDate.getTime() + (requiredMinutes * 60 * 1000));
 
   function render() {
     const now = new Date();
@@ -112,51 +144,82 @@ function stopAttendanceCountdown() {
 
 async function loadEmpData() {
   if (!currentUser) return;
+
   try {
-    const today = todayStr(), pm = getPayrollMonth();
+    const today = todayStr();
+    const pm = getPayrollMonth();
 
     // ── Today's attendance ──
     const todayAtt = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`).catch(() => []);
-    updateAttendBtn(todayAtt && todayAtt.length > 0 ? todayAtt[0] : null);
+    await updateAttendBtn(todayAtt && todayAtt.length > 0 ? todayAtt[0] : null);
 
     // ── Month's attendance & stats ──
     const monthAtt = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`).catch(() => []);
-    const attCountEl = document.getElementById('emp-attend-count'); if (attCountEl) attCountEl.textContent = (monthAtt || []).length;
-    let lateTotal = 0; (monthAtt || []).forEach(a => { lateTotal += (a.late_minutes || 0); });
-    const lateEl = document.getElementById('emp-late-total'); if (lateEl) lateEl.textContent = lateTotal + (currentLang === 'ar' ? ' د' : 'm');
+    const attCountEl = document.getElementById('emp-attend-count');
+    if (attCountEl) attCountEl.textContent = (monthAtt || []).length;
+
+    let lateTotal = 0;
+    (monthAtt || []).forEach(a => {
+      lateTotal += (a.late_minutes || 0);
+    });
+
+    const lateEl = document.getElementById('emp-late-total');
+    if (lateEl) lateEl.textContent = lateTotal + (currentLang === 'ar' ? ' د' : 'm');
 
     // ── Month's sales ──
     const monthSales = await dbGet('sales', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`).catch(() => []);
-    let salesTotal = 0; (monthSales || []).forEach(s => { salesTotal += s.total_amount; });
-    const salesEl = document.getElementById('emp-sales-total'); if (salesEl) salesEl.textContent = 'EGP ' + fmtEGP(salesTotal);
+    let salesTotal = 0;
+    (monthSales || []).forEach(s => {
+      salesTotal += s.total_amount;
+    });
+
+    const salesEl = document.getElementById('emp-sales-total');
+    if (salesEl) salesEl.textContent = 'EGP ' + fmtEGP(salesTotal);
 
     // ── Target & K Model ──
     const mon = pm.start.substring(0, 7);
     const targetRes = await dbGet('targets', `?employee_id=eq.${currentUser.id}&month=eq.${mon}&select=*`).catch(() => []);
     const target = targetRes && targetRes.length > 0 ? targetRes[0].amount : 0;
     const kmodel = targetRes && targetRes.length > 0 ? targetRes[0].kmodel_amount : 0;
-    const achEl = document.getElementById('target-achieved'); if (achEl) achEl.textContent = 'EGP ' + fmtEGP(salesTotal);
-    const goalEl = document.getElementById('target-goal'); if (goalEl) goalEl.textContent = (currentLang === 'ar' ? 'التارجت: ' : 'Target: ') + 'EGP ' + fmtEGP(target);
+
+    const achEl = document.getElementById('target-achieved');
+    if (achEl) achEl.textContent = 'EGP ' + fmtEGP(salesTotal);
+
+    const goalEl = document.getElementById('target-goal');
+    if (goalEl) goalEl.textContent = (currentLang === 'ar' ? 'التارجت: ' : 'Target: ') + 'EGP ' + fmtEGP(target);
+
     const pct = target > 0 ? Math.min(100, Math.round(salesTotal / target * 100)) : 0;
-    const fillEl = document.getElementById('target-fill'); if (fillEl) fillEl.style.width = pct + '%';
-    const pctEl = document.getElementById('target-pct'); if (pctEl) pctEl.textContent = pct + '%';
+    const fillEl = document.getElementById('target-fill');
+    if (fillEl) fillEl.style.width = pct + '%';
+
+    const pctEl = document.getElementById('target-pct');
+    if (pctEl) pctEl.textContent = pct + '%';
+
     const kr = document.getElementById('kmodel-row');
     if (kmodel > 0 && kr) {
       kr.style.display = 'block';
       const kpct = Math.min(100, Math.round(salesTotal / kmodel * 100));
-      const kf = document.getElementById('kmodel-fill'); if (kf) kf.style.width = kpct + '%';
-      const kp = document.getElementById('kmodel-pct'); if (kp) kp.textContent = kpct + '%';
-    } else if (kr) kr.style.display = 'none';
+      const kf = document.getElementById('kmodel-fill');
+      if (kf) kf.style.width = kpct + '%';
+      const kp = document.getElementById('kmodel-pct');
+      if (kp) kp.textContent = kpct + '%';
+    } else if (kr) {
+      kr.style.display = 'none';
+    }
 
     // ── Absent days ──
-    const startD = new Date(pm.start), endD = new Date(Math.min(new Date(pm.end), new Date()));
+    const startD = new Date(pm.start);
+    const endD = new Date(Math.min(new Date(pm.end), new Date()));
     let absent = 0;
+
     for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
       if (d.getDay() === currentUser.day_off) continue;
       const ds = fmtDate(new Date(d));
       if (!(monthAtt || []).find(a => a.date === ds)) absent++;
     }
-    const absEl = document.getElementById('emp-absent-count'); if (absEl) absEl.textContent = absent;
+
+    const absEl = document.getElementById('emp-absent-count');
+    if (absEl) absEl.textContent = absent;
 
     // ── Charts ──
     if (typeof renderDailySalesGrid === 'function') renderDailySalesGrid(monthSales, pm);
@@ -182,9 +245,11 @@ async function loadEmpData() {
   }
 }
 
-function updateAttendBtn(record) {
-  const btn = document.getElementById('attend-btn'), status = document.getElementById('attend-status');
+async function updateAttendBtn(record) {
+  const btn = document.getElementById('attend-btn');
+  const status = document.getElementById('attend-status');
   if (!btn) return;
+
   const ar = currentLang === 'ar';
   const iconEl = btn.querySelector('.attend-icon');
   const labelEl = btn.querySelector('.attend-label');
@@ -196,11 +261,17 @@ function updateAttendBtn(record) {
     btn.classList.add('checked-in');
     if (iconEl) iconEl.textContent = '🔴';
     if (labelEl) labelEl.textContent = ar ? 'تسجيل خروج' : 'Check Out';
-    if (status) status.textContent = `${ar ? 'دخل الساعة' : 'In at'} ${record.check_in}${record.late_minutes > 0 ? (ar ? ' (تأخر ' + record.late_minutes + ' د)' : ' (' + record.late_minutes + 'm late)') : ''}`;
+    if (status) {
+      status.textContent =
+        `${ar ? 'دخل الساعة' : 'In at'} ${record.check_in}` +
+        (record.late_minutes > 0
+          ? (ar ? ` (تأخر ${record.late_minutes} د)` : ` (${record.late_minutes}m late)`)
+          : '');
+    }
 
     if (countdownEl) {
       countdownEl.style.display = 'block';
-      startAttendanceCountdown(record.check_in);
+      startAttendanceCountdown(record.check_in, record.date || todayStr());
     }
   } else if (record && record.check_out) {
     btn.classList.remove('checked-in');
@@ -231,13 +302,17 @@ function handleAttendClick() {
   const titleEl = document.getElementById('selfie-modal-title');
   const camLabelEl = document.getElementById('camera-label');
 
-  if (titleEl) titleEl.textContent = attendMode === 'in'
-    ? (ar ? 'تأكيد تسجيل الدخول' : 'Confirm Check In')
-    : (ar ? 'تأكيد تسجيل الخروج' : 'Confirm Check Out');
+  if (titleEl) {
+    titleEl.textContent = attendMode === 'in'
+      ? (ar ? 'تأكيد تسجيل الدخول' : 'Confirm Check In')
+      : (ar ? 'تأكيد تسجيل الخروج' : 'Confirm Check Out');
+  }
 
-  if (camLabelEl) camLabelEl.textContent = attendMode === 'in'
-    ? (ar ? '📸 التقط سيلفي للدخول' : '📸 Take selfie to check in')
-    : (ar ? '📸 التقط سيلفي للخروج' : '📸 Take selfie to check out');
+  if (camLabelEl) {
+    camLabelEl.textContent = attendMode === 'in'
+      ? (ar ? '📸 التقط سيلفي للدخول' : '📸 Take selfie to check in')
+      : (ar ? '📸 التقط سيلفي للخروج' : '📸 Take selfie to check out');
+  }
 
   if (!navigator.geolocation) {
     notify(ar ? '⚠️ جهازك لا يدعم تحديد الموقع' : '⚠️ Geolocation not supported', 'error');
@@ -256,6 +331,7 @@ function handleAttendClick() {
     err => {
       capturedLocation = null;
       btn.style.pointerEvents = '';
+
       if (err.code === 1) {
         notify(ar ? '❌ افتح الإعدادات ← Safari ← الموقع وافعّله' : '❌ Settings → Safari → Location → Allow', 'error');
       } else {
@@ -378,7 +454,8 @@ async function loadEmpMonthlyReport() {
         ['Transactions', (sales || []).length, 'var(--text)']
       ];
 
-  el.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${pm.label}</div>` +
+  el.innerHTML =
+    `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${pm.label}</div>` +
     rows.map(([l, v, c]) => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:12px;color:var(--muted)">${l}</span>
       <span style="font-size:13px;font-weight:700;color:${c}">${v}</span>
@@ -495,19 +572,7 @@ async function confirmAttendance() {
 
       notify(ar ? 'تم تسجيل الدخول ✅' : 'Checked in ✅', 'success');
     } else {
-      if (todayAtt && todayAtt.length > 0) {
-        const displayRows = await dbGet(
-          'display_photos',
-          `?employee_id=eq.${currentUser.id}&photo_date=eq.${today}&select=photo1,photo2,photo3&limit=1`
-        ).catch(() => []);
-
-        const display = displayRows && displayRows.length > 0 ? displayRows[0] : null;
-        const hasDisplay = !!(display && (display.photo1 || display.photo2 || display.photo3));
-
-        if (!hasDisplay) {
-          notify(
-            ar
-              ? '❌ لازم ترفع صور الديسبلاي قبل تسجيل الخروج'
+      if (todayAtt && today'
               : '❌ You must upload display photos before check-out',
             'error'
           );

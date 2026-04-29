@@ -462,17 +462,24 @@ navigator.serviceWorker.register('/sw.js')
       صور الديسبلاي (max 3)
     </label>
 
-    <div class="photo-previews" id="visit-photo-previews"></div>
+<div class="photo-previews" id="visit-photo-previews"></div>
 
-    <div class="photo-upload-zone" id="visit-upload-zone" onclick="showPhotoSourceModal('visit-photo-input')">
-      <input type="file" id="visit-photo-input" accept="image/*" style="display:none" onchange="addVisitPhoto(event)">
-      <div style="font-size:28px">📷</div>
-      <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور للزيارة</div>
-    </div>
+<div class="photo-upload-zone" id="visit-upload-zone" onclick="document.getElementById('visit-photo-input').click()">
+  <input
+    type="file"
+    id="visit-photo-input"
+    accept="image/*"
+    capture="environment"
+    style="display:none"
+    onchange="addVisitPhoto(event)"
+  >
+  <div style="font-size:28px">📷</div>
+  <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
+  <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور للزيارة - بالكاميرا فقط</div>
+</div>
 
-    <button class="btn btn-green" onclick="submitVisit()">✅ حفظ الزيارة</button>
-  </div>
+<button class="btn btn-green" onclick="submitVisit()">✅ حفظ الزيارة</button>
+
 
   <!-- Visit History -->
   <div class="sh" style="margin-top:4px">

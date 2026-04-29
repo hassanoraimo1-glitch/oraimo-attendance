@@ -2,7 +2,7 @@
 // modules/admin/display.js — Display photos + CSV/Excel exports
 // Provides globals: addDisplayPhoto, renderDisplayPreviews,
 //   removeDisplayPhoto, submitDisplayPhotos, loadDisplayTab,
-//   exportHrPayrollCsv, downloadCSV
+//   exportToExcel, downloadCSV
 // Module state: displayPhotos
 // ═══════════════════════════════════════════════════════════
 
@@ -81,11 +81,10 @@ async function loadDisplayTab() {
   }).join('');
 }
 
-// ── HR payroll CSV (attendance / sales) — do not use name exportToExcel:
-// app.js already exposes exportToExcel(rows→XLSX) from utils/exports.js.
+// ── EXCEL EXPORT ──
 
 // ── EXPORTS (Excel/CSV) ──
-async function exportHrPayrollCsv(type) {
+async function exportToExcel(type) {
   const ar = currentLang === 'ar';
   const pm = getPayrollMonth();
   notify(ar ? 'جاري تحضير البيانات...' : 'Preparing data...', 'success');

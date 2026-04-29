@@ -6,29 +6,12 @@
 // Module state: allEmployees (shared across admin modules)
 // ═══════════════════════════════════════════════════════════
 
-async function filterEmployeesForManager() {
-  if (typeof getManagerTeamIds !== 'function') return;
-  const teamIds = await getManagerTeamIds();
-  if (teamIds && teamIds.length) {
-    const idSet = new Set(teamIds.map((id) => Number(id)));
-    allEmployees = (allEmployees || []).filter((e) => idSet.has(Number(e.id)));
-  } else {
-    allEmployees = [];
-  }
-}
-
 async function loadAllEmployees(){
   try{
     allEmployees=await dbGet('employees','?select=*&order=name')||[];
     renderEmployeesList();populateReportSelect();
     if(currentUser&&(currentUser.role==='manager'||currentUser.role==='team_leader')) await filterEmployeesForManager();
-  }catch(e){
-    console.error('[employees]', e);
-    if (typeof notify === 'function') {
-      const ar = currentLang === 'ar';
-      notify(ar ? 'تعذر تحميل قائمة الموظفين' : 'Could not load employees', 'error');
-    }
-  }
+  }catch(e){}
 }
 function renderEmployeesList(){
   const el=document.getElementById('adm-emp-list');if(!el)return;const ar=currentLang==='ar';
@@ -36,7 +19,7 @@ function renderEmployeesList(){
   const isViewer=currentUser?.role==='viewer';
   const shiftLabel=s=>s==='evening'?(ar?'🌙 مسائي':'🌙 Eve'):(ar?'🌅 صباحي':'🌅 Mor');
   el.innerHTML=allEmployees.map(emp=>`<div class="emp-card">
-    <div class="emp-avatar" style="${emp.role==='team_leader'?'background:linear-gradient(135deg,#9c27b0,#6a0080)':''};overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:((emp.name||'?')[0]||'?').toUpperCase()}</div>
+    <div class="emp-avatar" style="${emp.role==='team_leader'?'background:linear-gradient(135deg,#9c27b0,#6a0080)':''};overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:emp.name[0].toUpperCase()}</div>
     <div class="emp-info">
       <div class="emp-name">${emp.name} ${emp.role==='team_leader'?'<span class="badge badge-purple" style="font-size:9px">Team Leader</span>':''}</div>
       <div class="emp-branch">${emp.branch||'-'} · ${ar?'إجازة:':'Off:'} ${ar?DAYS_AR[emp.day_off]:DAYS_EN[emp.day_off]||'-'}</div>

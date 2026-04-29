@@ -1,126 +1,134 @@
 // ═══════════════════════════════════════════════════════════
-// modules/admin/admins.js — Admins list CRUD (superadmin)
-// Provides globals: loadAdminsList, openAddAdmin, openEditAdmin, saveAdmin, deleteAdmin
-// Depends on: AdminUI in admin.ui.js, dbGet/dbPost/dbPatch/dbDelete, notify
+// modules/admin/admins.js — Admin users CRUD + manager team mgmt
+// Provides globals: loadAdminsList, renderAdminsList, openAddAdmin,
+//   saveAdmin, deleteAdmin, openManagerTeam, saveManagerTeam,
+//   getManagerTeamIds, filterEmployeesForManager
 // ═══════════════════════════════════════════════════════════
 
-async function loadAdminsList() {
-  const el = document.getElementById('admins-list');
-  if (!el) return;
-  const ar = currentLang === 'ar';
-  el.innerHTML = `<div class="full-loader"><div class="loader"></div></div>`;
-  try {
-    allAdmins = await dbGet('admins', '?select=id,name,username,role&order=name.asc').catch(() => []) || [];
-    if (!allAdmins.length) {
-      el.innerHTML = `<div class="empty"><div class="empty-icon">👑</div>${ar ? 'لا يوجد مسؤولون' : 'No admins yet'}</div>`;
-      return;
-    }
-    const roleLabel = (r) => {
-      if (r === 'manager') return ar ? 'تيم ليدر' : 'Team Leader';
-      if (r === 'viewer') return 'Viewer';
-      return 'Admin';
-    };
-    el.innerHTML = allAdmins.map((a) => `<div class="emp-card">
-      <div class="emp-avatar" style="background:linear-gradient(135deg,#FFD600,#ff9800)">👑</div>
-      <div class="emp-info">
-        <div class="emp-name">${escAdmin(a.name)}</div>
-        <div class="emp-branch">${escAdmin(a.username)} · ${roleLabel(a.role)}</div>
-      </div>
-      <div class="emp-actions">
-        <button class="action-btn edit" onclick="openEditAdmin(${a.id})">✏️</button>
-        ${currentUser.id != null && Number(a.id) === Number(currentUser.id) ? '' : `<button class="action-btn del" onclick="deleteAdmin(${a.id})">🗑️</button>`}
-      </div>
-    </div>`).join('');
-  } catch (e) {
-    el.innerHTML = `<div style="color:var(--red);font-size:12px;padding:12px">${escAdmin(e.message || 'Error')}</div>`;
-  }
+// ── ADMINS CRUD ──
+// ── ADMINS ──
+async function loadAdminsList(){
+  try{
+    allAdmins=await dbGet('admins','?select=*&order=name').catch(()=>[])||[];
+    renderAdminsList();
+  }catch(e){console.warn('loadAdminsList:',e);}
 }
-
-function escAdmin(s) {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+function renderAdminsList(){
+  const el=document.getElementById('admins-list');if(!el)return;
+  if(allAdmins.length===0){el.innerHTML=`<div style="color:var(--muted);font-size:12px">${currentLang==='ar'?'لا يوجد مسؤولون':'No admins'}</div>`;return}
+  el.innerHTML=allAdmins.map(a=>`<div class="emp-card"><div class="emp-avatar" style="background:var(--blue)">👑</div><div class="emp-info"><div class="emp-name">${a.name}</div><div class="emp-branch">${a.username}</div></div><span class="badge ${a.role==='admin'?'badge-blue':a.role==='manager'?'badge-purple':'badge-yellow'}">${a.role==='manager'?'Team Leader':a.role}</span><div class="emp-actions">${a.role==='manager'?`<button class="action-btn view" onclick="openManagerTeam(${a.id},'${a.name}')">👥 فريق</button>`:''}<button class="action-btn edit" onclick="openEditAdmin(${a.id})">✏️</button><button class="action-btn del" onclick="deleteAdmin(${a.id})">🗑️</button></div></div>`).join('');
 }
-
-function openAddAdmin() {
-  const ar = currentLang === 'ar';
-  document.getElementById('admin-modal-title').textContent = ar ? 'إضافة مسؤول' : 'Add Admin';
-  document.getElementById('edit-admin-id').value = '';
-  document.getElementById('admin-form-name').value = '';
-  document.getElementById('admin-form-username').value = '';
-  document.getElementById('admin-form-pass').value = '';
-  document.getElementById('admin-pass-group').style.display = 'block';
-  document.getElementById('admin-form-role').value = 'admin';
+function openAddAdmin(){document.getElementById('admin-modal-title').textContent=currentLang==='ar'?'إضافة مسؤول':'Add Admin';document.getElementById('edit-admin-id').value='';document.getElementById('admin-form-name').value='';document.getElementById('admin-form-username').value='';document.getElementById('admin-form-pass').value='';document.getElementById('admin-pass-group').style.display='block';openModal('add-admin-modal')}
+function openEditAdmin(id){
+  const adm=allAdmins.find(a=>a.id===id);if(!adm)return;
+  document.getElementById('admin-modal-title').textContent=currentLang==='ar'?'تعديل المسؤول':'Edit Admin';
+  document.getElementById('edit-admin-id').value=id;
+  document.getElementById('admin-form-name').value=adm.name;
+  document.getElementById('admin-form-username').value=adm.username;
+  document.getElementById('admin-form-pass').value='';
+  document.getElementById('admin-pass-group').style.display='none';
+  document.getElementById('admin-form-role').value=adm.role||'admin';
   openModal('add-admin-modal');
 }
-
-function openEditAdmin(id) {
-  const a = (allAdmins || []).find((x) => x.id === id);
-  if (!a) return;
-  const ar = currentLang === 'ar';
-  document.getElementById('admin-modal-title').textContent = ar ? 'تعديل مسؤول' : 'Edit Admin';
-  document.getElementById('edit-admin-id').value = id;
-  document.getElementById('admin-form-name').value = a.name || '';
-  document.getElementById('admin-form-username').value = a.username || '';
-  document.getElementById('admin-form-pass').value = '';
-  document.getElementById('admin-pass-group').style.display = 'block';
-  document.getElementById('admin-form-role').value = a.role || 'admin';
-  openModal('add-admin-modal');
-}
-
-async function saveAdmin() {
-  const id = document.getElementById('edit-admin-id').value;
-  const name = document.getElementById('admin-form-name').value.trim();
-  const username = document.getElementById('admin-form-username').value.trim();
-  const pass = document.getElementById('admin-form-pass').value;
-  const role = document.getElementById('admin-form-role').value || 'admin';
-  const ar = currentLang === 'ar';
-  if (!name || !username) {
-    notify(ar ? 'أدخل الاسم واسم المستخدم' : 'Enter name and username', 'error');
-    return;
-  }
-  if (!id && !pass) {
-    notify(ar ? 'أدخل كلمة المرور' : 'Enter password', 'error');
-    return;
-  }
-  try {
-    if (!id) {
-      const existing = await dbGet('admins', `?username=eq.${encodeURIComponent(username)}&select=id`).catch(() => []);
-      if (existing && existing.length) {
-        notify(ar ? 'اسم المستخدم مستخدم' : 'Username already taken', 'error');
-        return;
-      }
-      await dbPost('admins', { name, username, password: pass, role });
-      notify(ar ? 'تم الحفظ ✅' : 'Saved ✅', 'success');
+async function saveAdmin(){
+  const editId=document.getElementById('edit-admin-id').value;
+  const name=document.getElementById('admin-form-name').value.trim();
+  const username=document.getElementById('admin-form-username').value.trim();
+  const pass=document.getElementById('admin-form-pass').value.trim();
+  const role=document.getElementById('admin-form-role').value;
+  const ar=currentLang==='ar';
+  if(!name||!username)return notify(ar?'أدخل الاسم واسم المستخدم':'Enter name and username','error');
+  if(!editId&&!pass)return notify(ar?'أدخل كلمة المرور':'Enter password','error');
+  try{
+    if(editId){
+      const data={name,username,role};
+      if(pass) data.password=pass;
+      await dbPatch('admins',data,`?id=eq.${editId}`);
     } else {
-      const existing = await dbGet('admins', `?username=eq.${encodeURIComponent(username)}&select=id`).catch(() => []);
-      if (existing && existing.some((r) => r.id !== Number(id))) {
-        notify(ar ? 'اسم المستخدم مستخدم' : 'Username already taken', 'error');
-        return;
-      }
-      const body = { name, username, role };
-      if (pass) body.password = pass;
-      await dbPatch('admins', body, `?id=eq.${id}`);
-      notify(ar ? 'تم التحديث ✅' : 'Updated ✅', 'success');
+      await dbPost('admins',{name,username,password:pass,role});
     }
-    closeModal('add-admin-modal');
-    await loadAdminsList();
-  } catch (e) {
-    notify((ar ? 'خطأ: ' : 'Error: ') + (e.message || ''), 'error');
-  }
+    notify(ar?'تم الحفظ ✅':'Saved ✅','success');closeModal('add-admin-modal');loadAdminsList();
+  }catch(e){notify((ar?'خطأ: ':'Error: ')+(e.message||'Unknown'),'error')}
+}
+async function deleteAdmin(id){
+  const ar=currentLang==='ar';
+  // Prevent deleting the hardcoded superadmin
+  if(String(id)==='superadmin'||!id){notify(ar?'لا يمكن حذف المسؤول الرئيسي':'Cannot delete main admin','error');return;}
+  if(!confirm(ar?'حذف المسؤول؟':'Delete admin?'))return;
+  try{await dbDelete('admins',`?id=eq.${id}`);notify(ar?'تم الحذف':'Deleted','success');loadAdminsList();}
+  catch(e){notify('Error: '+e.message,'error');}
 }
 
-async function deleteAdmin(id) {
-  const ar = currentLang === 'ar';
-  if (Number(id) === Number(currentUser.id)) return;
-  if (!confirm(ar ? 'حذف هذا المسؤول؟' : 'Delete this admin?')) return;
-  try {
-    await dbDelete('admins', `?id=eq.${id}`);
-    notify(ar ? 'تم الحذف ✅' : 'Deleted ✅', 'success');
-    await loadAdminsList();
-  } catch (e) {
-    notify((ar ? 'خطأ: ' : 'Error: ') + (e.message || ''), 'error');
+// ── WARNINGS ──
+
+// ── MANAGER TEAM MANAGEMENT ──
+// Module state (was in legacy.js lines 1820-1821)
+let editingManagerId = null;
+let managerTeamData = {}; // cache: managerId -> [empId,...]
+
+async function openManagerTeam(managerId, managerName) {
+  editingManagerId = managerId;
+  document.getElementById('manager-team-title').textContent = '👥 فريق: ' + managerName;
+  document.getElementById('manager-team-subtitle').textContent = 'اختر الموظفين التابعين لهذا التيم ليدر';
+  // load existing team
+  const existing = await dbGet('manager_teams', `?manager_id=eq.${managerId}&select=employee_id`).catch(()=>[]) || [];
+  const assignedIds = existing.map(r => r.employee_id);
+  const el = document.getElementById('manager-team-list');
+  if (!allEmployees.length) { el.innerHTML = '<div class="empty">لا يوجد موظفون</div>'; }
+  else {
+    el.innerHTML = allEmployees.map(emp => `
+      <div class="team-emp-row">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="emp-avatar" style="width:32px;height:32px;font-size:12px">${emp.name[0].toUpperCase()}</div>
+          <div>
+            <div style="font-size:13px;font-weight:700">${emp.name}</div>
+            <div style="font-size:11px;color:var(--muted)">${emp.branch||'-'}</div>
+          </div>
+        </div>
+        <input type="checkbox" class="team-check" data-emp-id="${emp.id}" ${assignedIds.includes(emp.id)?'checked':''}>
+      </div>
+    `).join('');
   }
+  openModal('manager-team-modal');
 }
+
+async function saveManagerTeam() {
+  if (!editingManagerId) return;
+  const ar = currentLang === 'ar';
+  const checks = document.querySelectorAll('#manager-team-list .team-check');
+  const selectedIds = Array.from(checks).filter(c=>c.checked).map(c=>parseInt(c.dataset.empId));
+  try {
+    // delete existing
+    await dbDelete('manager_teams', `?manager_id=eq.${editingManagerId}`);
+    // insert new
+    for (const empId of selectedIds) {
+      await dbPost('manager_teams', {manager_id: editingManagerId, employee_id: empId});
+    }
+    managerTeamData[editingManagerId] = selectedIds;
+    notify(ar ? 'تم حفظ الفريق ✅' : 'Team saved ✅', 'success');
+    closeModal('manager-team-modal');
+  } catch(e) { notify('Error: ' + e.message, 'error'); }
+}
+
+async function getManagerTeamIds() {
+  // returns employee IDs managed by current user (if team leader)
+  if (!currentUser || (currentUser.role !== 'manager' && currentUser.role !== 'team_leader')) return null;
+  if (managerTeamData[currentUser.id]) return managerTeamData[currentUser.id];
+  const res = await dbGet('manager_teams', `?manager_id=eq.${currentUser.id}&select=employee_id`).catch(()=>[]) || [];
+  const ids = res.map(r => r.employee_id);
+  managerTeamData[currentUser.id] = ids;
+  return ids;
+}
+
+// Filter employees list for team leader - only show their team
+async function filterEmployeesForManager() {
+  if (!currentUser || (currentUser.role !== 'manager' && currentUser.role !== 'team_leader')) return;
+  const teamIds = await getManagerTeamIds();
+  if (!teamIds) return;
+  // filter allEmployees to only team members
+  allEmployees = allEmployees.filter(e => teamIds.includes(e.id));
+  renderEmployeesList();
+  populateReportSelect();
+}
+
+// displayPhotos moved to modules/admin/display.js

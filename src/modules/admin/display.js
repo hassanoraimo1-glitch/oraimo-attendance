@@ -34,8 +34,8 @@ async function openDisplayCamera() {
     displayCameraStream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: { ideal: 'environment' },
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
       },
       audio: false
     });
@@ -47,6 +47,7 @@ async function openDisplayCamera() {
 
     await video.play().catch(() => {});
     modal.classList.add('open');
+    modal.style.display = 'flex';
   } catch (e) {
     try {
       displayCameraStream = await navigator.mediaDevices.getUserMedia({
@@ -61,6 +62,7 @@ async function openDisplayCamera() {
 
       await video.play().catch(() => {});
       modal.classList.add('open');
+      modal.style.display = 'flex';
     } catch (e2) {
       notify(
         (currentLang === 'ar' ? '❌ تعذر فتح الكاميرا: ' : '❌ Camera error: ') + e2.message,
@@ -78,12 +80,30 @@ function closeDisplayCamera() {
 
   const video = document.getElementById('display-camera-video');
   if (video) {
-    video.pause();
+    try { video.pause(); } catch (_) {}
     video.srcObject = null;
   }
 
   const modal = document.getElementById('display-camera-modal');
-  if (modal) modal.classList.remove('open');
+  if (modal) {
+    modal.classList.remove('open');
+    modal.style.display = 'none';
+  }
+}
+
+function roundRect(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
 }
 
 function captureDisplayPhoto() {
@@ -110,9 +130,70 @@ function captureDisplayPhoto() {
   canvas.height = video.videoHeight;
 
   const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    notify(currentLang === 'ar' ? 'تعذر تجهيز الصورة' : 'Canvas error', 'error');
+    return;
+  }
+
+  // رسم الصورة الأصلية
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  const photoData = canvas.toDataURL('image/jpeg', 0.35);
+  // التاريخ والوقت الحالي
+  const now = new Date();
+  const dateText = now.toLocaleDateString('en-GB');
+  const timeText = now.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+  const watermarkText = `${dateText}  ${timeText}`;
+
+  // إعدادات الواتر مارك
+  const padding = Math.max(20, Math.floor(canvas.width * 0.02));
+  const fontSize = Math.max(24, Math.floor(canvas.width * 0.022));
+  const circleRadius = Math.max(12, Math.floor(canvas.width * 0.012));
+  const circleDiameter = circleRadius * 2;
+  const gap = 12;
+
+  ctx.font = `bold ${fontSize}px Arial`;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+
+  const textWidth = ctx.measureText(watermarkText).width;
+  const boxHeight = Math.max(44, fontSize + 18);
+  const boxWidth = textWidth + circleDiameter + gap + 28;
+
+  const x = padding;
+  const y = canvas.height - padding - boxHeight;
+
+  // خلفية الواتر مارك
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
+  roundRect(ctx, x, y, boxWidth, boxHeight, 14);
+  ctx.fill();
+
+  // دائرة خضراء فيها O
+  const circleX = x + 16 + circleRadius;
+  const circleY = y + boxHeight / 2;
+
+  ctx.beginPath();
+  ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+  ctx.fillStyle = '#00C853';
+  ctx.fill();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${Math.max(12, Math.floor(circleRadius * 1.05))}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('O', circleX, circleY + 1);
+
+  // نص التاريخ والوقت
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${fontSize}px Arial`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(watermarkText, x + 16 + circleDiameter + gap, y + boxHeight / 2);
+
+  const photoData = canvas.toDataURL('image/jpeg', 0.85);
   displayPhotos.push(photoData);
 
   // أول ما الصورة تتاخد: نقفل الكاميرا فورًا
@@ -151,6 +232,7 @@ function renderDisplayPreviews() {
 }
 
 function removeDisplayPhoto(i) {
+  if (i < 0 || i >= displayPhotos.length) return;
   displayPhotos.splice(i, 1);
   renderDisplayPreviews();
 }
@@ -235,6 +317,7 @@ async function exportToExcel(type) {
         dbGet('attendance', `?date=gte.${pm.start}&date=lte.${pm.end}&select=*&order=date.desc`),
         dbGet('employees', '?select=*')
       ]);
+
       let csv = 'الاسم,الفرع,التاريخ,وقت الدخول,وقت الخروج,التأخير (دقيقة),الحالة\n';
       (att || []).forEach(a => {
         const emp = (emps || []).find(e => e.id === a.employee_id);
@@ -243,6 +326,7 @@ async function exportToExcel(type) {
         const status = a.check_out ? 'حضر وانصرف' : a.check_in ? 'حضر' : 'غائب';
         csv += `"${name}","${branch}","${a.date}","${a.check_in || ''}","${a.check_out || ''}","${a.late_minutes || 0}","${status}"\n`;
       });
+
       downloadCSV(csv, `attendance_${pm.start.substring(0, 7)}.csv`);
     } else if (type === 'sales') {
       const [sales, emps, tls] = await Promise.all([
@@ -252,14 +336,20 @@ async function exportToExcel(type) {
       ]);
 
       const teamMap = {};
-      (tls || []).forEach(t => { teamMap[t.employee_id] = t.manager_id; });
+      (tls || []).forEach(t => {
+        teamMap[t.employee_id] = t.manager_id;
+      });
 
       const admins = await dbGet('admins', '?select=id,name').catch(() => []) || [];
       const adminMap = {};
-      admins.forEach(a => adminMap[a.id] = a.name);
+      admins.forEach(a => {
+        adminMap[a.id] = a.name;
+      });
 
       const empLeaders = (emps || []).filter(e => e.role === 'team_leader');
-      empLeaders.forEach(e => adminMap[e.id] = e.name);
+      empLeaders.forEach(e => {
+        adminMap[e.id] = e.name;
+      });
 
       let csv = 'الاسم,الفرع,التيم ليدر,التاريخ,المنتج,الكمية,سعر الوحدة,الإجمالي\n';
       (sales || []).forEach(s => {
@@ -270,6 +360,7 @@ async function exportToExcel(type) {
         const tlName = tlId ? (adminMap[tlId] || '') : '';
         csv += `"${name}","${branch}","${tlName}","${s.date}","${s.product_name}","${s.quantity}","${s.unit_price}","${s.total_amount}"\n`;
       });
+
       downloadCSV(csv, `sales_${pm.start.substring(0, 7)}.csv`);
     }
   } catch (e) {

@@ -16,25 +16,6 @@ function _getShiftTimes(shift, dayOfWeek) {
   return { start: '10:00', end: '18:00', labelAr: '🌅 صباحي: 10ص – 6م', labelEn: '🌅 Morning: 10AM–6PM' };
 }
 
-// Helper: check if display photos exist for today (required for checkout)
-async function checkTodayDisplay() {
-  try {
-    const today = todayStr();
-
-    const res = await dbGet(
-      'display_photos',
-      `?employee_id=eq.${currentUser.id}&photo_date=eq.${today}&select=*`
-    );
-
-    console.log('DISPLAY CHECK:', res);
-
-    return res && res.length > 0;
-  } catch (e) {
-    console.error('Display check error', e);
-    return false;
-  }
-}
-
 // Helper: ensure shift-info element exists on the home screen.
 // Injects it above the attend button if missing.
 function _ensureShiftInfoEl() {
@@ -247,7 +228,12 @@ async function openCamera() {
     }
   }
 }
-function closeCamera() { if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; } const m = document.getElementById('camera-modal'); if (m) m.classList.remove('open'); }
+
+function closeCamera() { 
+  if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; } 
+  const m = document.getElementById('camera-modal'); if (m) m.classList.remove('open'); 
+}
+
 function capturePhoto() {
   const video = document.getElementById('video'), canvas = document.getElementById('canvas');
   canvas.width = video.videoWidth; canvas.height = video.videoHeight;
@@ -269,28 +255,45 @@ async function confirmAttendance() {
   const ar = currentLang === 'ar';
   try {
     const todayAtt = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`).catch(() => []);
+    
     if (attendMode === 'in') {
       const dow = now.getDay();
       const { start: shiftStart } = _getShiftTimes(currentUser.shift || 'morning', dow);
       const [wh, wm] = shiftStart.split(':').map(Number), [ah, am] = timeStr.split(':').map(Number);
       const lateMin = Math.max(0, (ah * 60 + am) - (wh * 60 + wm));
+      
       await dbPost('attendance', {
         employee_id: currentUser.id, date: today, check_in: timeStr,
         late_minutes: lateMin, selfie_in: capturedPhoto,
         location_lat: capturedLocation?.lat, location_lng: capturedLocation?.lng
       });
       notify(ar ? 'تم تسجيل الدخول ✅' : 'Checked in ✅', 'success');
+      
     } else {
-      if (todayAtt && todayAtt.length > 0) {
-        const hasDisplay = await checkTodayDisplay();
-        if (!hasDisplay) {
-          notify(ar ? 'يجب رفع صور الديسبلاي أولاً' : 'Please upload display photos first', 'error');
-          return;
+      
+      // ── منع تسجيل الخروج في حال عدم رفع صور الديسبلاي ──
+      if (!hasDisplay) {
+        notify(
+          ar
+            ? '❌ لازم ترفع صور الديسبلاي قبل تسجيل الخروج'
+            : '❌ You must upload display photos before check-out',
+          'error'
+        );
+
+        // التحويل إلى شاشة الديسبلاي
+        if (typeof empTab === 'function') {
+          empTab('display');
         }
+
+        return;
+      }
+
+      if (todayAtt && todayAtt.length > 0) {
         await dbPatch('attendance', { check_out: timeStr, selfie_out: capturedPhoto }, `?employee_id=eq.${currentUser.id}&date=eq.${today}`);
         notify(ar ? 'تم تسجيل الخروج ✅' : 'Checked out ✅', 'success');
       }
     }
+    
     closeModal('selfie-modal');
     loadEmpData();
   } catch (e) {

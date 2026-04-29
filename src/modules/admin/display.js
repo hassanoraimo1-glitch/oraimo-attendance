@@ -2,76 +2,135 @@
 // modules/admin/display.js — Display photos + CSV/Excel exports
 // Provides globals: addDisplayPhoto, renderDisplayPreviews,
 //   removeDisplayPhoto, submitDisplayPhotos, loadDisplayTab,
-//   exportToExcel, downloadCSV
+//   exportToExcel, downloadCSV, openDisplayCamera,
+//   closeDisplayCamera, captureDisplayPhoto
 // Module state: displayPhotos
 // ═══════════════════════════════════════════════════════════
 
 // ── DISPLAY PHOTOS UPLOAD + HISTORY ──
 let displayPhotos = [];
+let displayCameraStream = null;
 
-function addDisplayPhoto(e) {
+async function openDisplayCamera() {
   if (currentUser && currentUser.role !== 'employee') {
     notify('الديسبلاي للموظفين فقط', 'error');
     return;
   }
 
   if (displayPhotos.length >= 3) {
-    notify('الحد الأقصى 3 صور', 'error');
+    notify(currentLang === 'ar' ? 'الحد الأقصى 3 صور' : 'Maximum 3 photos', 'error');
     return;
   }
 
-  const input = e.target;
-  const file = input && input.files ? input.files[0] : null;
-  if (!file) return;
+  const modal = document.getElementById('display-camera-modal');
+  const video = document.getElementById('display-camera-video');
 
-  if (!file.type || !file.type.startsWith('image/')) {
-    notify(currentLang === 'ar' ? 'يرجى اختيار صورة فقط' : 'Please choose an image only', 'error');
-    if (input) input.value = '';
+  if (!modal || !video) {
+    notify(currentLang === 'ar' ? 'واجهة الكاميرا غير موجودة' : 'Camera UI not found', 'error');
     return;
   }
 
-  const reader = new FileReader();
+  try {
+    displayCameraStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    });
 
-  reader.onload = ev => {
-    const img = new Image();
+    video.srcObject = displayCameraStream;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('autoplay', '');
+    video.muted = true;
 
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const scale = Math.min(1, 800 / img.width);
+    await video.play().catch(() => {});
+    modal.classList.add('open');
+  } catch (e) {
+    try {
+      displayCameraStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false
+      });
 
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
+      video.srcObject = displayCameraStream;
+      video.setAttribute('playsinline', '');
+      video.setAttribute('autoplay', '');
+      video.muted = true;
 
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      await video.play().catch(() => {});
+      modal.classList.add('open');
+    } catch (e2) {
+      notify(
+        (currentLang === 'ar' ? '❌ تعذر فتح الكاميرا: ' : '❌ Camera error: ') + e2.message,
+        'error'
+      );
+    }
+  }
+}
 
-      displayPhotos.push(canvas.toDataURL('image/jpeg', 0.35));
-      renderDisplayPreviews();
+function closeDisplayCamera() {
+  if (displayCameraStream) {
+    displayCameraStream.getTracks().forEach(track => track.stop());
+    displayCameraStream = null;
+  }
 
-      if (input) {
-        input.value = '';
-        input.blur();
-      }
+  const video = document.getElementById('display-camera-video');
+  if (video) {
+    video.pause();
+    video.srcObject = null;
+  }
 
-      notify(currentLang === 'ar' ? 'تم التقاط الصورة ✅' : 'Photo captured ✅', 'success');
-    };
+  const modal = document.getElementById('display-camera-modal');
+  if (modal) modal.classList.remove('open');
+}
 
-    img.onerror = () => {
-      notify(currentLang === 'ar' ? 'تعذر قراءة الصورة' : 'Unable to read image', 'error');
-      if (input) input.value = '';
-    };
+function captureDisplayPhoto() {
+  if (currentUser && currentUser.role !== 'employee') {
+    notify('الديسبلاي للموظفين فقط', 'error');
+    return;
+  }
 
-    img.src = ev.target.result;
-  };
+  if (displayPhotos.length >= 3) {
+    notify(currentLang === 'ar' ? 'الحد الأقصى 3 صور' : 'Maximum 3 photos', 'error');
+    closeDisplayCamera();
+    return;
+  }
 
-  reader.onerror = () => {
-    notify(currentLang === 'ar' ? 'حدث خطأ أثناء قراءة الصورة' : 'Error reading image', 'error');
-    if (input) input.value = '';
-  };
+  const video = document.getElementById('display-camera-video');
+  const canvas = document.getElementById('display-camera-canvas');
 
-  reader.readAsDataURL(file);
+  if (!video || !canvas || !video.videoWidth || !video.videoHeight) {
+    notify(currentLang === 'ar' ? 'تعذر التقاط الصورة' : 'Unable to capture photo', 'error');
+    return;
+  }
 
-  if (input) input.value = '';
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  const photoData = canvas.toDataURL('image/jpeg', 0.35);
+  displayPhotos.push(photoData);
+
+  // أول ما الصورة تتاخد: نقفل الكاميرا فورًا
+  closeDisplayCamera();
+
+  // نظهر المعاينة ونخفي مكان الرفع إذا وصلنا للحد أو حسب وجود صور
+  renderDisplayPreviews();
+
+  notify(currentLang === 'ar' ? 'تم التقاط الصورة ✅' : 'Photo captured ✅', 'success');
+}
+
+// الإبقاء على الدالة للتوافق لو أي مكان قديم ما زال يناديها
+function addDisplayPhoto(e) {
+  if (currentLang === 'ar') {
+    notify('استخدم الكاميرا فقط لإضافة صورة الديسبلاي', 'info');
+  } else {
+    notify('Use camera only to add display photo', 'info');
+  }
 }
 
 function renderDisplayPreviews() {
@@ -86,10 +145,8 @@ function renderDisplayPreviews() {
   `).join('');
 
   const zone = document.getElementById('display-upload-zone');
-
-  // بعد إضافة صورة نخفي منطقة الرفع فورًا
   if (zone) {
-    zone.style.display = displayPhotos.length > 0 ? 'none' : 'block';
+    zone.style.display = displayPhotos.length >= 3 ? 'none' : 'block';
   }
 }
 
@@ -149,6 +206,7 @@ async function loadDisplayTab() {
   if (!hist) return;
 
   const pm = getPayrollMonth();
+
   const records = await dbGet(
     'display_photos',
     `?employee_id=eq.${currentUser.id}&photo_date=gte.${pm.start}&photo_date=lte.${pm.end}&order=photo_date.desc&select=*`
@@ -161,23 +219,9 @@ async function loadDisplayTab() {
 
   hist.innerHTML = records.map(r => {
     const photos = [r.photo1, r.photo2, r.photo3].filter(Boolean);
-    return `<div class="visit-card">
-      <div class="visit-header">
-        <div>
-          <div class="visit-branch-name">🗓️ ${r.photo_date}</div>
-          <div class="visit-meta">${r.branch || ''}</div>
-        </div>
-        <span class="badge badge-blue">${photos.length} 📷</span>
-      </div>
-      ${r.note ? `<div class="visit-note">📝 ${r.note}</div>` : ''}
-      <div class="visit-photos-row">
-        ${photos.map(src => `<img class="visit-photo" src="${src}" onclick="fullSelfie('${src}')">`).join('')}
-      </div>
-    </div>`;
+    return `<div class="visit-card"><div class="visit-header"><div><div class="visit-branch-name">🗓️ ${r.photo_date}</div><div class="visit-meta">${r.branch || ''}</div></div><span class="badge badge-blue">${photos.length} 📷</span></div>${r.note ? `<div class="visit-note">📝 ${r.note}</div>` : ''}<div class="visit-photos-row">${photos.map(src => `<img class="visit-photo" src="${src}" onclick="fullSelfie('${src}')">`).join('')}</div></div>`;
   }).join('');
 }
-
-// ── EXCEL EXPORT ──
 
 // ── EXPORTS (Excel/CSV) ──
 async function exportToExcel(type) {
@@ -191,18 +235,14 @@ async function exportToExcel(type) {
         dbGet('attendance', `?date=gte.${pm.start}&date=lte.${pm.end}&select=*&order=date.desc`),
         dbGet('employees', '?select=*')
       ]);
-
       let csv = 'الاسم,الفرع,التاريخ,وقت الدخول,وقت الخروج,التأخير (دقيقة),الحالة\n';
-
       (att || []).forEach(a => {
         const emp = (emps || []).find(e => e.id === a.employee_id);
         const name = emp?.name || a.employee_id;
         const branch = emp?.branch || '';
         const status = a.check_out ? 'حضر وانصرف' : a.check_in ? 'حضر' : 'غائب';
-
         csv += `"${name}","${branch}","${a.date}","${a.check_in || ''}","${a.check_out || ''}","${a.late_minutes || 0}","${status}"\n`;
       });
-
       downloadCSV(csv, `attendance_${pm.start.substring(0, 7)}.csv`);
     } else if (type === 'sales') {
       const [sales, emps, tls] = await Promise.all([
@@ -222,17 +262,14 @@ async function exportToExcel(type) {
       empLeaders.forEach(e => adminMap[e.id] = e.name);
 
       let csv = 'الاسم,الفرع,التيم ليدر,التاريخ,المنتج,الكمية,سعر الوحدة,الإجمالي\n';
-
       (sales || []).forEach(s => {
         const emp = (emps || []).find(e => e.id === s.employee_id);
         const name = emp?.name || s.employee_id;
         const branch = emp?.branch || '';
         const tlId = teamMap[s.employee_id];
         const tlName = tlId ? (adminMap[tlId] || '') : '';
-
         csv += `"${name}","${branch}","${tlName}","${s.date}","${s.product_name}","${s.quantity}","${s.unit_price}","${s.total_amount}"\n`;
       });
-
       downloadCSV(csv, `sales_${pm.start.substring(0, 7)}.csv`);
     }
   } catch (e) {

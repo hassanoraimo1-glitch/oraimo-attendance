@@ -330,7 +330,18 @@ navigator.serviceWorker.register('/sw.js')
 </div>
 
 <!-- DISPLAY CAMERA MODAL -->
-<div id="display-camera-modal" class="camera-modal" style="display:none">
+<div id="display-camera-modal" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  width:100vw;
+  height:100vh;
+  background:#000;
+  z-index:99999;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+">
   <video
     id="display-camera-video"
     autoplay
@@ -338,21 +349,65 @@ navigator.serviceWorker.register('/sw.js')
     muted
     webkit-playsinline
     x-webkit-airplay="allow"
-    style="width:100%;height:100%;object-fit:cover;background:#000"
+    style="
+      width:100vw;
+      height:100vh;
+      object-fit:cover;
+      background:#000;
+      display:block;
+    "
   ></video>
 
   <canvas id="display-camera-canvas" style="display:none"></canvas>
 
-  <div class="camera-overlay">
-    <div style="color:#fff;font-size:13px;margin-bottom:18px;font-weight:700">
+  <div style="
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-end;
+    padding:32px 20px calc(32px + env(safe-area-inset-bottom));
+    background:linear-gradient(to top, rgba(0,0,0,.45), rgba(0,0,0,.08), rgba(0,0,0,.2));
+    pointer-events:none;
+  ">
+    <div style="
+      color:#fff;
+      font-size:14px;
+      margin-bottom:auto;
+      margin-top:22px;
+      font-weight:800;
+      text-align:center;
+      pointer-events:auto;
+    ">
       📸 التقط صورة الديسبلاي
     </div>
 
-    <button class="capture-btn" onclick="captureDisplayPhoto()"></button>
+    <button
+      type="button"
+      onclick="captureDisplayPhoto()"
+      style="
+        width:84px;
+        height:84px;
+        border-radius:50%;
+        border:6px solid #fff;
+        background:rgba(255,255,255,.18);
+        box-shadow:0 0 0 6px rgba(255,255,255,.18);
+        cursor:pointer;
+        pointer-events:auto;
+      "
+    ></button>
 
     <div
-      style="color:rgba(255,255,255,.65);font-size:13px;margin-top:16px;cursor:pointer"
       onclick="closeDisplayCamera()"
+      style="
+        color:rgba(255,255,255,.82);
+        font-size:14px;
+        margin-top:18px;
+        cursor:pointer;
+        pointer-events:auto;
+        font-weight:700;
+      "
     >
       إلغاء
     </div>

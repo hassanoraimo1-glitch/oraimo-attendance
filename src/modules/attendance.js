@@ -36,14 +36,14 @@ function _ensureAttendCountdownEl() {
   let el = document.getElementById('emp-attend-countdown');
   if (el) return el;
 
-  const attendBtn = document.getElementById('attend-btn');
-  if (!attendBtn) return null;
+  const status = document.getElementById('attend-status');
+  if (!status || !status.parentNode) return null;
 
   el = document.createElement('div');
   el.id = 'emp-attend-countdown';
-  el.style.cssText = 'font-size:12px;font-weight:700;color:var(--yellow);text-align:center;padding:8px 12px;margin:0 0 12px;background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.2);border-radius:12px;direction:rtl;display:none';
+  el.style.cssText = 'font-size:18px;font-weight:800;color:var(--yellow);text-align:center;margin-top:6px;direction:ltr;display:none';
 
-  attendBtn.parentNode.insertBefore(el, attendBtn);
+  status.insertAdjacentElement('afterend', el);
   return el;
 }
 
@@ -56,7 +56,6 @@ function startAttendanceCountdown(checkInTime) {
     attendCountdownTimer = null;
   }
 
-  const ar = currentLang === 'ar';
   const today = todayStr();
   const checkInDate = new Date(`${today}T${checkInTime}:00`);
 
@@ -74,7 +73,7 @@ function startAttendanceCountdown(checkInTime) {
     el.style.display = 'block';
 
     if (diff <= 0) {
-      el.textContent = ar ? '✅ انتهت الـ 8 ساعات' : '✅ 8 hours completed';
+      el.textContent = '00:00:00';
       if (attendCountdownTimer) {
         clearInterval(attendCountdownTimer);
         attendCountdownTimer = null;
@@ -91,9 +90,7 @@ function startAttendanceCountdown(checkInTime) {
     const mm = String(minutes).padStart(2, '0');
     const ss = String(seconds).padStart(2, '0');
 
-    el.textContent = ar
-      ? `⏳ متبقي على 8 ساعات: ${hh}:${mm}:${ss}`
-      : `⏳ Remaining to 8 hours: ${hh}:${mm}:${ss}`;
+    el.textContent = `${hh}:${mm}:${ss}`;
   }
 
   render();
@@ -514,6 +511,8 @@ async function confirmAttendance() {
               : '❌ You must upload display photos before check-out',
             'error'
           );
+
+          closeModal('selfie-modal');
 
           if (typeof empTab === 'function') {
             empTab('display');

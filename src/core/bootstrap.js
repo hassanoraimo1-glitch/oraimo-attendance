@@ -12,58 +12,39 @@
 // ═══════════════════════════════════════════════════════════
 
 
-// ── BACK BUTTON — absorb Android / gesture back; never exit PWA on first backs ──
+// ── BACK BUTTON — prevent user from leaving the app ──
 (function(){
-  try {
-    history.replaceState({ app: 'root' }, '', location.href);
-    history.pushState({ app: 'guard' }, '', location.href);
-  } catch (_) {}
+  // Seed two history entries so the first back press is absorbed silently
+  history.pushState({app:true}, '', location.href);
+  history.pushState({app:true}, '', location.href);
 
-  window.addEventListener('popstate', function () {
-    // Priority 1: chat full-screen — close first, then re-anchor history
+  window.addEventListener('popstate', function(){
+    // Re-push state every time so we never actually leave
+    history.pushState({app:true}, '', location.href);
+
+    // Priority 1: close chat if open
     const chatModal = document.getElementById('chat-modal');
     if (chatModal && chatModal.classList.contains('open')) {
       if (typeof closeChat === 'function') closeChat();
-      else {
-        chatModal.classList.remove('open');
-        chatModal.style.display = 'none';
-        document.body.classList.remove('modal-open');
-      }
-      try {
-        history.replaceState({ app: 'root' }, '', location.href);
-        history.pushState({ app: 'guard' }, '', location.href);
-      } catch (_) {}
+      else chatModal.classList.remove('open');
       return;
     }
 
-    // Priority 2: modal overlays
+    // Priority 2: close any open modal overlay
     const openModal = document.querySelector('.modal-overlay.open');
     if (openModal) {
       openModal.classList.remove('open');
       document.body.classList.remove('modal-open');
-      try {
-        history.replaceState({ app: 'root' }, '', location.href);
-        history.pushState({ app: 'guard' }, '', location.href);
-      } catch (_) {}
       return;
     }
 
-    // Priority 3: camera
+    // Priority 3: close camera if open
     const camModal = document.getElementById('camera-modal');
     if (camModal && camModal.classList.contains('open')) {
       if (typeof closeCamera === 'function') closeCamera();
       else camModal.classList.remove('open');
-      try {
-        history.replaceState({ app: 'root' }, '', location.href);
-        history.pushState({ app: 'guard' }, '', location.href);
-      } catch (_) {}
       return;
     }
-
-    // Nothing to close — stay in app by pushing guard again
-    try {
-      history.pushState({ app: 'guard' }, '', location.href);
-    } catch (_) {}
   });
 })();
 
@@ -114,14 +95,9 @@ let _prevPage = 'login-page';
 const PAGE_ORDER = ['login-page', 'emp-app', 'admin-app'];
 
 function showPage(id){
+  // Always hide chat modal when switching pages
   const chat = document.getElementById('chat-modal');
-  if (chat && chat.classList.contains('open') && typeof closeChat === 'function') {
-    closeChat();
-  } else if (chat) {
-    chat.classList.remove('open');
-    chat.style.display = 'none';
-    document.body.classList.remove('modal-open');
-  }
+  if (chat) chat.style.display = 'none';
 
   const prevIdx = PAGE_ORDER.indexOf(_prevPage);
   const nextIdx = PAGE_ORDER.indexOf(id);

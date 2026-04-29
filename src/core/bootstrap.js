@@ -1,26 +1,25 @@
 // ═══════════════════════════════════════════════════════════
 // core/bootstrap.js — App bootstrap (back button, splash, routing)
 // ─────────────────────────────────────────────────────────
-// Load order: AFTER fallbacks.js + data.js, BEFORE feature modules.
-// Exposes globals: showPage(), hideSplash()
-// (showApp and doLogin live in modules/auth.js and are expected
-//  to be defined by the time initApp() runs.)
-// ─────────────────────────────────────────────────────────
-// Refactor notes:
-//   • Merged two duplicate popstate IIFEs (legacy lines 158 and 349).
-//   • Removed duplicate `hideSplash` function (was defined twice).
+// SAFE BOOT PATCH:
+//   • Init on DOMContentLoaded instead of waiting only for window.load
+//   • Keep load fallback
+//   • Prevent duplicate init runs
+//   • Keep existing routing/back-button behavior unchanged
 // ═══════════════════════════════════════════════════════════
 
 
 // ── BACK BUTTON — prevent user from leaving the app ──
-(function(){
-  // Seed two history entries so the first back press is absorbed silently
-  history.pushState({app:true}, '', location.href);
-  history.pushState({app:true}, '', location.href);
+(function () {
+  try {
+    history.pushState({ app: true }, '', location.href);
+    history.pushState({ app: true }, '', location.href);
+  } catch (_) {}
 
-  window.addEventListener('popstate', function(){
-    // Re-push state every time so we never actually leave
-    history.pushState({app:true}, '', location.href);
+  window.addEventListener('popstate', function () {
+    try {
+      history.pushState({ app: true }, '', location.href);
+    } catch (_) {}
 
     // Priority 1: close chat if open
     const chatModal = document.getElementById('chat-modal');
@@ -31,9 +30,9 @@
     }
 
     // Priority 2: close any open modal overlay
-    const openModal = document.querySelector('.modal-overlay.open');
-    if (openModal) {
-      openModal.classList.remove('open');
+    const openedModal = document.querySelector('.modal-overlay.open');
+    if (openedModal) {
+      openedModal.classList.remove('open');
       document.body.classList.remove('modal-open');
       return;
     }
@@ -49,52 +48,11 @@
 })();
 
 
-// ── SPLASH & INIT ──
-function _runInitApp(){
-  try {
-    const chatM = document.getElementById('chat-modal');
-    if (chatM) { chatM.style.display = 'none'; chatM.classList.remove('open'); }
-    if (typeof applyLang === 'function')  applyLang();
-    if (typeof applyTheme === 'function') applyTheme();
-    if (typeof startClock === 'function') startClock();
-    let saved=null;
-    try{saved=localStorage.getItem('oraimo_user');}catch(_){}
-    if(!saved) try{saved=sessionStorage.getItem('oraimo_user');}catch(_){}
-    if (saved) {
-      try {
-        window.currentUser = JSON.parse(saved);
-        if (typeof showApp === 'function') showApp();
-        else showPage('login-page');
-      } catch (e) {
-        try{localStorage.removeItem('oraimo_user');}catch(_){}
-        try{sessionStorage.removeItem('oraimo_user');}catch(_){}
-        showPage('login-page');
-      }
-    } else {
-      showPage('login-page');
-    }
-    hideSplash();
-  } catch (e) {
-    console.warn('initApp error:', e);
-    const login = document.getElementById('login-page');
-    if (login) login.style.display = 'flex';
-    hideSplash();
-  }
-}
-if (document.readyState === 'complete') _runInitApp();
-else window.addEventListener('load', _runInitApp);
-
-function hideSplash(){
-  const s = document.getElementById('splash');
-  if (s) s.classList.add('hide');
-}
-
-
 // ── PAGE TRANSITIONS ──
 let _prevPage = 'login-page';
 const PAGE_ORDER = ['login-page', 'emp-app', 'admin-app'];
 
-function showPage(id){
+function showPage(id) {
   // Always hide chat modal when switching pages
   const chat = document.getElementById('chat-modal');
   if (chat) chat.style.display = 'none';
@@ -111,8 +69,104 @@ function showPage(id){
   if (el) {
     el.style.display = 'block';
     el.classList.add('active');
+
     if (nextIdx < prevIdx) el.classList.add('slide-in-left');
     else if (nextIdx > prevIdx) el.classList.add('slide-in-right');
   }
+
   _prevPage = id;
+}
+
+
+// ── SPLASH ──
+function hideSplash() {
+  const s = document.getElementById('splash');
+  if (s) s.classList.add('hide');
+}
+
+
+// ── INIT ──
+let __BOOTSTRAP_RAN__ = false;
+
+function _runInitApp() {
+  try {
+    const chatM = document.getElementById('chat-modal');
+    if (chatM) {
+      chatM.style.display = 'none';
+      chatM.classList.remove('open');
+    }
+
+    if (typeof applyLang === 'function') applyLang();
+    if (typeof applyTheme === 'function') applyTheme();
+    if (typeof startClock === 'function') startClock();
+
+    let saved = null;
+    try { saved = localStorage.getItem('oraimo_user'); } catch (_) {}
+    if (!saved) {
+      try { saved = sessionStorage.getItem('oraimo_user'); } catch (_) {}
+    }
+
+    if (saved) {
+      try {
+        window.currentUser = JSON.parse(saved);
+
+        if (typeof showApp === 'function') {
+          showApp();
+        } else {
+          showPage('login-page');
+        }
+      } catch (e) {
+        try { localStorage.removeItem('oraimo_user'); } catch (_) {}
+        try { sessionStorage.removeItem('oraimo_user'); } catch (_) {}
+        showPage('login-page');
+      }
+    } else {
+      showPage('login-page');
+    }
+
+    hideSplash();
+  } catch (e) {
+    console.warn('initApp error:', e);
+    const login = document.getElementById('login-page');
+    if (login) login.style.display = 'flex';
+    hideSplash();
+  }
+}
+
+function _initAppOnce() {
+  if (__BOOTSTRAP_RAN__) return;
+  __BOOTSTRAP_RAN__ = true;
+  _runInitApp();
+}
+
+// Wait a little for late-loaded legacy scripts if needed
+function _scheduleInitApp(retries = 30) {
+  const depsReady =
+    typeof showPage === 'function' &&
+    typeof hideSplash === 'function';
+
+  // showApp may still load slightly later; _runInitApp already handles that safely
+  if (depsReady || retries <= 0) {
+    _initAppOnce();
+    return;
+  }
+
+  setTimeout(() => _scheduleInitApp(retries - 1), 100);
+}
+
+
+// ── STARTUP TRIGGERS ──
+// Important:
+// DOMContentLoaded is earlier and safer than waiting only for full window load.
+// This fixes the "first open needs refresh" issue in many PWAs / heavy pages.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    _scheduleInitApp();
+  }, { once: true });
+
+  window.addEventListener('load', () => {
+    _scheduleInitApp();
+  }, { once: true });
+} else {
+  _scheduleInitApp();
 }

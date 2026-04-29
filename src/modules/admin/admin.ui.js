@@ -1,5 +1,4 @@
 // Admin dashboard UI — templates only (loaded before dashboard.js).
-// ✅ FIXED: إضافة صورة السيلفي القابلة للضغط في overlay الحضور
 (function initAdminUI(global) {
   function esc(s) {
     return String(s ?? '')
@@ -71,11 +70,6 @@
     </div>`).join('');
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // ✅ FIX: showAttendanceOverlay — إضافة صورة السيلفي clickable
-  // المشكلة: الـ overlay كان بيعرض الاسم والتفاصيل بس بدون صورة سيلفي
-  // الحل: نضيف الصورة مع onclick لفتحها في fullSelfie / viewSelfie
-  // ═══════════════════════════════════════════════════════════
   function showAttendanceOverlay(opts) {
     const { list, isPresent, isToday, isArabic } = opts;
     const color = isPresent ? 'var(--green)' : 'var(--red)';
@@ -91,19 +85,9 @@
         list.map((item) => {
           const e = item.emp, a = item.att;
           const detail = a ? `${isArabic ? 'دخول' : 'In'}: ${a.check_in || '-'}${a.late_minutes > 0 ? ' · ⚠️' + a.late_minutes + (isArabic ? 'د' : 'm') : ''}${a.check_out ? (isArabic ? ' · خروج: ' : ' · Out: ') + a.check_out : ''}` : (e.branch || '-');
-
-          // ✅ FIX: بناء صورة السيلفي القابلة للضغط
-          const mapLink = a && a.location_lat ? `https://maps.google.com/?q=${a.location_lat},${a.location_lng}` : '';
-          const mapLinkSafe = mapLink ? esc(mapLink) : '';
-          let selfieHtml = '';
-          if (a && a.selfie_in) {
-            selfieHtml = `<img src="${esc(a.selfie_in)}" style="width:44px;height:44px;border-radius:10px;object-fit:cover;border:2px solid var(--green);cursor:pointer;flex-shrink:0" onclick="viewSelfie(${JSON.stringify(String(e.name || ''))},${JSON.stringify(String(a.selfie_in || ''))},${JSON.stringify(String(a.selfie_out || ''))},${JSON.stringify(mapLinkSafe)})">`;
-          }
-
           return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-            <div class="emp-avatar" style="width:36px;height:36px;font-size:13px;overflow:hidden;flex-shrink:0">${e.profile_photo ? `<img src="${esc(e.profile_photo)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : esc((e.name || '?')[0].toUpperCase())}</div>
-            <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">${esc(e.name || '?')}</div><div style="font-size:11px;color:var(--muted)">${esc(detail)}</div></div>
-            ${selfieHtml}
+            <div class="emp-avatar" style="width:36px;height:36px;font-size:13px;overflow:hidden">${e.profile_photo ? `<img src="${esc(e.profile_photo)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : esc((e.name || '?')[0].toUpperCase())}</div>
+            <div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(e.name || '?')}</div><div style="font-size:11px;color:var(--muted)">${esc(detail)}</div></div>
           </div>`;
         }).join('')}
       <button type="button" class="admin-att-overlay-close" style="width:100%;padding:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px">${isArabic ? 'إغلاق' : 'Close'}</button>

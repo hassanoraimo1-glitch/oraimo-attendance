@@ -11,31 +11,70 @@
 // ── VISITS ──
 let visitPhotos=[];
 
+function isValidCameraImage(file, inputEl){
+  if(!file) return false;
+  if(!file.type || !file.type.startsWith('image/')) return false;
+
+  // best-effort enforcement:
+  // requires input in HTML to have capture="environment"
+  const capture = inputEl?.getAttribute('capture');
+  if(capture !== 'environment' && capture !== 'user'){
+    return false;
+  }
+
+  return true;
+}
+
+function compressImageFile(file, callback){
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      const maxW=800;
+      const scale=Math.min(1,maxW/img.width);
+      canvas.width=img.width*scale;
+      canvas.height=img.height*scale;
+      const ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      const compressed=canvas.toDataURL('image/jpeg',0.35);
+      callback(compressed);
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 function populateVisitBranchSelect(){
   const sel=document.getElementById('visit-branch-select');if(!sel)return;
   sel.innerHTML='<option value="">-- اختر الفرع --</option>'+allBranches.map(b=>`<option value="${b.name}">${b.name}</option>`).join('');
 }
 
 function addVisitPhoto(e){
-  if(visitPhotos.length>=3)return notify('الحد الأقصى 3 صور','error');
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    // Compress to ~35% quality
-    const img=new Image();
-    img.onload=()=>{
-      const canvas=document.createElement('canvas');
-      const maxW=800;const scale=Math.min(1,maxW/img.width);
-      canvas.width=img.width*scale;canvas.height=img.height*scale;
-      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-      const compressed=canvas.toDataURL('image/jpeg',0.35);
-      visitPhotos.push(compressed);
-      renderVisitPhotoPreviews();
-    };
-    img.src=ev.target.result;
-  };
-  reader.readAsDataURL(file);
-  e.target.value='';
+  const ar=currentLang==='ar';
+  if(visitPhotos.length>=3){
+    e.target.value='';
+    return notify(ar?'الحد الأقصى 3 صور':'Maximum 3 photos','error');
+  }
+
+  const input=e.target;
+  const file=input.files && input.files[0];
+  if(!file){
+    input.value='';
+    return;
+  }
+
+  if(!isValidCameraImage(file, input)){
+    input.value='';
+    return notify(ar?'يجب رفع صورة الزيارة بالكاميرا فقط':'Visit photo must be captured using camera only','error');
+  }
+
+  compressImageFile(file,(compressed)=>{
+    visitPhotos.push(compressed);
+    renderVisitPhotoPreviews();
+  });
+
+  input.value='';
 }
 
 function renderVisitPhotoPreviews(){
@@ -56,6 +95,8 @@ async function submitVisit(){
   const note=document.getElementById('visit-note-input').value.trim();
   const ar=currentLang==='ar';
   if(!branch)return notify(ar?'اختر الفرع':'Select branch','error');
+  if(visitPhotos.length===0)return notify(ar?'أضف صورة واحدة على الأقل':'Add at least one photo','error');
+
   try{
     await dbPost('branch_visits',{
       employee_id:currentUser.id,
@@ -119,22 +160,31 @@ async function clearOldVisitPhotos(){
 let tlVisitPhotos = [];
 
 function addTLVisitPhoto(e) {
-  if (tlVisitPhotos.length >= 3) return notify('الحد الأقصى 3 صور', 'error');
-  const file = e.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const scale = Math.min(1, 800/img.width);
-      canvas.width = img.width*scale; canvas.height = img.height*scale;
-      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-      tlVisitPhotos.push(canvas.toDataURL('image/jpeg',0.35));
-      renderTLPreviews();
-    };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file); e.target.value='';
+  const ar=currentLang==='ar';
+
+  if (tlVisitPhotos.length >= 3){
+    e.target.value='';
+    return notify(ar?'الحد الأقصى 3 صور':'Maximum 3 photos', 'error');
+  }
+
+  const input=e.target;
+  const file=input.files && input.files[0];
+  if (!file){
+    input.value='';
+    return;
+  }
+
+  if(!isValidCameraImage(file, input)){
+    input.value='';
+    return notify(ar?'يجب رفع صورة الزيارة بالكاميرا فقط':'Visit photo must be captured using camera only','error');
+  }
+
+  compressImageFile(file,(compressed)=>{
+    tlVisitPhotos.push(compressed);
+    renderTLPreviews();
+  });
+
+  input.value='';
 }
 
 function renderTLPreviews() {
@@ -152,6 +202,7 @@ async function submitTLVisit(){
   const ar=currentLang==='ar';
   if(!branch) return notify(ar?'اختر الفرع':'Select branch','error');
   if(tlVisitPhotos.length===0) return notify(ar?'أضف صورة واحدة على الأقل':'Add at least one photo','error');
+
   try{
     await dbPost('branch_visits',{
       manager_id:currentUser.id,
@@ -193,5 +244,4 @@ async function loadTLVisitsTab(){
   }).join('');
 }
 
-// ── toggleLeaveFields moved to modules/leaves.js ──
-
+// ── toggleLeaveFields moved to modules/leaves.js

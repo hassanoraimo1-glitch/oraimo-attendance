@@ -39,7 +39,7 @@
 <link rel="dns-prefetch" href="https://lmszelfnosejdemxhodm.supabase.co">
 <link rel="dns-prefetch" href="https://cdn.onesignal.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<script>window.__ASSET_VER__='22';</script>
+<script>window.__ASSET_VER__='32';</script>
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -76,7 +76,7 @@
   }
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./src/styles/main.css?v=14">
+<link rel="stylesheet" href="./src/styles/main.css?v=24">
 </head>
 <body>
 
@@ -170,38 +170,39 @@
     <div class="attend-wrap">
       <div class="attend-time" id="live-clock">00:00:00</div>
       <div class="attend-date" id="live-date"></div>
-      <br>
       <div class="attend-btn" id="attend-btn" onclick="handleAttendClick()">
-        <div class="attend-icon">🟢</div>
+        <div class="attend-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 2a7 7 0 0 1 7 7v2a5 5 0 0 1-5 5h-4a5 5 0 0 1-5-5V9a7 7 0 0 1 7-7zm-2 19h4v-2h-4v2z"/></svg>
+        </div>
         <div class="attend-label" data-ar="تسجيل دخول" data-en="Check In">تسجيل دخول</div>
       </div>
-      <div style="margin-top:14px;font-size:12px;color:var(--muted);text-align:center" id="attend-status" data-ar="لم يتم تسجيل حضور اليوم" data-en="No attendance recorded today">لم يتم تسجيل حضور اليوم</div>
-      <div id="emp-shift-info" style="margin-top:6px;font-size:11px;color:var(--green);text-align:center;font-weight:700"></div>
+      <div class="attend-status" id="attend-status" data-ar="لم يتم تسجيل حضور اليوم" data-en="No attendance recorded today">لم يتم تسجيل حضور اليوم</div>
+      <div class="attend-shift" id="emp-shift-info"></div>
     </div>
 
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-label" data-ar="أيام الحضور" data-en="Attendance">أيام الحضور</div><div class="stat-val" style="color:var(--green)" id="emp-attend-count">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="أيام الغياب" data-en="Absent">أيام الغياب</div><div class="stat-val" style="color:var(--red)" id="emp-absent-count">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="إجمالي المبيعات" data-en="Total Sales">إجمالي المبيعات</div><div class="stat-val" style="color:var(--green);font-size:15px" id="emp-sales-total">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="دقائق التأخير" data-en="Late (min)">دقائق التأخير</div><div class="stat-val" style="color:var(--yellow)" id="emp-late-total">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="أيام الحضور" data-en="Attendance">أيام الحضور</div><div class="stat-val stat-val--success" id="emp-attend-count">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="أيام الغياب" data-en="Absent">أيام الغياب</div><div class="stat-val stat-val--danger" id="emp-absent-count">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="إجمالي المبيعات" data-en="Total Sales">إجمالي المبيعات</div><div class="stat-val stat-val--success stat-val--money" id="emp-sales-total">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="دقائق التأخير" data-en="Late (min)">دقائق التأخير</div><div class="stat-val stat-val--warning" id="emp-late-total">0</div></div>
     </div>
 
-    <div class="card card-glow">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-weight:800;font-size:13px" data-ar="🎯 التارجت الشهري" data-en="🎯 Monthly Target">🎯 التارجت الشهري</span>
-        <span id="target-pct" style="color:var(--green);font-weight:800;font-size:14px">0%</span>
+    <div class="card card-glow target-card">
+      <div class="target-head">
+        <div class="target-title" data-ar="🎯 التارجت الشهري" data-en="🎯 Monthly Target">🎯 التارجت الشهري</div>
+        <div id="target-pct" class="target-pct">0%</div>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px">
+      <div class="target-meta">
         <span id="target-achieved">EGP 0</span>
         <span id="target-goal" data-ar-pre="التارجت:" data-en-pre="Target:">التارجت: EGP 0</span>
       </div>
       <div class="target-bar"><div class="target-fill" id="target-fill" style="width:0%"></div></div>
-      <div id="kmodel-row" style="display:none;margin-top:10px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px">
-          <span style="color:var(--purple);font-weight:700">K Model</span>
-          <span id="kmodel-pct" style="color:var(--purple);font-weight:800">0%</span>
+      <div id="kmodel-row" class="target-kblock" style="display:none">
+        <div class="target-krow">
+          <span class="target-klabel">K Model</span>
+          <span id="kmodel-pct" class="target-kpct">0%</span>
         </div>
-        <div class="target-bar"><div id="kmodel-fill" style="height:100%;width:0%;background:var(--purple);border-radius:4px;transition:width .6s ease"></div></div>
+        <div class="target-bar"><div id="kmodel-fill" class="target-fill target-fill--k" style="width:0%"></div></div>
       </div>
     </div>
 
@@ -239,7 +240,7 @@
       <div class="sh"><div class="sh-title">🏖️ طلب إجازة يوم</div></div>
       <div class="inp-grp">
         <label>تاريخ الإجازة</label>
-        <input type="date" id="vacation-date" style="width:100%;padding:13px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none">
+        <input type="date" id="vacation-date">
       </div>
       <div class="inp-grp">
         <label data-ar="السبب" data-en="Reason">السبب</label>
@@ -263,16 +264,16 @@
   <div id="emp-sales" class="content" style="display:none">
     <div class="sh">
       <div class="sh-title" data-ar="🛒 بيع جديد" data-en="🛒 New Sale">🛒 بيع جديد</div>
-      <div id="emp-today-total" style="color:var(--green);font-weight:800;font-size:12px">اليوم: EGP 0</div>
+      <div id="emp-today-total" class="sale-today-total">اليوم: EGP 0</div>
     </div>
     <input class="product-search" id="product-search" placeholder="🔍 ابحث عن منتج..." oninput="filterProducts()" data-ar-ph="🔍 ابحث عن منتج..." data-en-ph="🔍 Search product...">
     <div class="product-list" id="product-list"></div>
-    <div id="sale-form-wrap" style="display:none" onclick="if(event.target===this)cancelSale()">
-      <div class="sale-form" style="border-radius:22px 22px 0 0;width:100%;border-top:2px solid rgba(0,200,83,.3)">
-        <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:8px" id="selected-product-name"></div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+    <div id="sale-form-wrap" class="sale-sheet" style="display:none" onclick="if(event.target===this)cancelSale()">
+      <div class="sale-form sale-form--sheet">
+        <div id="selected-product-name" class="sale-selected-name"></div>
+        <div class="sale-price-row">
           <span data-ar="السعر:" data-en="Price:">السعر:</span>
-          <span id="selected-product-price" style="color:var(--text);font-weight:700"></span> EGP
+          <span id="selected-product-price" class="sale-price"></span> EGP
         </div>
         <div class="qty-row">
           <button class="qty-btn" onclick="changeQty(-1)">−</button>
@@ -280,14 +281,14 @@
           <button class="qty-btn" onclick="changeQty(1)">+</button>
         </div>
         <div class="total-row">
-          <span style="font-size:13px;color:var(--muted)" data-ar="الإجمالي" data-en="Total">الإجمالي</span>
-          <span style="font-size:22px;font-weight:800;color:var(--green)" id="sale-total">0 EGP</span>
+          <span class="sale-total-label" data-ar="الإجمالي" data-en="Total">الإجمالي</span>
+          <span id="sale-total" class="sale-total-val">0 EGP</span>
         </div>
-        <button class="btn btn-green" onclick="submitSale()" style="margin-top:8px" data-ar="✅ تسجيل البيع" data-en="✅ Record Sale">✅ تسجيل البيع</button>
-        <button class="btn btn-outline" onclick="cancelSale()" style="margin-top:6px" data-ar="إلغاء" data-en="Cancel">إلغاء</button>
+        <button class="btn btn-green sale-submit-btn" onclick="submitSale()" data-ar="✅ تسجيل البيع" data-en="✅ Record Sale">✅ تسجيل البيع</button>
+        <button class="btn btn-outline sale-cancel-btn" onclick="cancelSale()" data-ar="إلغاء" data-en="Cancel">إلغاء</button>
       </div>
     </div>
-    <div style="margin-top:16px">
+    <div class="section-gap">
       <div class="sh"><div class="sh-title" data-ar="مبيعات اليوم" data-en="Today's Sales">مبيعات اليوم</div></div>
       <div id="emp-sales-list"></div>
     </div>
@@ -295,99 +296,96 @@
 
   <!-- PROFILE TAB -->
   <div id="emp-profile" class="content" style="display:none">
-    <div class="card" style="text-align:center;padding:24px">
-      <div style="position:relative;width:80px;margin:0 auto 12px;cursor:pointer" onclick="document.getElementById('profile-photo-input').click()">
-        <div id="profile-avatar-wrap" style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:28px;border:3px solid rgba(0,200,83,.3);overflow:hidden">
-          <img id="profile-avatar-img" src="" style="display:none;width:100%;height:100%;object-fit:cover">
-          <span id="profile-avatar-icon">👤</span>
+    <div class="card profile-card">
+      <div class="profile-avatar-cta" onclick="document.getElementById('profile-photo-input').click()">
+        <div id="profile-avatar-wrap" class="profile-avatar">
+          <img id="profile-avatar-img" src="" class="profile-avatar__img">
+          <span id="profile-avatar-icon" class="profile-avatar__icon" aria-hidden="true">👤</span>
         </div>
-        <div style="position:absolute;bottom:0;right:0;width:26px;height:26px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid var(--black)">📷</div>
+        <div class="profile-avatar__cam" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M9 4l1.83 2H15l1-1h3c1.1 0 2 .9 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7c0-1.1.9-2 2-2h3l1-1zm3 14a4 4 0 1 0 0-8a4 4 0 0 0 0 8zm0-2.2a1.8 1.8 0 1 1 0-3.6a1.8 1.8 0 0 1 0 3.6z"/></svg>
+        </div>
         <input type="file" id="profile-photo-input" accept="image/*" style="display:none" onchange="uploadProfilePhoto(event)">
       </div>
-      <div style="font-size:18px;font-weight:800" id="profile-name">-</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:3px" id="profile-branch">-</div>
-      <div style="margin-top:8px" id="profile-dayoff"></div>
+      <div id="profile-name" class="profile-name">-</div>
+      <div id="profile-branch" class="profile-branch">-</div>
+      <div id="profile-dayoff" class="profile-dayoff"></div>
     </div>
     <div class="card">
-      <div class="sh-title" style="margin-bottom:12px" data-ar="📅 سجل الحضور" data-en="📅 Attendance Log">📅 سجل الحضور</div>
+      <div class="sh-title section-title" data-ar="📅 سجل الحضور" data-en="📅 Attendance Log">📅 سجل الحضور</div>
       <div id="emp-daily-log"></div>
     </div>
     <div class="card">
-      <div class="sh-title" style="margin-bottom:12px" data-ar="📊 ملخص الشهر" data-en="📊 Monthly Summary">📊 ملخص الشهر</div>
+      <div class="sh-title section-title" data-ar="📊 ملخص الشهر" data-en="📊 Monthly Summary">📊 ملخص الشهر</div>
       <div id="monthly-report-emp"></div>
     </div>
-    <button class="btn btn-outline" onclick="doLogout()" style="margin-top:8px" data-ar="🚪 تسجيل الخروج" data-en="🚪 Sign Out">🚪 تسجيل الخروج</button>
+    <button class="btn btn-outline section-gap-sm" onclick="doLogout()" data-ar="🚪 تسجيل الخروج" data-en="🚪 Sign Out">🚪 تسجيل الخروج</button>
   </div>
 
   <!-- VISITS TAB -->
   <!-- DISPLAY TAB (Employee) -->
   <div id="emp-display" class="content" style="display:none">
     <div class="card card-glow">
-      <div style="font-size:14px;font-weight:800;margin-bottom:12px">🖼️ رفع صور الديسبلاي اليومي</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="display-date-label"></div>
-      <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">صور الديسبلاي (max 3)</label>
+      <div class="card-title">🖼️ رفع صور الديسبلاي اليومي</div>
+      <div class="card-subtitle" id="display-date-label"></div>
+      <label class="form-label">صور الديسبلاي (max 3)</label>
       <div class="photo-previews" id="display-photo-previews"></div>
-      <div class="photo-upload-zone" id="display-upload-zone" onclick="showPhotoSourceModal('display-photo-input')">
-        <input type="file" id="display-photo-input" accept="image/*" style="display:none" onchange="addDisplayPhoto(event)">
-        <div style="font-size:28px">📷</div>
-        <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور يومياً</div>
-      </div>
-      <div class="inp-grp" style="margin-top:10px">
+      <button class="btn btn-green" onclick="openDisplayCamera()">📸 Capture Display</button>
+      <div id="display-upload-zone" style="display:none;"></div>
+      <div class="inp-grp section-gap-sm">
         <label>ملاحظة (اختياري)</label>
-        <textarea id="display-note" rows="2" style="width:100%;padding:11px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl"></textarea>
+        <textarea id="display-note" rows="2"></textarea>
       </div>
       <button class="btn btn-green" onclick="submitDisplayPhotos()">✅ رفع صور الديسبلاي</button>
     </div>
-    <div class="sh" style="margin-top:8px"><div class="sh-title">📋 سجل الديسبلاي</div></div>
+    <div class="sh section-gap-sm"><div class="sh-title">📋 سجل الديسبلاي</div></div>
     <div id="display-history-list"></div>
   </div>
 
   <div id="emp-visits" class="content" style="display:none">
     <div class="sh">
       <div class="sh-title">📸 زيارات الفروع</div>
-      <div id="emp-visits-count" style="color:var(--green);font-weight:800;font-size:12px">0 / 150</div>
+      <div id="emp-visits-count" class="pill-success">0 / 150</div>
     </div>
 
     <!-- Stats -->
     <div class="visit-stats-row">
       <div class="visit-stat"><div class="visit-stat-val" id="vis-done">0</div><div class="visit-stat-label">زيارة هذا الشهر</div></div>
-      <div class="visit-stat"><div class="visit-stat-val" style="color:var(--yellow)" id="vis-remain">150</div><div class="visit-stat-label">متبقي</div></div>
-      <div class="visit-stat"><div class="visit-stat-val" style="color:var(--blue)" id="vis-photos">0</div><div class="visit-stat-label">صورة مرفوعة</div></div>
+      <div class="visit-stat"><div class="visit-stat-val visit-stat-val--warning" id="vis-remain">150</div><div class="visit-stat-label">متبقي</div></div>
+      <div class="visit-stat"><div class="visit-stat-val visit-stat-val--info" id="vis-photos">0</div><div class="visit-stat-label">صورة مرفوعة</div></div>
     </div>
 
     <!-- New Visit Form -->
     <div class="card card-glow">
-      <div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ تسجيل زيارة جديدة</div>
+      <div class="card-title card-title--sm">➕ تسجيل زيارة جديدة</div>
       <div class="inp-grp">
         <label>الفرع</label>
         <select id="visit-branch-select"><option value="">-- اختر الفرع --</option></select>
       </div>
       <div class="inp-grp">
         <label>ملاحظة (اختياري)</label>
-        <textarea id="visit-note-input" placeholder="حالة الديسبلاي، ملاحظات الفرع..." rows="2"
-          style="width:100%;padding:11px 14px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl;transition:.2s"></textarea>
+        <textarea id="visit-note-input" placeholder="حالة الديسبلاي، ملاحظات الفرع..." rows="2"></textarea>
       </div>
-      <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">صور الديسبلاي (max 3)</label>
+      <label class="form-label">صور الديسبلاي (max 3)</label>
       <div class="photo-previews" id="visit-photo-previews"></div>
       <div class="photo-upload-zone" id="visit-upload-zone" onclick="showPhotoSourceModal('visit-photo-input')">
         <input type="file" id="visit-photo-input" accept="image/*" style="display:none" onchange="addVisitPhoto(event)">
-        <div style="font-size:28px">📷</div>
-        <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور للزيارة</div>
+        <div class="upload-ico" aria-hidden="true">📷</div>
+        <div class="upload-title">اضغط لإضافة صورة</div>
+        <div class="upload-sub">حتى 3 صور للزيارة</div>
       </div>
       <button class="btn btn-green" onclick="submitVisit()">✅ حفظ الزيارة</button>
     </div>
 
     <!-- Visit History -->
-    <div class="sh" style="margin-top:4px"><div class="sh-title">📋 زياراتي هذا الشهر</div></div>
+    <div class="sh section-gap-sm"><div class="sh-title">📋 زياراتي هذا الشهر</div></div>
     <div id="visit-history-list"></div>
   </div>
 
   <!-- SPECS TAB (Employee) -->
   <div id="emp-specs" class="content" style="display:none">
     <div class="sh"><div class="sh-title">📱 موديلات Oraimo</div></div>
-    <input class="product-search" id="specs-search" placeholder="🔍 ابحث عن موديل..." oninput="filterSpecs()" style="margin-bottom:12px">
+    <input class="product-search section-gap-sm" id="specs-search" placeholder="🔍 ابحث عن موديل..." oninput="filterSpecs()">
     <div id="specs-list"></div>
   </div>
 
@@ -448,17 +446,17 @@
 
   <!-- DASHBOARD -->
   <div id="admin-dashboard" class="content">
-    <div id="dash-loader" style="display:none;visibility:hidden;align-items:center;justify-content:center;padding:40px;gap:10px;color:var(--muted);font-size:13px">
+    <div id="dash-loader" class="dash-loader" style="display:none;visibility:hidden">
       <div class="loader"></div> <span data-ar="جاري التحميل..." data-en="Loading...">جاري التحميل...</span>
     </div>
     <div id="dash-content" style="display:block">
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-label" data-ar="حاضر اليوم" data-en="Present Today">حاضر اليوم</div><div class="stat-val" style="color:var(--green);cursor:pointer" id="adm-present" onclick="showAttList('present','today')">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="غائب اليوم" data-en="Absent Today">غائب اليوم</div><div class="stat-val" style="color:var(--red);cursor:pointer" id="adm-absent" onclick="showAttList('absent','today')">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="حاضر أمس" data-en="Present Yesterday">حاضر أمس</div><div class="stat-val" style="color:var(--green);cursor:pointer" id="adm-present-yest" onclick="showAttList('present','yesterday')">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="غائب أمس" data-en="Absent Yesterday">غائب أمس</div><div class="stat-val" style="color:var(--red);cursor:pointer" id="adm-absent-yest" onclick="showAttList('absent','yesterday')">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="مبيعات اليوم" data-en="Today Sales">مبيعات اليوم</div><div class="stat-val" style="color:var(--green);font-size:14px" id="adm-sales-today">0</div></div>
-      <div class="stat-card"><div class="stat-label" data-ar="مبيعات الشهر" data-en="Month Sales">مبيعات الشهر</div><div class="stat-val" style="color:var(--green);font-size:14px" id="adm-sales-month">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="حاضر اليوم" data-en="Present Today">حاضر اليوم</div><div class="stat-val stat-val--success stat-val--click" id="adm-present" onclick="showAttList('present','today')">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="غائب اليوم" data-en="Absent Today">غائب اليوم</div><div class="stat-val stat-val--danger stat-val--click" id="adm-absent" onclick="showAttList('absent','today')">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="حاضر أمس" data-en="Present Yesterday">حاضر أمس</div><div class="stat-val stat-val--success stat-val--click" id="adm-present-yest" onclick="showAttList('present','yesterday')">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="غائب أمس" data-en="Absent Yesterday">غائب أمس</div><div class="stat-val stat-val--danger stat-val--click" id="adm-absent-yest" onclick="showAttList('absent','yesterday')">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="مبيعات اليوم" data-en="Today Sales">مبيعات اليوم</div><div class="stat-val stat-val--success stat-val--money" id="adm-sales-today">0</div></div>
+      <div class="stat-card"><div class="stat-label" data-ar="مبيعات الشهر" data-en="Month Sales">مبيعات الشهر</div><div class="stat-val stat-val--success stat-val--money" id="adm-sales-month">0</div></div>
     </div>
     <div class="sh"><div class="sh-title" data-ar="🏆 ترتيب الأداء" data-en="🏆 Performance">🏆 ترتيب الأداء</div></div>
     <div class="card" id="adm-performance-list"></div>
@@ -491,36 +489,36 @@
 
     <div id="branch-overview">
       <div class="kpi-row">
-        <div class="kpi-card" style="border-color:rgba(255,215,0,.2)">
-          <div class="kpi-val" style="color:var(--gold)" id="kpi-s-count">-</div>
+        <div class="kpi-card kpi-card--gold">
+          <div class="kpi-val kpi-val--gold" id="kpi-s-count">-</div>
           <div class="kpi-label">S 🥇</div>
         </div>
-        <div class="kpi-card" style="border-color:rgba(184,196,204,.2)">
-          <div class="kpi-val" style="color:var(--silver)" id="kpi-a-count">-</div>
+        <div class="kpi-card kpi-card--silver">
+          <div class="kpi-val kpi-val--silver" id="kpi-a-count">-</div>
           <div class="kpi-label">A 🥈</div>
         </div>
-        <div class="kpi-card" style="border-color:rgba(205,127,50,.2)">
-          <div class="kpi-val" style="color:var(--bronze)" id="kpi-b-count">-</div>
+        <div class="kpi-card kpi-card--bronze">
+          <div class="kpi-val kpi-val--bronze" id="kpi-b-count">-</div>
           <div class="kpi-label">B 🥉</div>
         </div>
       </div>
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-label" data-ar="مبيعات أبريل (EGP)" data-en="April Sales (EGP)">مبيعات أبريل (EGP)</div>
-          <div class="stat-val" style="color:var(--green);font-size:16px" id="kpi-curr-rev">-</div>
+          <div class="stat-val stat-val--success stat-val--money" id="kpi-curr-rev">-</div>
         </div>
         <div class="stat-card">
           <div class="stat-label" data-ar="مبيعات الشهر السابق" data-en="Prev Month Sales">مبيعات الشهر السابق</div>
-          <div class="stat-val" style="font-size:16px" id="kpi-prev-rev">-</div>
+          <div class="stat-val stat-val--money" id="kpi-prev-rev">-</div>
         </div>
       </div>
-      <div class="card" style="border-color:rgba(255,59,59,.2);background:rgba(255,59,59,.04);margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="card kpi-delta-card">
+        <div class="kpi-delta-row">
           <div>
-            <div style="font-size:12px;font-weight:700" data-ar="التغيير مقارنة بالشهر السابق" data-en="Change vs Last Month">التغيير مقارنة بالشهر السابق</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px" data-ar="إجمالي كل الفروع" data-en="All branches total">إجمالي كل الفروع</div>
+            <div class="kpi-delta-title" data-ar="التغيير مقارنة بالشهر السابق" data-en="Change vs Last Month">التغيير مقارنة بالشهر السابق</div>
+            <div class="kpi-delta-sub" data-ar="إجمالي كل الفروع" data-en="All branches total">إجمالي كل الفروع</div>
           </div>
-          <div id="kpi-change" style="font-size:22px;font-weight:800">-</div>
+          <div id="kpi-change" class="kpi-delta-val">-</div>
         </div>
       </div>
       <div class="sh"><div class="sh-title" data-ar="🏪 أفضل الفروع" data-en="🏪 Top Branches">🏪 أفضل الفروع</div></div>
@@ -528,51 +526,51 @@
     </div>
 
     <div id="branch-s-tier" style="display:none">
-      <div class="card" style="border-color:rgba(255,215,0,.3);background:rgba(255,215,0,.04)">
-        <div style="font-size:13px;font-weight:800;color:var(--gold)" data-ar="🥇 S تير — الأعلى أداءً" data-en="🥇 S Tier — Top Performers">🥇 S تير — الأعلى أداءً</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px" id="s-tier-subtitle"></div>
+      <div class="card tier-card tier-card--gold">
+        <div class="tier-title tier-title--gold" data-ar="🥇 S تير — الأعلى أداءً" data-en="🥇 S Tier — Top Performers">🥇 S تير — الأعلى أداءً</div>
+        <div class="tier-sub" id="s-tier-subtitle"></div>
       </div>
       <div id="s-tier-list"></div>
     </div>
 
     <div id="branch-a-tier" style="display:none">
-      <div class="card" style="border-color:rgba(184,196,204,.3);background:rgba(184,196,204,.04)">
-        <div style="font-size:13px;font-weight:800;color:var(--silver)" data-ar="🥈 A تير — متوسط الأداء" data-en="🥈 A Tier — Average">🥈 A تير — متوسط الأداء</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px" id="a-tier-subtitle"></div>
+      <div class="card tier-card tier-card--silver">
+        <div class="tier-title tier-title--silver" data-ar="🥈 A تير — متوسط الأداء" data-en="🥈 A Tier — Average">🥈 A تير — متوسط الأداء</div>
+        <div class="tier-sub" id="a-tier-subtitle"></div>
       </div>
       <div id="a-tier-list"></div>
     </div>
 
     <div id="branch-b-tier" style="display:none">
-      <div class="card" style="border-color:rgba(205,127,50,.3);background:rgba(205,127,50,.04)">
-        <div style="font-size:13px;font-weight:800;color:var(--bronze)" data-ar="🥉 B تير — يحتاج تطوير" data-en="🥉 B Tier — Needs Improvement">🥉 B تير — يحتاج تطوير</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px" id="b-tier-subtitle"></div>
+      <div class="card tier-card tier-card--bronze">
+        <div class="tier-title tier-title--bronze" data-ar="🥉 B تير — يحتاج تطوير" data-en="🥉 B Tier — Needs Improvement">🥉 B تير — يحتاج تطوير</div>
+        <div class="tier-sub" id="b-tier-subtitle"></div>
       </div>
       <div id="b-tier-list"></div>
     </div>
 
     <div id="branch-no-sales" style="display:none">
       <div class="card">
-        <div style="font-size:13px;font-weight:800;color:var(--muted)" data-ar="🏪 فروع بدون مبيعات — أبريل حتى الآن" data-en="🏪 No Sales — April so far">🏪 فروع بدون مبيعات — أبريل حتى الآن</div>
+        <div class="card-title card-title--sm" data-ar="🏪 فروع بدون مبيعات — أبريل حتى الآن" data-en="🏪 No Sales — April so far">🏪 فروع بدون مبيعات — أبريل حتى الآن</div>
       </div>
       <div id="ns-tier-list"></div>
     </div>
 
     <div id="branch-upload" style="display:none">
       <div class="card">
-        <div style="font-size:14px;font-weight:800;margin-bottom:8px" data-ar="📤 رفع بيانات الفروع الأسبوعية" data-en="📤 Weekly Branch Upload">📤 رفع بيانات الفروع الأسبوعية</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:14px" data-ar="ارفع CSV: اسم الفرع، المبيعات" data-en="Upload CSV: branch name, sales">ارفع CSV: اسم الفرع، المبيعات</div>
+        <div class="card-title" data-ar="📤 رفع بيانات الفروع الأسبوعية" data-en="📤 Weekly Branch Upload">📤 رفع بيانات الفروع الأسبوعية</div>
+        <div class="card-subtitle" data-ar="ارفع CSV: اسم الفرع، المبيعات" data-en="Upload CSV: branch name, sales">ارفع CSV: اسم الفرع، المبيعات</div>
         <div class="upload-zone" onclick="document.getElementById('upload-file').click()">
           <input type="file" id="upload-file" accept=".csv,.xlsx,.xls" onchange="handleBranchUpload(event)">
-          <div style="font-size:32px;margin-bottom:8px">📊</div>
-          <div style="font-size:13px;font-weight:700;margin-bottom:4px" data-ar="اضغط لرفع ملف" data-en="Tap to upload">اضغط لرفع ملف</div>
-          <div style="font-size:11px;color:var(--muted)">.csv</div>
+          <div class="upload-ico" aria-hidden="true" style="font-size:32px">📊</div>
+          <div class="upload-title" data-ar="اضغط لرفع ملف" data-en="Tap to upload">اضغط لرفع ملف</div>
+          <div class="upload-sub">.csv</div>
         </div>
         <div id="upload-result"></div>
       </div>
       <div class="card">
-        <div style="font-size:13px;font-weight:700;margin-bottom:10px" data-ar="📋 سجل الرفع" data-en="📋 Upload History">📋 سجل الرفع</div>
-        <div id="upload-history-list"><div style="color:var(--muted);font-size:12px" data-ar="لا يوجد سجل بعد" data-en="No history yet">لا يوجد سجل بعد</div></div>
+        <div class="card-title card-title--sm" data-ar="📋 سجل الرفع" data-en="📋 Upload History">📋 سجل الرفع</div>
+        <div id="upload-history-list"><div class="card-subtitle" data-ar="لا يوجد سجل بعد" data-en="No history yet">لا يوجد سجل بعد</div></div>
       </div>
     </div>
   </div>

@@ -3,29 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#0b0d12">
-<script>
-(function () {
-  function paintTheme(light) {
-    document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
-    var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', light ? '#eef2f9' : '#0b0d12');
-  }
-  try {
-    var t = localStorage.getItem('oraimo_theme');
-    paintTheme(t === 'light');
-  } catch (e) {}
-  window.toggleTheme = function () {
-    try {
-      var cur = document.documentElement.getAttribute('data-theme') === 'light';
-      var nextLight = !cur;
-      localStorage.setItem('oraimo_theme', nextLight ? 'light' : 'dark');
-      paintTheme(nextLight);
-      if (document.body) document.body.setAttribute('data-theme', nextLight ? 'light' : 'dark');
-    } catch (e2) {}
-  };
-})();
-</script>
+<meta name="theme-color" content="#0a0a0a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -35,11 +13,6 @@
 <!-- iOS notifications: OneSignal handles via service worker -->
 <title>Oraimo HR System</title>
 <link rel="manifest" href="/manifest.json">
-<link rel="preconnect" href="https://lmszelfnosejdemxhodm.supabase.co" crossorigin>
-<link rel="dns-prefetch" href="https://lmszelfnosejdemxhodm.supabase.co">
-<link rel="dns-prefetch" href="https://cdn.onesignal.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<script>window.__ASSET_VER__='22';</script>
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -69,33 +42,32 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js?v=16')
+      navigator.serviceWorker.register('/sw.js')
         .then(reg => console.log('التطبيق جاهز للعمل'))
         .catch(err => console.log('فشل تسجيل الخدمة', err));
     });
   }
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./src/styles/main.css?v=14">
+<link rel="stylesheet" href="./src/styles/main.css">
 </head>
 <body>
 
-<div class="app-atmosphere" aria-hidden="true">
-  <span class="noise-corner tl">O</span>
-  <span class="noise-corner br">O</span>
+<!-- ORAIMO BACKGROUND -->
+<div class="oraimo-bg">
+  <div class="oraimo-bg-dots"></div>
+  <div class="oraimo-corner tl">O</div>
+  <div class="oraimo-corner br">O</div>
 </div>
 
 <!-- SPLASH -->
 <div id="splash">
-  <div class="app-atmosphere" aria-hidden="true">
-    <span class="noise-corner tl">O</span>
-    <span class="noise-corner br">O</span>
-  </div>
+  <div class="oraimo-bg"><div class="oraimo-bg-dots"></div></div>
   <div class="splash-inner">
     <div class="splash-clock" id="splash-clock">--:--</div>
     <div class="splash-ring">
-      <img src="./icon.svg" alt="Oraimo" width="92" height="92" class="splash-logo-img" loading="eager" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-      <div class="splash-o" aria-hidden="true">O</div>
+      <img src="/icon-512.png" style="width:92px;height:92px;border-radius:22px;object-fit:contain;position:relative;z-index:1" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <div class="splash-o" style="display:none">O</div>
     </div>
     <div class="splash-brand">ORAIMO HR</div>
     <div class="splash-sub" id="splash-sub">Attendance & Sales</div>
@@ -123,12 +95,11 @@
 
 <!-- ═══════════════ LOGIN ═══════════════ -->
 <div id="login-page" class="page active">
-  <div class="login-toolbar">
-    <button type="button" class="lang-btn" onclick="toggleLang()" id="lang-toggle-btn">
+  <div style="position:absolute;top:16px;left:16px;z-index:10">
+    <button class="lang-btn" onclick="toggleLang()" id="lang-toggle-btn">
       <span class="lang-flag">🌐</span>
       <span id="lang-toggle-label">EN</span>
     </button>
-    <button type="button" class="theme-btn" onclick="toggleTheme()" title="Theme">🌓</button>
   </div>
   <div class="login-card">
     <div class="login-logo"><div class="login-o">O</div></div>
@@ -158,15 +129,14 @@
       </div>
     </div>
     <div class="topbar-right">
-      <button type="button" class="theme-btn" onclick="toggleTheme()" title="Theme">🌓</button>
-      <button type="button" class="lang-btn" onclick="toggleLang()" id="lang-btn-emp"><span class="lang-flag">🌐</span><span id="lang-label-emp">EN</span></button>
+      <button class="lang-btn" onclick="toggleLang()" id="lang-btn-emp"><span class="lang-flag">🌐</span><span id="lang-label-emp">EN</span></button>
       <span class="badge badge-green role-chip" data-ar="موظف" data-en="Employee">موظف</span>
       <button class="icon-btn" onclick="doLogout()" title="خروج">🚪</button>
     </div>
   </div>
 
   <!-- HOME TAB -->
-  <div id="emp-home" class="content">
+  <div id="emp-home" class="content" style="padding-top:70px">
     <div class="attend-wrap">
       <div class="attend-time" id="live-clock">00:00:00</div>
       <div class="attend-date" id="live-date"></div>
@@ -391,17 +361,27 @@
     <div id="specs-list"></div>
   </div>
 
-  <!-- CHAT TAB (Employee) — list rendered by loadEmployeeChatList() -->
+  <!-- CHAT TAB (Employee) -->
   <div id="emp-chat" class="content" style="display:none">
-    <section class="chats-screen" aria-label="Chats">
-      <header class="chats-screen-header">
-        <div class="chats-screen-head-text">
-          <h1 class="chats-screen-title" data-ar="المحادثات" data-en="Chats">المحادثات</h1>
-          <p class="chats-screen-sub" data-ar="الإدارة والفريق" data-en="Management & team">الإدارة والفريق</p>
+    <div style="display:flex;flex-direction:column;height:calc(100vh - 130px)">
+      <div style="font-size:14px;font-weight:800;margin-bottom:10px">💬 المحادثات</div>
+      <!-- Chat with Admin -->
+      <div class="card" onclick="openChat('admin','الإدارة')" style="cursor:pointer;display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--red),#cc0000);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👑</div>
+        <div style="flex:1;text-align:right">
+          <div style="font-size:14px;font-weight:700">الإدارة</div>
+          <div style="font-size:11px;color:var(--muted)" id="last-msg-admin">اضغط للمحادثة</div>
         </div>
-      </header>
-      <div id="emp-chat-list" class="chats-screen-list chat-list-modern" role="list"></div>
-    </section>
+      </div>
+      <!-- Group Chat -->
+      <div class="card" onclick="openChat('group','B.tech team')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👥</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700">B.tech team</div>
+          <div style="font-size:11px;color:var(--muted)" id="last-msg-group">اضغط للمحادثة</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="bottom-nav">
@@ -418,9 +398,7 @@
       <div class="nav-icon">📱</div><div class="nav-label" data-ar="الموديلات" data-en="Models">الموديلات</div>
     </div>
     <div class="nav-item" onclick="empTab('chat',this)">
-      <div class="nav-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M4 4h16v11H7l-3 3V4zm2 2v9.17L6.83 14H18V6H6z"/></svg>
-      </div><div class="nav-label" data-ar="الشات" data-en="Chat">الشات</div>
+      <div class="nav-icon">💬</div><div class="nav-label" data-ar="الشات" data-en="Chat">الشات</div>
     </div>
     <div class="nav-item" onclick="empTab('profile',this)">
       <div class="nav-icon">👤</div><div class="nav-label" data-ar="الملف" data-en="Profile">الملف</div>
@@ -432,15 +410,14 @@
 <div id="admin-app" class="page">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="topbar-logo">O</div>
+      <div class="topbar-logo" style="background:linear-gradient(135deg,#00C853,#007a2a);box-shadow:0 0 16px rgba(0,200,83,.3)">O</div>
       <div>
         <div class="topbar-brand">ORAIMO HR</div>
         <div class="topbar-title" id="admin-name-top" data-ar="لوحة الإدارة" data-en="Dashboard">لوحة الإدارة</div>
       </div>
     </div>
     <div class="topbar-right">
-      <button type="button" class="theme-btn" onclick="toggleTheme()" title="Theme">🌓</button>
-      <button type="button" class="lang-btn" onclick="toggleLang()" id="lang-btn-adm"><span class="lang-flag">🌐</span><span id="lang-label-adm">ع</span></button>
+      <button class="lang-btn" onclick="toggleLang()" id="lang-btn-adm"><span class="lang-flag">🌐</span><span id="lang-label-adm">ع</span></button>
       <span class="role-chip badge" id="admin-role-chip">Admin</span>
       <button class="icon-btn" onclick="doLogout()" title="خروج">🚪</button>
     </div>
@@ -599,23 +576,23 @@
       <div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
       <div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button onclick="exportHrPayrollCsv('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
-        <button onclick="exportHrPayrollCsv('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
+        <button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
+        <button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
       </div>
     </div>
     </div>
     <div id="report-products" style="display:none"><div id="products-report-content"></div><div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
       <div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button onclick="exportHrPayrollCsv('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
-        <button onclick="exportHrPayrollCsv('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
+        <button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
+        <button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
       </div>
     </div></div>
     <div id="report-branch" style="display:none"><div id="branch-report-content"></div><div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
       <div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button onclick="exportHrPayrollCsv('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
-        <button onclick="exportHrPayrollCsv('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
+        <button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
+        <button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
       </div>
     </div></div>
     <div id="report-display" style="display:none">
@@ -775,19 +752,15 @@
 
   <!-- ADMIN CHAT TAB -->
   <div id="admin-chat" class="content" style="display:none">
-    <section class="chats-screen" aria-label="Admin chats">
-      <header class="chats-screen-header chats-screen-header--split">
-        <div class="chats-screen-head-text">
-          <h1 class="chats-screen-title" data-ar="المحادثات" data-en="Chats">المحادثات</h1>
-          <p class="chats-screen-sub" data-ar="المجموعة والموظفون" data-en="Group & employees">المجموعة والموظفون</p>
-        </div>
-        <div class="chat-list-total" id="chat-list-total" title="">0</div>
-      </header>
-      <div class="chat-list-search-wrap">
-        <input type="search" id="chat-list-search" class="chat-list-search" data-ar-ph="ابحث باسم الموظف أو الفرع…" data-en-ph="Search by name or branch…" placeholder="ابحث باسم الموظف أو الفرع…" autocomplete="off" oninput="loadAdminChatList()">
-      </div>
-      <div id="admin-chat-list" class="chats-screen-list chat-list-modern" role="list"></div>
-    </section>
+    <div style="font-size:14px;font-weight:800;margin-bottom:12px">💬 المحادثات</div>
+    <!-- Group Chat -->
+    <div class="card" onclick="openChat('group','B.tech team')" style="cursor:pointer;display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👥</div>
+      <div><div style="font-size:14px;font-weight:700">B.tech team</div><div style="font-size:11px;color:var(--muted)">جميع الموظفين</div></div>
+    </div>
+    <!-- Individual chats -->
+    <div style="font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 8px">محادثات فردية</div>
+    <div id="admin-chat-list"></div>
   </div>
 
   <div class="bottom-nav">
@@ -801,9 +774,7 @@
       <div class="nav-icon">📸</div><div class="nav-label" data-ar="الزيارات" data-en="Visits">الزيارات</div>
     </div>
     <div class="nav-item" onclick="adminTab('chat',this)">
-      <div class="nav-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M4 4h16v11H7l-3 3V4zm2 2v9.17L6.83 14H18V6H6z"/></svg>
-      </div><div class="nav-label" data-ar="الشات" data-en="Chat">الشات</div>
+      <div class="nav-icon">💬</div><div class="nav-label" data-ar="الشات" data-en="Chat">الشات</div>
     </div>
     <div class="nav-item" onclick="adminTab('reports',this)">
       <div class="nav-icon">📈</div><div class="nav-label" data-ar="التقارير" data-en="Reports">التقارير</div>
@@ -815,46 +786,18 @@
 </div>
 
 <div id="chat-modal">
-  <div class="chat-header-bar" id="chat-header-bar">
-    <div class="chat-header-primary">
-      <button type="button" class="chat-back-btn" id="chat-back-btn" aria-label="Back" data-ar-aria="رجوع" data-en-aria="Back">
-        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
-      </button>
-      <div class="chat-header-avatar" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
-      </div>
-      <div class="chat-header-titles" id="chat-header-titles">
-        <div class="chat-header-title" id="chat-title">المحادثة</div>
-        <div class="chat-header-status" id="chat-header-status" data-ar="متصل" data-en="Online">متصل</div>
-      </div>
-      <button type="button" class="chat-header-icon-btn" id="chat-search-toggle" data-ar-aria="بحث في المحادثة" data-en-aria="Search in chat" aria-label="Search">
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5A6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5S14 7.01 14 9.5S11.99 14 9.5 14z"/></svg>
-      </button>
-    </div>
-    <div class="chat-header-searchrow hidden" id="chat-header-searchrow">
-      <input type="search" id="chat-insearch-input" class="chat-insearch-input" data-ar-ph="ابحث في الرسائل…" data-en-ph="Search messages…" placeholder="ابحث في الرسائل…" autocomplete="off" />
-      <span class="chat-insearch-count" id="chat-insearch-count" aria-live="polite"></span>
-      <button type="button" class="chat-insearch-ico" id="chat-insearch-prev" data-ar-aria="نتيجة سابقة" data-en-aria="Previous result" aria-label="Previous result">
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
-      </button>
-      <button type="button" class="chat-insearch-ico" id="chat-insearch-next" data-ar-aria="نتيجة تالية" data-en-aria="Next result" aria-label="Next result">
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M7.41 7.84L12 12.42l4.59-4.58L18 8.16l-6 6-6-6z"/></svg>
-      </button>
-      <button type="button" class="chat-insearch-ico" id="chat-insearch-close" data-ar-aria="إغلاق البحث" data-en-aria="Close search" aria-label="Close">
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/></svg>
-      </button>
+  <div class="chat-header-bar">
+    <button class="chat-back-btn" onclick="closeChat()">←</button>
+    <div class="chat-header-avatar">💬</div>
+    <div class="chat-header-info">
+      <div class="chat-header-title" id="chat-title">المحادثة</div>
+      <div class="chat-header-status" data-ar="متصل" data-en="Online">متصل</div>
     </div>
   </div>
   <div id="chat-messages"></div>
-  <div id="chat-reply-preview" class="chat-reply-preview hidden"></div>
   <div class="chat-input-bar">
-    <button type="button" class="chat-voice-btn" id="chat-voice-btn" onclick="toggleVoiceRecording()" title="Voice note" data-ar-title="رسالة صوتية" data-en-title="Voice note" aria-label="Voice">
-      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
-    </button>
-    <textarea id="chat-input" rows="1" placeholder="اكتب رسالة…" data-ar-ph="اكتب رسالة…" data-en-ph="Type a message…" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();sendMessage();}"></textarea>
-    <button type="button" class="chat-send-btn chat-send-btn--mic" id="chat-send-btn" onclick="sendMessage()" aria-label="Send">
-      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
-    </button>
+    <input type="text" id="chat-input" placeholder="اكتب رسالة..." onkeydown="if(event.key==='Enter')sendMessage()">
+    <button class="chat-send-btn" onclick="sendMessage()">➤</button>
   </div>
 </div>
 
@@ -1001,19 +944,23 @@
 
 <!-- UI -->
 <script src="./src/modules/ui.js"></script>
-<script src="./src/core/lazy-admin.js"></script>
 
 <!-- FEATURES -->
 <script src="./src/modules/auth.js"></script>
-<script src="./src/modules/attendance.ui.js"></script>
 <script src="./src/modules/attendance.js"></script>
 <script src="./src/modules/sales.js"></script>
 <script src="./src/modules/leaves.js"></script>
-<script src="./src/modules/chat.ui.js"></script>
 <script src="./src/modules/chat.js"></script>
 <script src="./src/modules/specs.js"></script>
 
-<!-- Admin panel scripts: lazy-loaded in auth.js (lazyLoadAdminModules) -->
-
+<!-- ADMIN -->
+<script src="./src/modules/admin/dashboard.js"></script>
+<script src="./src/modules/admin/employees.js"></script>
+<script src="./src/modules/admin/admins.js"></script>
+<script src="./src/modules/admin/branches.js"></script>
+<script src="./src/modules/admin/targets.js"></script>
+<script src="./src/modules/admin/reports.js"></script>
+<script src="./src/modules/admin/visits.js"></script>
+<script src="./src/modules/admin/display.js"></script>
 </body>
 </html>

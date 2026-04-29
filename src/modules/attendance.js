@@ -16,100 +16,6 @@ function _getShiftTimes(shift, dayOfWeek) {
   return { start: '10:00', end: '18:00', labelAr: '🌅 صباحي: 10ص – 6م', labelEn: '🌅 Morning: 10AM–6PM' };
 }
 
-function _to12HourLabel(hhmm) {
-  if (!hhmm || typeof hhmm !== 'string') return '-';
-  const parts = hhmm.split(':');
-  if (parts.length < 2) return hhmm;
-  const h = Number(parts[0]);
-  const m = Number(parts[1]);
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return hhmm;
-  const suffix = h >= 12 ? 'PM' : 'AM';
-  const h12 = ((h + 11) % 12) + 1;
-  return `${h12}:${String(m).padStart(2, '0')} ${suffix}`;
-}
-
-let _workCountdownTimer = null;
-
-function _clearWorkCountdown() {
-  if (_workCountdownTimer) {
-    clearInterval(_workCountdownTimer);
-    _workCountdownTimer = null;
-  }
-}
-
-function _startWorkCountdown(checkInHHMM, lateMinutes = 0) {
-  const status = document.getElementById('attend-status');
-  if (!status) return;
-  _clearWorkCountdown();
-
-  const parts = String(checkInHHMM || '').split(':');
-  if (parts.length < 2) {
-    if (window.AttendanceUI?.setAttendStatus) {
-      window.AttendanceUI.setAttendStatus({
-        mode: 'checked-in',
-        isArabic: currentLang === 'ar',
-        checkInLabel: _to12HourLabel(checkInHHMM),
-        lateMinutes,
-      });
-    } else {
-      status.textContent = `${currentLang === 'ar' ? 'دخل الساعة' : 'In at'} ${_to12HourLabel(checkInHHMM)}`;
-    }
-    return;
-  }
-  const inH = Number(parts[0]);
-  const inM = Number(parts[1]);
-  if (!Number.isFinite(inH) || !Number.isFinite(inM)) {
-    if (window.AttendanceUI?.setAttendStatus) {
-      window.AttendanceUI.setAttendStatus({
-        mode: 'checked-in',
-        isArabic: currentLang === 'ar',
-        checkInLabel: _to12HourLabel(checkInHHMM),
-        lateMinutes,
-      });
-    } else {
-      status.textContent = `${currentLang === 'ar' ? 'دخل الساعة' : 'In at'} ${_to12HourLabel(checkInHHMM)}`;
-    }
-    return;
-  }
-
-  const baseInMin = inH * 60 + inM;
-  const shiftSeconds = 8 * 60 * 60;
-
-  const render = () => {
-    const ar = currentLang === 'ar';
-    const now = new Date();
-    const nowSec = (now.getHours() * 60 + now.getMinutes()) * 60 + now.getSeconds();
-    let remaining = shiftSeconds - (nowSec - baseInMin * 60);
-    if (!Number.isFinite(remaining)) remaining = 0;
-    if (remaining < 0) remaining = 0;
-
-    const hh = Math.floor(remaining / 3600);
-    const mm = Math.floor((remaining % 3600) / 60);
-    const ss = remaining % 60;
-    const countdown = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
-
-    if (window.AttendanceUI?.setAttendStatus) {
-      window.AttendanceUI.setAttendStatus({
-        mode: 'checked-in',
-        isArabic: ar,
-        checkInLabel: _to12HourLabel(checkInHHMM),
-        lateMinutes,
-        countdown,
-      });
-    } else {
-      status.textContent =
-        `${ar ? 'دخل الساعة' : 'In at'} ${_to12HourLabel(checkInHHMM)}` +
-        `${lateMinutes > 0 ? (ar ? ` (تأخر ${lateMinutes} د)` : ` (${lateMinutes}m late)`) : ''}` +
-        `${ar ? ` • المتبقي: ${countdown}` : ` • Remaining: ${countdown}`}`;
-    }
-
-    if (remaining <= 0) _clearWorkCountdown();
-  };
-
-  render();
-  _workCountdownTimer = setInterval(render, 1000);
-}
-
 // Helper: ensure shift-info element exists on the home screen.
 // Injects it above the attend button if missing.
 function _ensureShiftInfoEl() {
@@ -189,8 +95,7 @@ async function loadEmpData() {
       const dow = new Date().getDay();
       const shift = currentUser.shift || 'morning';
       const { labelAr, labelEn } = _getShiftTimes(shift, dow);
-      if (window.AttendanceUI?.setShiftInfo) window.AttendanceUI.setShiftInfo(ar ? labelAr : labelEn);
-      else shiftInfoEl.textContent = ar ? labelAr : labelEn;
+      shiftInfoEl.textContent = ar ? labelAr : labelEn;
     }
   } catch (e) { console.error('[loadEmpData]', e); }
 }
@@ -205,30 +110,18 @@ function updateAttendBtn(record) {
     btn.classList.add('checked-in');
     if (iconEl) iconEl.textContent = '🔴';
     if (labelEl) labelEl.textContent = ar ? 'تسجيل خروج' : 'Check Out';
-    _startWorkCountdown(record.check_in, record.late_minutes || 0);
+    if (status) status.textContent = `${ar ? 'دخل الساعة' : 'In at'} ${record.check_in}${record.late_minutes > 0 ? (ar ? ' (تأخر ' + record.late_minutes + ' د)' : ' (' + record.late_minutes + 'm late)') : ''}`;
   } else if (record && record.check_out) {
-    _clearWorkCountdown();
     btn.classList.remove('checked-in');
     if (iconEl) iconEl.textContent = '✅';
     if (labelEl) labelEl.textContent = ar ? 'تم' : 'Done';
     btn.onclick = null;
-    if (window.AttendanceUI?.setAttendStatus) {
-      window.AttendanceUI.setAttendStatus({
-        mode: 'done',
-        isArabic: ar,
-        checkInLabel: _to12HourLabel(record.check_in),
-        checkOutLabel: _to12HourLabel(record.check_out),
-      });
-    } else if (status) {
-      status.textContent = `${ar ? 'دخول' : 'In'}: ${_to12HourLabel(record.check_in)} – ${ar ? 'خروج' : 'Out'}: ${_to12HourLabel(record.check_out)}`;
-    }
+    if (status) status.textContent = `${ar ? 'دخول' : 'In'}: ${record.check_in} – ${ar ? 'خروج' : 'Out'}: ${record.check_out}`;
   } else {
-    _clearWorkCountdown();
     btn.classList.remove('checked-in');
     if (iconEl) iconEl.textContent = '🟢';
     if (labelEl) labelEl.textContent = ar ? 'تسجيل دخول' : 'Check In';
-    if (window.AttendanceUI?.setAttendStatus) window.AttendanceUI.setAttendStatus({ mode: 'none', isArabic: ar });
-    else if (status) status.textContent = ar ? 'لم يتم تسجيل حضور اليوم' : 'No attendance recorded today';
+    if (status) status.textContent = ar ? 'لم يتم تسجيل حضور اليوم' : 'No attendance recorded today';
   }
 }
 
@@ -259,12 +152,16 @@ function handleAttendClick() {
 }
 
 function renderAttendHistory(records) {
-  if (window.AttendanceUI?.renderAttendHistory) {
-    window.AttendanceUI.renderAttendHistory(records, currentLang === 'ar', _to12HourLabel);
-    return;
-  }
   const el = document.getElementById('emp-attend-history'); if (!el) return;
-  el.innerHTML = '';
+  const ar = currentLang === 'ar';
+  if (!records || records.length === 0) { el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div>${ar ? 'لا توجد سجلات' : 'No records'}</div>`; return; }
+  el.innerHTML = records.map(r => `<div class="history-item">
+    <div class="hist-top"><div class="hist-name">${r.date}</div>
+    <span class="badge ${r.late_minutes > 0 ? 'badge-yellow' : 'badge-green'}">${r.late_minutes > 0 ? r.late_minutes + (ar ? ' د تأخير' : 'm late') : (ar ? 'في الوقت' : 'On time')}</span></div>
+    <div style="display:flex;justify-content:space-between">
+      <div class="hist-meta">${ar ? 'دخول' : 'In'}: ${r.check_in || '-'}</div>
+      <div class="hist-meta">${ar ? 'خروج' : 'Out'}: ${r.check_out || '-'}</div>
+    </div></div>`).join('');
 }
 
 async function loadEmpWarnings() {
@@ -284,12 +181,13 @@ async function loadEmpWarnings() {
 async function loadEmpDailyLog() {
   const pm = getPayrollMonth(); const ar = currentLang === 'ar';
   const att = await dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*&order=date.desc`).catch(() => []) || [];
-  if (window.AttendanceUI?.renderDailyLog) {
-    window.AttendanceUI.renderDailyLog(att, ar, _to12HourLabel);
-    return;
-  }
   const el = document.getElementById('emp-daily-log'); if (!el) return;
-  el.innerHTML = '';
+  if (att.length === 0) { el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div>${ar ? 'لا توجد سجلات' : 'No records'}</div>`; return; }
+  el.innerHTML = `<div class="table-wrap"><table>
+    <tr><th>${ar ? 'التاريخ' : 'Date'}</th><th>${ar ? 'دخول' : 'In'}</th><th>${ar ? 'خروج' : 'Out'}</th><th>${ar ? 'تأخير' : 'Late'}</th></tr>
+    ${att.map(a => `<tr><td>${a.date}</td><td>${a.check_in || '-'}</td><td>${a.check_out || '-'}</td>
+      <td>${a.late_minutes > 0 ? `<span class="badge badge-yellow">${a.late_minutes}${ar ? 'د' : 'm'}</span>` : '<span class="badge badge-green">✓</span>'}</td></tr>`).join('')}
+  </table></div>`;
 }
 
 async function loadEmpMonthlyReport() {
@@ -300,19 +198,10 @@ async function loadEmpMonthlyReport() {
   ]);
   let salesTotal = 0; (sales || []).forEach(s => salesTotal += s.total_amount);
   let lateTotal = 0; (att || []).forEach(a => lateTotal += (a.late_minutes || 0));
-  if (window.AttendanceUI?.renderMonthlyReport) {
-    window.AttendanceUI.renderMonthlyReport({
-      isArabic: ar,
-      payrollLabel: pm.label,
-      attendanceCount: (att || []).length,
-      lateTotal,
-      salesTotal,
-      transactionsCount: (sales || []).length,
-    });
-    return;
-  }
   const el = document.getElementById('monthly-report-emp'); if (!el) return;
-  el.innerHTML = '';
+  const rows = ar ? [['أيام الحضور', (att || []).length + ' أيام', 'var(--green)'], ['دقائق التأخير', lateTotal + ' د', 'var(--yellow)'], ['إجمالي المبيعات', 'EGP ' + salesTotal.toLocaleString(), 'var(--green)'], ['عدد المعاملات', (sales || []).length, 'var(--text)']]
+    : [['Attendance', (att || []).length + ' days', 'var(--green)'], ['Late', lateTotal + 'm', 'var(--yellow)'], ['Total Sales', 'EGP ' + salesTotal.toLocaleString(), 'var(--green)'], ['Transactions', (sales || []).length, 'var(--text)']];
+  el.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${pm.label}</div>` + rows.map(([l, v, c]) => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--muted)">${l}</span><span style="font-size:13px;font-weight:700;color:${c}">${v}</span></div>`).join('');
 }
 
 // ═══════════════════════════════════════════════════════════

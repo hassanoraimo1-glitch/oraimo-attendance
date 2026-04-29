@@ -4,98 +4,89 @@
 // Depends on: fallbacks.js (dbGet/dbPost, notify, applyLang)
 // ═══════════════════════════════════════════════════════════
 
-function _runAdminShell(){
-  document.getElementById('admin-name-top').textContent=currentUser.name||'Admin';
-  const chip=document.getElementById('admin-role-chip');
-  chip.textContent=currentUser.role==='superadmin'?'Super Admin':currentUser.role==='manager'?'Team Leader':currentUser.role==='team_leader'?'Team Leader':currentUser.role.charAt(0).toUpperCase()+currentUser.role.slice(1);
-  chip.className='role-chip badge role-'+currentUser.role;
-  if(currentUser.role==='viewer')document.getElementById('settings-nav-item').style.display='none';
-  if(currentUser.role==='superadmin')document.getElementById('admins-section').style.display='block';
-  if(currentUser.role==='viewer'){const b=document.getElementById('add-emp-btn');if(b)b.style.display='none'}
-  showPage('admin-app');
-  const dashNav=document.querySelector('#admin-app .bottom-nav .nav-item');
-  if(typeof adminTab==='function' && dashNav){
-    adminTab('dashboard', dashNav);
-  } else {
-    const d=document.getElementById('admin-dashboard');
-    if(d) d.style.display='block';
-  }
-  void (async function _bootAdminData(){
-    try{
-      if(typeof loadAllEmployees==='function') await loadAllEmployees();
-      if(typeof loadBranches==='function') await loadBranches();
-      if(typeof loadAdminDashboard==='function') await loadAdminDashboard();
-    }catch(e){ console.error('[admin data boot]', e); }
-  })();
-  clearOldVisitPhotos();
-  if(currentUser.role==='superadmin'||currentUser.role==='admin')loadAdminsList();
-  if(currentUser.role==='superadmin'||currentUser.role==='admin'||currentUser.role==='viewer'){
-    document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>n.style.display='');
-    document.getElementById('adm-visits-nav').style.display='none';
-  }
-  setTimeout(fixNavDirection, 100);
-  if(currentUser.role==='team_leader'){
-    setTimeout(()=>{
-      const admVisNav=document.getElementById('adm-visits-nav');
-      if(admVisNav) admVisNav.style.display='flex';
-      const settingsNavEl=document.getElementById('settings-nav-item');
-      if(settingsNavEl) settingsNavEl.style.display='flex';
-      const branchesNavEl=document.getElementById('adm-branches-nav');
-      if(branchesNavEl) branchesNavEl.style.display='none';
-      document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{
-        const oc=n.getAttribute('onclick')||'';
-        if(oc.includes('reports')) n.style.display='none';
-      });
-      ['add-emp-btn','add-emp-btn2'].forEach(id=>{
-        const el=document.getElementById(id);
-        if(el) el.style.display='none';
-      });
-      const visNavEl=document.getElementById('adm-visits-nav');
-      if(visNavEl){
-        document.querySelectorAll('#admin-app .nav-item').forEach(n=>n.classList.remove('active'));
-        visNavEl.classList.add('active');
-        ['dashboard','employees','branches','reports','settings'].forEach(t=>{
-          const d=document.getElementById('admin-'+t);if(d)d.style.display='none';
-        });
-        const vd=document.getElementById('admin-visits');
-        if(vd) vd.style.display='block';
-        loadTLVisitsTab();
-      }
-    },200);
-  }
-  if(typeof registerOneSignalUser==='function') registerOneSignalUser();
-  setTimeout(fixNavDirection, 100);
-}
-
 function showApp(){
   if(!currentUser)return showPage('login-page');
   applyLang();
+  // employees nav hidden via role logic below
+  // ALWAYS reset nav state first to prevent bleed from previous session
   document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});
   const visNavReset=document.getElementById('adm-visits-nav');
   if(visNavReset) visNavReset.style.display='none';
   document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
   ['add-emp-btn','add-emp-btn2'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='';});
-  const admSec=document.getElementById('admins-section');
-  if(admSec) admSec.style.display='none';
+  document.getElementById('admins-section').style.display='none';
+  // Make first nav item active
   const firstNav=document.querySelector('#admin-app .bottom-nav .nav-item');
   if(firstNav) firstNav.classList.add('active');
 
   const isAdmin=['superadmin','admin','manager','viewer','team_leader'].includes(currentUser.role);
   if(isAdmin){
-    const go=function(){
-      _runAdminShell();
-    };
-    if(typeof lazyLoadAdminModules==='function'){
-      lazyLoadAdminModules().then(go).catch(function(err){
-        console.error('[lazyLoadAdminModules]', err);
-        if(typeof notify==='function')notify(currentLang==='ar'?'تعذر تحميل لوحة الإدارة':'Could not load admin panel','error');
-        if(typeof doLogout==='function')doLogout();
-      });
-    }else{
-      go();
+    document.getElementById('admin-name-top').textContent=currentUser.name||'Admin';
+    const chip=document.getElementById('admin-role-chip');
+    chip.textContent=currentUser.role==='superadmin'?'Super Admin':currentUser.role==='manager'?'Team Leader':currentUser.role==='team_leader'?'Team Leader':currentUser.role.charAt(0).toUpperCase()+currentUser.role.slice(1);
+    chip.className='role-chip badge role-'+currentUser.role;
+    if(currentUser.role==='viewer')document.getElementById('settings-nav-item').style.display='none';
+    if(currentUser.role==='superadmin')document.getElementById('admins-section').style.display='block';
+    if(currentUser.role==='viewer'){const b=document.getElementById('add-emp-btn');if(b)b.style.display='none'}
+    showPage('admin-app');
+    // تأكد إن الـ dashboard tab ظاهر
+    const dashNav=document.querySelector('#admin-app .bottom-nav .nav-item');
+    if(typeof adminTab==='function' && dashNav){
+      adminTab('dashboard', dashNav);
+    } else {
+      const d=document.getElementById('admin-dashboard');
+      if(d) d.style.display='block';
+    }
+    loadAdminDashboard();loadAllEmployees();loadBranches();clearOldVisitPhotos();
+    if(currentUser.role==='superadmin'||currentUser.role==='admin')loadAdminsList();
+    // Reset all nav items to visible for admin/superadmin
+    if(currentUser.role==='superadmin'||currentUser.role==='admin'||currentUser.role==='viewer'){
+      document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>n.style.display='');
+      document.getElementById('adm-visits-nav').style.display='none';
+    }
+    if(currentUser.role==='manager'){
+      // Manager: لا visits nav — visits للـ team_leader بس
+    }
+  setTimeout(fixNavDirection, 100);
+  if(currentUser.role==='team_leader'){
+      // Team leader: visits + employees + settings (for team mgmt), hide branches/reports
+      setTimeout(()=>{
+        // show visits nav
+        const admVisNav=document.getElementById('adm-visits-nav');
+        if(admVisNav) admVisNav.style.display='flex';
+        // show settings nav (team leader manages their team there)
+        const settingsNavEl=document.getElementById('settings-nav-item');
+        if(settingsNavEl) settingsNavEl.style.display='flex';
+        // hide branches nav
+        const branchesNavEl=document.getElementById('adm-branches-nav');
+        if(branchesNavEl) branchesNavEl.style.display='none';
+        // hide reports nav
+        document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{
+          const oc=n.getAttribute('onclick')||'';
+          if(oc.includes('reports')) n.style.display='none';
+        });
+        // hide add employee button
+        ['add-emp-btn','add-emp-btn2'].forEach(id=>{
+          const el=document.getElementById(id);
+          if(el) el.style.display='none';
+        });
+        // auto-navigate to visits tab
+        const visNavEl=document.getElementById('adm-visits-nav');
+        if(visNavEl){
+          document.querySelectorAll('#admin-app .nav-item').forEach(n=>n.classList.remove('active'));
+          visNavEl.classList.add('active');
+          ['dashboard','employees','branches','reports','settings'].forEach(t=>{
+            const d=document.getElementById('admin-'+t);if(d)d.style.display='none';
+          });
+          const vd=document.getElementById('admin-visits');
+          if(vd) vd.style.display='block';
+          loadTLVisitsTab();
+        }
+      },200);
     }
   }else{
     showPage('emp-app');
+    // تأكد إن الـ home tab ظاهر
     if(typeof empTab==='function'){
       const homeNav=document.querySelector('#emp-app .nav-item');
       empTab('home', homeNav);
@@ -109,11 +100,13 @@ function showApp(){
     const dayLabel=currentLang==='ar'?DAYS_AR[currentUser.day_off]:DAYS_EN[currentUser.day_off];
     document.getElementById('profile-dayoff').innerHTML=`<span class="badge badge-blue">${currentLang==='ar'?'الإجازة:':'Day Off:'} ${dayLabel||'-'}</span>`;
     loadEmpData();renderProducts();loadModelTargetAlert();
+    // Hide visits tab (team leaders only via admin app)
     const visNav=document.querySelector('#emp-app .nav-item[onclick*=\"visits\"]');
     if(visNav) visNav.style.display='none';
-    if(typeof registerOneSignalUser==='function') registerOneSignalUser();
-    setTimeout(fixNavDirection, 100);
   }
+  // Register OneSignal for ALL users (admin + employees) & fix nav direction
+  if(typeof registerOneSignalUser==='function') registerOneSignalUser();
+  setTimeout(fixNavDirection, 100);
 }
 
 // ── BACK BUTTON — handled in bootstrap.js ──
@@ -134,7 +127,7 @@ async function doLogin(){
   errEl.textContent='';
   try{
     if(username==='admin'&&pass==='Oraimo@Admin2026'){
-      window.currentUser={role:'superadmin',name:'Super Admin',id:-1};
+      window.currentUser={role:'superadmin',name:'Super Admin'};
       _saveUser(window.currentUser);showApp();return;
     }
     const uname=encodeURIComponent(username);
@@ -158,7 +151,6 @@ async function doLogin(){
   }
 }
 function doLogout(){
-  try { if (typeof resetPushRegistrationState === 'function') resetPushRegistrationState(); } catch (_) {}
   // Stop any active camera
   if(videoStream){try{videoStream.getTracks().forEach(t=>t.stop());}catch(_){}videoStream=null;}
   // Stop chat polling
@@ -173,7 +165,6 @@ function doLogout(){
   window.currentUser=null;
   _isSubmitting=false;
   allAdmins=[];allBranches=[];allEmployees=[];
-  try{window.branches=[];}catch(_){}
   managerTeamData={};
   // Reset admin nav
   document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});
@@ -196,7 +187,7 @@ function startClock(){
   function tick(){
     const now=new Date(),locale=currentLang==='ar'?'ar-EG':'en-US';
     const el=document.getElementById('live-clock'),del=document.getElementById('live-date');
-    if(el)el.textContent=now.toLocaleTimeString(locale,{hour:'numeric',minute:'2-digit',hour12:true});
+    if(el)el.textContent=now.toLocaleTimeString(locale,{hour12:false});
     if(del)del.textContent=now.toLocaleDateString(locale,{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   }
   tick();setInterval(tick,1000);

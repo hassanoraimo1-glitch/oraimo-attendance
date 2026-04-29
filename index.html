@@ -82,31 +82,16 @@ navigator.serviceWorker.register('/sw.js')
 <img id="selfie-fs-img" src="" alt="">
 </div>
 
-<!-- DISPLAY CAMERA -->
-<div id="display-camera-modal">
-  <video
-    id="display-camera-video"
-    autoplay
-    playsinline
-    muted
-    webkit-playsinline
-    x-webkit-airplay="allow"
-  ></video>
-  <canvas id="display-camera-canvas"></canvas>
-  <div class="camera-overlay">
-    <div style="color:#fff;font-size:13px;margin-bottom:18px;font-weight:700">
-      📸 التقط صورة الديسبلاي
-    </div>
-    <button class="capture-btn" onclick="captureDisplayPhoto()"></button>
-    <div
-      style="color:rgba(255,255,255,.65);font-size:13px;margin-top:16px;cursor:pointer"
-      onclick="closeDisplayCamera()"
-    >
-      إلغاء
-    </div>
-  </div>
+<!-- CAMERA -->
+<div id="camera-modal">
+<video id="video" autoplay playsinline muted webkit-playsinline x-webkit-airplay="allow" style="-webkit-transform:scaleX(-1);transform:scaleX(-1)"></video>
+<canvas id="canvas"></canvas>
+<div class="camera-overlay">
+<div style="color:#fff;font-size:13px;margin-bottom:18px;font-weight:700" id="camera-label">📸 التقط سيلفي للتحقق</div>
+<button class="capture-btn" onclick="capturePhoto()"></button>
+<div style="color:rgba(255,255,255,.65);font-size:13px;margin-top:16px;cursor:pointer" onclick="closeCamera()" id="camera-cancel">إلغاء</div>
 </div>
-
+</div>
 
 <!-- ═══════════════ LOGIN ═══════════════ -->
 <div id="login-page" class="page active">

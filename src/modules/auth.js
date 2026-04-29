@@ -1,19 +1,17 @@
 // ═══════════════════════════════════════════════════════════
 // modules/auth.js
-// Login / Logout / App Routing / Role Permissions
-//
 // Final roles:
 //   - superadmin
 //   - admin
 //   - team_leader
 //   - employee
 //
-// Legacy compatibility:
+// Legacy:
 //   - manager => admin
 //
-// Visits permissions:
-//   - view visits: superadmin / admin / team_leader
-//   - upload/manage visits: team_leader only
+// Visits:
+//   - view: superadmin / admin / team_leader
+//   - upload/manage: team_leader only
 // ═══════════════════════════════════════════════════════════
 
 // ─────────────────────────────────────────
@@ -166,17 +164,122 @@ function _setVisitPermissions(user) {
 }
 
 // ─────────────────────────────────────────
-// Visits UI controls
+// Visits controls
 // ─────────────────────────────────────────
+function _getVisitsRoots() {
+  const roots = [];
+
+  [
+    'admin-visits',
+    'visits-page',
+    'visits-section',
+    'tl-visits-page',
+    'adm-visits-page'
+  ].forEach(id => {
+    const el = _id(id);
+    if (el) roots.push(el);
+  });
+
+  const byData = _qsa('[data-page="visits"], [data-section="visits"], [data-visits-root]');
+  byData.forEach(el => roots.push(el));
+
+  if (!roots.length) roots.push(document);
+  return roots;
+}
+
+function _isLikelyVisitManageEl(el) {
+  if (!el || el.nodeType !== 1) return false;
+
+  const id = String(el.id || '').toLowerCase();
+  const cls = String(el.className || '').toLowerCase();
+  const name = String(el.getAttribute('name') || '').toLowerCase();
+  const type = String(el.getAttribute('type') || '').toLowerCase();
+  const onclick = String(el.getAttribute('onclick') || '').toLowerCase();
+  const text = String(el.textContent || '').trim().toLowerCase();
+  const htmlFor = String(el.getAttribute('for') || '').toLowerCase();
+  const dataAction = String(el.getAttribute('data-action') || '').toLowerCase();
+  const dataRole = String(el.getAttribute('data-role') || '').toLowerCase();
+
+  const raw = [id, cls, name, type, onclick, text, htmlFor, dataAction, dataRole].join(' ');
+
+  const keywords = [
+    'visit-add',
+    'add-visit',
+    'save-visit',
+    'upload-visit',
+    'visit-submit',
+    'visit-camera',
+    'visit-photo',
+    'visit-image',
+    'new-visit',
+    'camera',
+    'upload',
+    'save',
+    'submit',
+    'capture',
+    'takephoto',
+    'chooseimage',
+    'file',
+    'photo',
+    'image',
+    'زيارة',
+    'زياره',
+    'رفع',
+    'حفظ',
+    'اضافة',
+    'إضافة',
+    'تصوير',
+    'التقاط',
+    'كاميرا',
+    'صورة',
+    'صوره',
+    'اختيار صورة',
+    'اختيار صوره'
+  ];
+
+  const hasKeyword = keywords.some(k => raw.includes(k.toLowerCase()));
+
+  if (el.matches('input[type="file"], input[type="submit"], button, label')) {
+    if (hasKeyword) return true;
+  }
+
+  if (hasKeyword) return true;
+
+  if (el.hasAttribute('data-visits-manage')) return true;
+
+  return false;
+}
+
+function _hideVisitManageElement(el) {
+  if (!el || el.nodeType !== 1) return;
+
+  el.style.display = 'none';
+  el.disabled = true;
+  el.setAttribute('aria-hidden', 'true');
+  el.dataset.lockedByAuth = '1';
+
+  if (el.tagName === 'INPUT' && el.type === 'file') {
+    try { el.value = ''; } catch (_) {}
+  }
+
+  if (el.tagName === 'FORM') {
+    el.dataset.readonlyVisits = '1';
+  }
+}
+
+function _showVisitManageElement(el) {
+  if (!el || el.nodeType !== 1) return;
+
+  el.style.display = '';
+  el.disabled = false;
+  el.removeAttribute('aria-hidden');
+  delete el.dataset.lockedByAuth;
+}
+
 function _applyVisitsNavVisibility(role) {
   const canView = _canViewVisits(role);
 
-  const navIds = [
-    'adm-visits-nav',
-    'nav-visits'
-  ];
-
-  navIds.forEach(id => {
+  ['adm-visits-nav', 'nav-visits'].forEach(id => {
     const el = _id(id);
     if (el) el.style.display = canView ? 'flex' : 'none';
   });
@@ -184,114 +287,131 @@ function _applyVisitsNavVisibility(role) {
 
 function _applyVisitsActionVisibility(role) {
   const canManage = _canManageVisits(role);
-  const canView = _canViewVisits(role);
+  const roots = _getVisitsRoots();
 
-  const visitsRoot =
-    _id('admin-visits') ||
-    _id('visits-page') ||
-    document;
+  roots.forEach(root => {
+    const candidates = _qsa(
+      'button, label, input, form, .btn, .action-btn, .upload-box, .camera-box, [onclick], [data-action], [data-visits-manage]',
+      root
+    );
 
-  const managedSelectors = [
-    '#visit-add-btn',
-    '#add-visit-btn',
-    '#visit-camera-btn',
-    '#save-visit-btn',
-    '#upload-visit-btn',
-    '#visit-submit-btn',
-    '#new-visit-btn',
-    '#visit-image-input',
-    '#visit-photo-input',
-    '#visit-file-input',
-    '#visit-form',
-    '#new-visit-form',
-    '#visit-actions',
-    '#visit-upload-box',
-    '[data-visits-manage]'
-  ];
-
-  managedSelectors.forEach(selector => {
-    visitsRoot.querySelectorAll(selector).forEach(el => {
-      if (canManage) {
-        el.style.display = '';
-        el.disabled = false;
-      } else {
-        el.style.display = 'none';
-        el.disabled = true;
-
-        if (el.tagName === 'INPUT' && el.type === 'file') {
-          try { el.value = ''; } catch (_) {}
-        }
+    candidates.forEach(el => {
+      if (_isLikelyVisitManageEl(el)) {
+        if (canManage) _showVisitManageElement(el);
+        else _hideVisitManageElement(el);
       }
     });
-  });
 
-  visitsRoot.querySelectorAll('[data-visits-view-only]').forEach(el => {
-    el.style.display = canView && !canManage ? '' : 'none';
+    // لو في عناصر للعرض فقط
+    _qsa('[data-visits-view-only]', root).forEach(el => {
+      el.style.display = canManage ? 'none' : '';
+    });
   });
+}
+
+function _blockVisitsActionEvent(e) {
+  const role = _normalizeRole(window.currentUser && window.currentUser.role);
+  if (_canManageVisits(role)) return;
+
+  const target = e.target && e.target.closest
+    ? e.target.closest('button, a, label, input, form, .btn, [onclick], [data-action], [data-visits-manage]')
+    : null;
+
+  if (!target) return;
+
+  const roots = _getVisitsRoots();
+  const insideVisits = roots.some(root => root === document ? true : root.contains(target));
+  if (!insideVisits) return;
+
+  if (_isLikelyVisitManageEl(target) || target.closest('[data-visits-manage]')) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+
+    if (target.tagName === 'INPUT' && target.type === 'file') {
+      try { target.value = ''; } catch (_) {}
+    }
+
+    _notify('رفع الزيارات متاح للتيم ليدر فقط');
+    return false;
+  }
+}
+
+function _blockVisitsFormSubmit(e) {
+  const role = _normalizeRole(window.currentUser && window.currentUser.role);
+  if (_canManageVisits(role)) return;
+
+  const form = e.target;
+  if (!form || form.tagName !== 'FORM') return;
+
+  const roots = _getVisitsRoots();
+  const insideVisits = roots.some(root => root === document ? true : root.contains(form));
+  if (!insideVisits) return;
+
+  const raw = [
+    form.id || '',
+    form.className || '',
+    form.getAttribute('name') || '',
+    form.getAttribute('action') || '',
+    form.getAttribute('onsubmit') || '',
+    form.textContent || ''
+  ].join(' ').toLowerCase();
+
+  if (
+    raw.includes('visit') ||
+    raw.includes('زيارة') ||
+    raw.includes('زياره') ||
+    form.dataset.readonlyVisits === '1'
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+    _notify('رفع الزيارات متاح للتيم ليدر فقط');
+    return false;
+  }
 }
 
 function _installVisitsReadOnlyGuard() {
   if (window.__visitsReadOnlyGuardInstalled) return;
   window.__visitsReadOnlyGuardInstalled = true;
 
-  const blockedIds = new Set([
-    'visit-add-btn',
-    'add-visit-btn',
-    'visit-camera-btn',
-    'save-visit-btn',
-    'upload-visit-btn',
-    'visit-submit-btn',
-    'new-visit-btn',
-    'visit-image-input',
-    'visit-photo-input',
-    'visit-file-input'
-  ]);
+  document.addEventListener('click', _blockVisitsActionEvent, true);
+  document.addEventListener('change', _blockVisitsActionEvent, true);
+  document.addEventListener('submit', _blockVisitsFormSubmit, true);
+}
 
-  document.addEventListener('click', function (e) {
-    const target = e.target.closest('button, a, label, input, div');
-    if (!target) return;
+function _startVisitsObserver() {
+  if (window.__visitsObserverStarted) return;
+  window.__visitsObserverStarted = true;
 
+  const observer = new MutationObserver(() => {
     const role = _normalizeRole(window.currentUser && window.currentUser.role);
-    if (_canManageVisits(role)) return;
+    _applyVisitsNavVisibility(role);
+    _applyVisitsActionVisibility(role);
+  });
 
-    const inManagedArea = target.closest(
-      '#visit-form, #new-visit-form, #visit-actions, #visit-upload-box, [data-visits-manage]'
-    );
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true
+  });
 
-    const blockedById = blockedIds.has(target.id);
+  window.__visitsObserver = observer;
+}
 
-    if (blockedById || inManagedArea) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (typeof e.stopImmediatePropagation === 'function') {
-        e.stopImmediatePropagation();
-      }
+function _enforceVisitsPermissions(role) {
+  _applyVisitsNavVisibility(role);
+  _applyVisitsActionVisibility(role);
+  _installVisitsReadOnlyGuard();
+  _startVisitsObserver();
 
-      _notify('رفع الزيارات متاح للتيم ليدر فقط');
-      return false;
-    }
-  }, true);
-
-  document.addEventListener('change', function (e) {
-    const el = e.target;
-    if (!el) return;
-
-    const role = _normalizeRole(window.currentUser && window.currentUser.role);
-    if (_canManageVisits(role)) return;
-
-    const isVisitFileInput =
-      el.matches('#visit-image-input, #visit-photo-input, #visit-file-input') ||
-      !!el.closest('#visit-form, #new-visit-form, #visit-upload-box, [data-visits-manage]');
-
-    if (isVisitFileInput) {
-      try { el.value = ''; } catch (_) {}
-      e.preventDefault();
-      e.stopPropagation();
-
-      _notify('رفع الزيارات متاح للتيم ليدر فقط');
-      return false;
-    }
-  }, true);
+  [0, 200, 700, 1500].forEach(delay => {
+    setTimeout(() => {
+      const r = _normalizeRole(window.currentUser && window.currentUser.role);
+      _applyVisitsNavVisibility(r);
+      _applyVisitsActionVisibility(r);
+    }, delay);
+  });
 }
 
 // ─────────────────────────────────────────
@@ -429,9 +549,7 @@ function showApp() {
       }, 200);
     }
 
-    _applyVisitsNavVisibility(role);
-    _applyVisitsActionVisibility(role);
-    _installVisitsReadOnlyGuard();
+    _enforceVisitsPermissions(role);
 
     setTimeout(() => _safeCall('fixNavDirection'), 100);
   } else {
@@ -512,7 +630,6 @@ async function doLogin() {
   if (errEl) errEl.textContent = '';
 
   try {
-    // Fixed super admin
     if (username === 'admin' && pass === 'Oraimo@Admin2026') {
       _finalizeLogin({
         role: 'superadmin',
@@ -524,7 +641,6 @@ async function doLogin() {
 
     const uname = encodeURIComponent(username);
 
-    // Admins table
     let admRes = [];
     try {
       admRes = await dbGetFn('admins', `?username=eq.${uname}&select=*`);
@@ -543,7 +659,6 @@ async function doLogin() {
       return;
     }
 
-    // Employees table
     let empRes = [];
     try {
       empRes = await dbGetFn('employees', `?username=eq.${uname}&select=*`);

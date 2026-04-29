@@ -1,11 +1,12 @@
 // ═══════════════════════════════════════════════════════════
 // modules/auth.js — Login, logout, app routing, clock
-// Provides globals: showApp, doLogin, doLogout, startClock
-// Depends on: fallbacks.js (dbGet/dbPost, notify, applyLang)
-// STAGE 1 SAFE PATCH:
-//   • Prevent login UI crashes when some DOM nodes are missing
-//   • Prevent "Connection error" masking UI/render errors
-//   • Keep behavior as-is with minimal safe guards
+// SAFE ROLE PATCH:
+//   • Final supported roles:
+//       superadmin, admin, team_leader, employee
+//   • Legacy role "manager" is auto-mapped to "admin"
+//   • Visits:
+//       - view: superadmin / admin / team_leader
+//       - manage/upload: team_leader only
 // ═══════════════════════════════════════════════════════════
 
 // ── SAFE HELPERS ──
@@ -50,18 +51,105 @@ function _saveUser(u) {
   try {
     localStorage.setItem('oraimo_user', JSON.stringify(u));
   } catch (_) {
-    try {
-      sessionStorage.setItem('oraimo_user', JSON.stringify(u));
+    try { sessionStorage.setItem('oraimo_user', JSON.stringify(u));
     } catch (_) {}
   }
 }
 
+function _normalizeRole(role) {
+  const r = String(role || '').trim().toLowerCase();
+
+  // Legacy mapping
+  if (r === 'manager') return 'admin';
+
+  if (r === 'superadmin') return 'superadmin';
+  if (r === 'admin') return 'admin';
+  if (r === 'team_leader') return 'team_leader';
+  return 'employee';
+}
+
 function _roleLabel(role) {
-  if (role === 'superadmin') return 'Super Admin';
-  if (role === 'manager') return 'Team Leader';
-  if (role === 'team_leader') return 'Team Leader';
-  if (!role) return 'Admin';
-  return role.charAt(0).toUpperCase() + role.slice(1);
+  const r = _normalizeRole(role);
+  if (r === 'superadmin') return 'Super Admin';
+  if (r === 'admin') return 'Admin';
+  if (r === 'team_leader') return 'Team Leader';
+  return 'Employee';
+}
+
+function _isAdminAreaRole(role) {
+  const r = _normalizeRole(role);
+  return r === 'superadmin' || r === 'admin' || r === 'team_leader';
+}
+
+function _canViewVisits(role) {
+  const r = _normalizeRole(role);
+  return r === 'superadmin' || r === 'admin' || r === 'team_leader';
+}
+
+function _canManageVisits(role) {
+  const r = _normalizeRole(role);
+  return r === 'team_leader';
+}
+
+function _setVisitPermissions(user) {
+  const role = _normalizeRole(user && user.role);
+
+  window.currentUser = {
+    ...(window.currentUser || {}),
+    ...(user || {}),
+    role
+  };
+
+  window.visitPermissions = {
+    role,
+    canViewVisits: _canViewVisits(role),
+    canManageVisits: _canManageVisits(role),
+    canViewAllVisits: role === 'superadmin' || role === 'admin',
+    canUploadOwnDisplay: role === 'employee' || role === 'team_leader'
+  };
+
+  document.body.dataset.role = role;
+  document.body.dataset.canViewVisits = window.visitPermissions.canViewVisits ? '1' : '0';
+  document.body.dataset.canManageVisits = window.visitPermissions.canManageVisits ? '1' : '0';
+}
+
+function _applyVisitsNavVisibility(role) {
+  const canView = _canViewVisits(role);
+
+  // Main admin visits nav
+  const admVisitsNav = _id('adm-visits-nav');
+  if (admVisitsNav) admVisitsNav.style.display = canView ? 'flex' : 'none';
+
+  // Legacy/alternate ids if present
+  const navVisits = _id('nav-visits');
+  if (navVisits) navVisits.style.display = canView ? 'flex' : 'none';
+}
+
+function _applyVisitsActionVisibility(role) {
+  const canManage = _canManageVisits(role);
+
+  // Known possible buttons/containers for visits create/upload
+  [
+    'visit-add-btn',
+    'add-visit-btn',
+    'visit-camera-btn',
+    'save-visit-btn',
+    'upload-visit-btn',
+    'visit-submit-btn',
+    'new-visit-btn'
+  ].forEach(id => {
+    const el = _id(id);
+    if (el) el.style.display = canManage ? '' : 'none';
+  });
+
+  // Generic hooks if you already have them in HTML
+  _forEach('[data-visits-manage]', el => {
+    el.style.display = canManage ? '' : 'none';
+  });
+
+  _forEach('[data-visits-view-only]', el => {
+    el.style.display = canManage ? 'none' : '';
+  });
 }
 
 function _resetAdminUI() {
@@ -69,9 +157,6 @@ function _resetAdminUI() {
     n.style.display = '';
     n.classList.remove('active');
   });
-
-  const visNavReset = _id('adm-visits-nav');
-  if (visNavReset) visNavReset.style.display = 'none';
 
   _forEach('#report-tabs .tab', t => {
     t.style.display = '';
@@ -89,8 +174,14 @@ function _resetAdminUI() {
 }
 
 function _finalizeLogin(userObj) {
-  window.currentUser = userObj;
-  _saveUser(window.currentUser);
+  const normalizedUser = {
+    ...userObj,
+    role: _normalizeRole(userObj && userObj.role)
+  };
+
+  window.currentUser = normalizedUser;
+  _setVisitPermissions(normalizedUser);
+  _saveUser(normalizedUser);
 
   try {
     showApp();
@@ -99,6 +190,7 @@ function _finalizeLogin(userObj) {
     console.error('[showApp after login]', uiErr);
     _clearSavedUser();
     window.currentUser = null;
+    window.visitPermissions = null;
     _safeCall('showPage', 'login-page');
     throw uiErr;
   }
@@ -113,72 +205,79 @@ function showApp() {
     return _safeCall('showPage', 'login-page');
   }
 
+  const role = _normalizeRole(user.role);
+  user.role = role;
+  _setVisitPermissions(user);
+
   _safeCall('applyLang');
 
-  // ALWAYS reset admin UI first to prevent bleed from previous session
+  // Always reset first
   _resetAdminUI();
 
-  const isAdmin = ['superadmin', 'admin', 'manager', 'viewer', 'team_leader'].includes(user.role);
-
-  if (isAdmin) {
+  if (_isAdminAreaRole(role)) {
     _setText('admin-name-top', user.name || 'Admin');
 
     const chip = _id('admin-role-chip');
     if (chip) {
-      chip.textContent = _roleLabel(user.role);
-      chip.className = 'role-chip badge role-' + (user.role || 'admin');
+      chip.textContent = _roleLabel(role);
+      chip.className = 'role-chip badge role-' + role;
     }
 
-    if (user.role === 'viewer') _setDisplay('settings-nav-item', 'none');
-    if (user.role === 'superadmin') _setDisplay('admins-section', 'block');
-    if (user.role === 'viewer') _setDisplay('add-emp-btn', 'none');
+    if (role === 'superadmin') _setDisplay('admins-section', 'block');
 
     _safeCall('showPage', 'admin-app');
 
-    // Ensure dashboard visible
-    const dashNav = document.querySelector('#admin-app .bottom-nav .nav-item');
-    if (typeof window.adminTab === 'function' && dashNav) {
-      window.adminTab('dashboard', dashNav);
-    } else {
-      _setDisplay('admin-dashboard', 'block');
+    // Default dashboard for admin/superadmin
+    if (role === 'admin' || role === 'superadmin') {
+      const dashNav = document.querySelector('#admin-app .bottom-nav .nav-item');
+      if (typeof window.adminTab === 'function' && dashNav) {
+        window.adminTab('dashboard', dashNav);
+      } else {
+        _setDisplay('admin-dashboard', 'block');
+      }
     }
 
+    // Team leader defaults to visits tab
+    if (role === 'team_leader') {
+      setTimeout(() => {
+        const visNavEl = _id('adm-visits-nav');
+
+        _forEach('#admin-app .nav-item', n => n.classList.remove('active'));
+
+        ['dashboard', 'employees', 'branches', 'reports', 'settings', 'chat'].forEach(t => {
+          const d = _id('admin-' + t);
+          if (d) d.style.display = 'none';
+        });
+
+        const visitsPage = _id('admin-visits');
+        if (visitsPage) visitsPage.style.display = 'block';
+
+        if (visNavEl) visNavEl.classList.add('active');
+
+        _safeCall('loadTLVisitsTab');
+      }, 200);
+    }
+
+    // Shared admin-area loaders
     _safeCall('loadAdminDashboard');
     _safeCall('loadAllEmployees');
     _safeCall('loadBranches');
     _safeCall('clearOldVisitPhotos');
 
-    if (user.role === 'superadmin' || user.role === 'admin') {
+    if (role === 'superadmin' || role === 'admin') {
       _safeCall('loadAdminsList');
     }
 
-    // Admin / Superadmin / Viewer
-    if (user.role === 'superadmin' || user.role === 'admin' || user.role === 'viewer') {
-      _forEach('#admin-app .bottom-nav .nav-item', n => {
-        n.style.display = '';
-      });
-      _setDisplay('adm-visits-nav', 'none');
-    }
-
-    // Manager currently has no visits nav here (kept as-is for now)
-    if (user.role === 'manager') {
-      // Stage 2 will unify manager/team_leader visits logic safely
-    }
-
-    setTimeout(() => _safeCall('fixNavDirection'), 100);
-
-    // Team leader special UI
-    if (user.role === 'team_leader') {
+    // Team leader restrictions
+    if (role === 'team_leader') {
       setTimeout(() => {
-        const admVisNav = _id('adm-visits-nav');
-        if (admVisNav) admVisNav.style.display = 'flex';
-
         const settingsNavEl = _id('settings-nav-item');
         if (settingsNavEl) settingsNavEl.style.display = 'flex';
 
         const branchesNavEl = _id('adm-branches-nav');
         if (branchesNavEl) branchesNavEl.style.display = 'none';
 
+        // Hide reports from TL if your old UI used them
         _forEach('#admin-app .bottom-nav .nav-item', n => {
           const oc = n.getAttribute('onclick') || '';
           if (oc.includes('reports')) n.style.display = 'none';
@@ -188,28 +287,15 @@ function showApp() {
           const el = _id(id);
           if (el) el.style.display = 'none';
         });
-
-        const visNavEl = _id('adm-visits-nav');
-        if (visNavEl) {
-          _forEach('#admin-app .nav-item', n => n.classList.remove('active'));
-          visNavEl.classList.add('active');
-
-          ['dashboard', 'employees', 'branches', 'reports', 'settings'].forEach(t => {
-            const d = _id('admin-' + t);
-            if (d) d.style.display = 'none';
-          });
-
-          const vd = _id('admin-visits');
-          if (vd) vd.style.display = 'block';
-
-          _safeCall('loadTLVisitsTab');
-        }
       }, 200);
     }
+
+    _applyVisitsNavVisibility(role);
+    _applyVisitsActionVisibility(role);
+    setTimeout(() => _safeCall('fixNavDirection'), 100);
   } else {
     _safeCall('showPage', 'emp-app');
 
-    // Ensure home tab visible
     if (typeof window.empTab === 'function') {
       const homeNav = document.querySelector('#emp-app .nav-item');
       window.empTab('home', homeNav);
@@ -235,12 +321,11 @@ function showApp() {
     _safeCall('renderProducts');
     _safeCall('loadModelTargetAlert');
 
-    // Hide visits tab in employee app
+    // Employee never sees visits tab
     const visNav = document.querySelector('#emp-app .nav-item[onclick*="visits"]');
     if (visNav) visNav.style.display = 'none';
   }
 
-  // Register OneSignal for all users if available
   if (typeof window.registerOneSignalUser === 'function') {
     try { window.registerOneSignalUser(); } catch (_) {}
   }
@@ -297,7 +382,10 @@ async function doLogin() {
 
     const admMatch = (admRes || []).find(r => r.password === pass);
     if (admMatch) {
-      const adminUser = { ...admMatch, role: admMatch.role || 'admin' };
+      const adminUser = {
+        ...admMatch,
+        role: _normalizeRole(admMatch.role || 'admin')
+      };
       delete adminUser.password;
       _finalizeLogin(adminUser);
       return;
@@ -317,7 +405,10 @@ async function doLogin() {
       return;
     }
 
-    const empUser = { ...empMatch, role: empMatch.role || 'employee' };
+    const empUser = {
+      ...empMatch,
+      role: _normalizeRole(empMatch.role || 'employee')
+    };
     delete empUser.password;
     _finalizeLogin(empUser);
   } catch (e) {
@@ -344,7 +435,6 @@ async function doLogin() {
 }
 
 function doLogout() {
-  // Stop active camera
   if (window.videoStream) {
     try {
       window.videoStream.getTracks().forEach(t => t.stop());
@@ -352,7 +442,6 @@ function doLogout() {
     window.videoStream = null;
   }
 
-  // Stop chat polling / realtime unsub
   if (window.chatSubscription) {
     try {
       if (typeof window.chatSubscription === 'function') window.chatSubscription();
@@ -363,29 +452,23 @@ function doLogout() {
 
   window.currentChat = null;
 
-  // Clear session
   _clearSavedUser();
   window.currentUser = null;
+  window.visitPermissions = null;
   window._isSubmitting = false;
+
+  delete document.body.dataset.role;
+  delete document.body.dataset.canViewVisits;
+  delete document.body.dataset.canManageVisits;
 
   window.allAdmins = [];
   window.allBranches = [];
   window.allEmployees = [];
   window.managerTeamData = {};
 
-  // Reset admin nav
   _forEach('#admin-app .bottom-nav .nav-item', n => {
     n.style.display = '';
     n.classList.remove('active');
-  });
-
-  const visNav = _id('adm-visits-nav');
-  if (visNav) visNav.style.display = 'none';
-
-  // Reset tabs
-  ['dashboard', 'employees', 'branches', 'reports', 'settings', 'visits', 'chat'].forEach(t => {
-    const d = _id('admin-' + t);
-    if (d) d.style.display = 'none';
   });
 
   _forEach('#report-tabs .tab', t => {
@@ -397,7 +480,6 @@ function doLogout() {
     if (e) e.style.display = '';
   });
 
-  // Clear login form
   const lu = _id('login-user');
   if (lu) lu.value = '';
 
@@ -435,5 +517,3 @@ function startClock() {
   tick();
   setInterval(tick, 1000);
 }
-
-// ── EMP DATA ──

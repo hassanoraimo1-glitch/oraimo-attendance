@@ -2,12 +2,22 @@
 // modules/admin/display.js — Display photos + CSV/Excel exports
 // Provides globals: addDisplayPhoto, renderDisplayPreviews,
 //   removeDisplayPhoto, submitDisplayPhotos, loadDisplayTab,
-//   exportHrPayrollCsv, downloadCSV
-// Module state: displayPhotos
+//   exportHrPayrollCsv, downloadCSV, openDisplayCamera
+// Module state: displayPhotos, displayMode
 // ═══════════════════════════════════════════════════════════
 
 // ── DISPLAY PHOTOS UPLOAD + HISTORY ──
 let displayPhotos = [];
+let displayMode = false;
+
+function openDisplayCamera() {
+  if (displayPhotos.length >= 3) {
+    notify('Max 3 photos allowed', 'error');
+    return;
+  }
+  displayMode = true;
+  openCamera();
+}
 
 function addDisplayPhoto(e) {
   if (currentUser && currentUser.role !== 'employee') { notify('الديسبلاي للموظفين فقط','error'); return; }
@@ -42,6 +52,7 @@ async function submitDisplayPhotos() {
   const note = document.getElementById('display-note').value.trim();
   const ar = currentLang === 'ar';
   if (displayPhotos.length === 0) return notify(ar ? 'أضف صورة واحدة على الأقل' : 'Add at least one photo', 'error');
+  console.log('DISPLAY PHOTOS:', displayPhotos);
   try {
     // Check RLS disabled on display_photos table
     await dbPost('display_photos', {

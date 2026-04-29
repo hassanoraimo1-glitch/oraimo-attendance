@@ -21,12 +21,6 @@ export function applyLang() {
     }
   });
 
-  $$('[data-ar-aria][data-en-aria]').forEach(el => {
-    const a = el.dataset.arAria;
-    const b = el.dataset.enAria;
-    if (a && b) el.setAttribute('aria-label', isAr ? a : b);
-  });
-
   ['lang-toggle-label', 'lang-label-emp', 'lang-label-adm'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = isAr ? 'EN' : 'ع';

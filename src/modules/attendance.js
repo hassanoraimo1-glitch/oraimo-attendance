@@ -5,6 +5,8 @@
 // renderAttendHistory, loadEmpWarnings, loadEmpDailyLog, loadEmpMonthlyReport
 // ═══════════════════════════════════════════════════════════
 
+let attendCountdownTimer = null;
+
 // Helper: get shift time strings (used both for display and for late calc)
 function _getShiftTimes(shift, dayOfWeek) {
   const isThurFri = (dayOfWeek === 4 || dayOfWeek === 5);
@@ -28,6 +30,87 @@ function _ensureShiftInfoEl() {
   el.style.cssText = 'font-size:12px;font-weight:700;color:var(--green);text-align:center;padding:8px 12px;margin:0 0 12px;background:rgba(0,200,83,.08);border:1px solid rgba(0,200,83,.2);border-radius:12px;direction:rtl';
   attendBtn.parentNode.insertBefore(el, attendBtn);
   return el;
+}
+
+function _ensureAttendCountdownEl() {
+  let el = document.getElementById('emp-attend-countdown');
+  if (el) return el;
+
+  const attendBtn = document.getElementById('attend-btn');
+  if (!attendBtn) return null;
+
+  el = document.createElement('div');
+  el.id = 'emp-attend-countdown';
+  el.style.cssText = 'font-size:12px;font-weight:700;color:var(--yellow);text-align:center;padding:8px 12px;margin:0 0 12px;background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.2);border-radius:12px;direction:rtl;display:none';
+
+  attendBtn.parentNode.insertBefore(el, attendBtn);
+  return el;
+}
+
+function startAttendanceCountdown(checkInTime) {
+  const el = _ensureAttendCountdownEl();
+  if (!el || !checkInTime) return;
+
+  if (attendCountdownTimer) {
+    clearInterval(attendCountdownTimer);
+    attendCountdownTimer = null;
+  }
+
+  const ar = currentLang === 'ar';
+  const today = todayStr();
+  const checkInDate = new Date(`${today}T${checkInTime}:00`);
+
+  if (isNaN(checkInDate.getTime())) {
+    el.style.display = 'none';
+    return;
+  }
+
+  const endTime = new Date(checkInDate.getTime() + (8 * 60 * 60 * 1000));
+
+  function render() {
+    const now = new Date();
+    const diff = endTime.getTime() - now.getTime();
+
+    el.style.display = 'block';
+
+    if (diff <= 0) {
+      el.textContent = ar ? '✅ انتهت الـ 8 ساعات' : '✅ 8 hours completed';
+      if (attendCountdownTimer) {
+        clearInterval(attendCountdownTimer);
+        attendCountdownTimer = null;
+      }
+      return;
+    }
+
+    const totalSeconds = Math.floor(diff / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    const hh = String(hours).padStart(2, '0');
+    const mm = String(minutes).padStart(2, '0');
+    const ss = String(seconds).padStart(2, '0');
+
+    el.textContent = ar
+      ? `⏳ متبقي على 8 ساعات: ${hh}:${mm}:${ss}`
+      : `⏳ Remaining to 8 hours: ${hh}:${mm}:${ss}`;
+  }
+
+  render();
+  attendCountdownTimer = setInterval(render, 1000);
+}
+
+function stopAttendanceCountdown() {
+  if (attendCountdownTimer) {
+    clearInterval(attendCountdownTimer);
+    attendCountdownTimer = null;
+  }
+
+  const el = document.getElementById('emp-attend-countdown');
+  if (el) {
+    el.textContent = '';
+    el.style.display = 'none';
+  }
 }
 
 async function loadEmpData() {
@@ -108,23 +191,33 @@ function updateAttendBtn(record) {
   const ar = currentLang === 'ar';
   const iconEl = btn.querySelector('.attend-icon');
   const labelEl = btn.querySelector('.attend-label');
+  const countdownEl = _ensureAttendCountdownEl();
+
+  if (countdownEl) countdownEl.style.display = 'none';
 
   if (record && record.check_in && !record.check_out) {
     btn.classList.add('checked-in');
     if (iconEl) iconEl.textContent = '🔴';
     if (labelEl) labelEl.textContent = ar ? 'تسجيل خروج' : 'Check Out';
     if (status) status.textContent = `${ar ? 'دخل الساعة' : 'In at'} ${record.check_in}${record.late_minutes > 0 ? (ar ? ' (تأخر ' + record.late_minutes + ' د)' : ' (' + record.late_minutes + 'm late)') : ''}`;
+
+    if (countdownEl) {
+      countdownEl.style.display = 'block';
+      startAttendanceCountdown(record.check_in);
+    }
   } else if (record && record.check_out) {
     btn.classList.remove('checked-in');
     if (iconEl) iconEl.textContent = '✅';
     if (labelEl) labelEl.textContent = ar ? 'تم' : 'Done';
     btn.onclick = null;
     if (status) status.textContent = `${ar ? 'دخول' : 'In'}: ${record.check_in} – ${ar ? 'خروج' : 'Out'}: ${record.check_out}`;
+    stopAttendanceCountdown();
   } else {
     btn.classList.remove('checked-in');
     if (iconEl) iconEl.textContent = '🟢';
     if (labelEl) labelEl.textContent = ar ? 'تسجيل دخول' : 'Check In';
     if (status) status.textContent = ar ? 'لم يتم تسجيل حضور اليوم' : 'No attendance recorded today';
+    stopAttendanceCountdown();
   }
 }
 

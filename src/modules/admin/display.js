@@ -24,7 +24,6 @@ function addDisplayPhoto(e) {
   const file = input && input.files ? input.files[0] : null;
   if (!file) return;
 
-  // السماح بالصور فقط
   if (!file.type || !file.type.startsWith('image/')) {
     notify(currentLang === 'ar' ? 'يرجى اختيار صورة فقط' : 'Please choose an image only', 'error');
     if (input) input.value = '';
@@ -49,16 +48,12 @@ function addDisplayPhoto(e) {
       displayPhotos.push(canvas.toDataURL('image/jpeg', 0.35));
       renderDisplayPreviews();
 
-      // تنظيف الإنبت بعد التقاط الصورة
       if (input) {
         input.value = '';
         input.blur();
       }
 
-      notify(
-        currentLang === 'ar' ? 'تم التقاط الصورة، اضغط تأكيد للمتابعة' : 'Photo captured, press confirm to continue',
-        'success'
-      );
+      notify(currentLang === 'ar' ? 'تم التقاط الصورة ✅' : 'Photo captured ✅', 'success');
     };
 
     img.onerror = () => {
@@ -76,7 +71,6 @@ function addDisplayPhoto(e) {
 
   reader.readAsDataURL(file);
 
-  // مهم: تفريغ input مباشرة حتى يتم غلق واجهة الاختيار بعد الالتقاط
   if (input) input.value = '';
 }
 
@@ -84,15 +78,19 @@ function renderDisplayPreviews() {
   const el = document.getElementById('display-photo-previews');
   if (!el) return;
 
-  el.innerHTML = displayPhotos.map((src, i) =>
-    `<div class="photo-preview-wrap">
+  el.innerHTML = displayPhotos.map((src, i) => `
+    <div class="photo-preview-wrap">
       <img src="${src}">
       <button class="photo-preview-del" onclick="removeDisplayPhoto(${i})">✕</button>
-    </div>`
-  ).join('');
+    </div>
+  `).join('');
 
   const zone = document.getElementById('display-upload-zone');
-  if (zone) zone.style.display = displayPhotos.length >= 3 ? 'none' : 'block';
+
+  // بعد إضافة صورة نخفي منطقة الرفع فورًا
+  if (zone) {
+    zone.style.display = displayPhotos.length > 0 ? 'none' : 'block';
+  }
 }
 
 function removeDisplayPhoto(i) {
@@ -151,7 +149,6 @@ async function loadDisplayTab() {
   if (!hist) return;
 
   const pm = getPayrollMonth();
-
   const records = await dbGet(
     'display_photos',
     `?employee_id=eq.${currentUser.id}&photo_date=gte.${pm.start}&photo_date=lte.${pm.end}&order=photo_date.desc&select=*`

@@ -935,6 +935,20 @@
   </div>
 </div>
 
+  <div class="modal-overlay" id="display-camera-modal">
+  <div class="modal" style="text-align:center;padding:14px">
+    <h2 style="margin-bottom:10px">📷 تصوير الديسبلاي</h2>
+    <video id="display-camera-video" autoplay playsinline muted
+      style="width:100%;max-height:58vh;background:#000;border-radius:14px;object-fit:cover"></video>
+    <canvas id="display-camera-canvas" style="display:none"></canvas>
+
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-green" onclick="captureDisplayPhoto()" style="flex:1">📸 التقاط</button>
+      <button class="btn btn-outline" onclick="closeDisplayCamera()" style="flex:1">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <!-- APP (module الوحيد) -->
 <script type="module" src="./src/app.js"></script>
 

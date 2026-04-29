@@ -898,15 +898,34 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="selfie-modal">
-  <div class="modal" style="text-align:center">
-    <h2 id="selfie-modal-title">تأكيد الحضور</h2>
-    <img id="selfie-preview-img" style="width:150px;height:150px;border-radius:50%;object-fit:cover;border:3px solid var(--green);margin:14px auto;display:block;box-shadow:0 0 24px var(--green-glow)" src="">
-    <div id="location-status" style="font-size:12px;color:var(--muted);margin-bottom:14px">📍 جاري تحديد الموقع...</div>
-    <button class="btn btn-green" onclick="confirmAttendance()" id="confirm-attend-btn" data-ar="✅ تأكيد" data-en="✅ Confirm">✅ تأكيد</button>
-    <button class="btn btn-outline" onclick="closeModal('selfie-modal')" style="margin-top:6px" data-ar="إعادة التصوير" data-en="Retake">إعادة التصوير</button>
+<div class="modal-overlay" id="camera-modal" style="padding:0;background:#000;z-index:99999">
+  <div style="position:fixed;inset:0;width:100vw;height:100vh;background:#000;display:flex;flex-direction:column;justify-content:center;align-items:center">
+    <video
+      id="video"
+      autoplay
+      playsinline
+      muted
+      webkit-playsinline
+      x-webkit-airplay="allow"
+      style="width:100vw;height:100vh;object-fit:cover;-webkit-transform:scaleX(-1);transform:scaleX(-1);background:#000">
+    </video>
+
+    <canvas id="canvas" style="display:none"></canvas>
+
+    <div class="camera-overlay" style="position:fixed;inset:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding:30px 20px;background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,.1), rgba(0,0,0,.2));pointer-events:none">
+      <div id="camera-label" style="color:#fff;font-size:13px;margin-bottom:18px;font-weight:700;pointer-events:auto">
+        📸 التقط سيلفي للتحقق
+      </div>
+
+      <button class="capture-btn" type="button" onclick="capturePhoto()" style="pointer-events:auto"></button>
+
+      <div id="camera-cancel" onclick="closeCamera()" style="color:rgba(255,255,255,.8);font-size:13px;margin-top:16px;cursor:pointer;pointer-events:auto">
+        إلغاء
+      </div>
+    </div>
   </div>
 </div>
+
 
 <div class="modal-overlay" id="selfie-view-modal">
   <div class="modal">

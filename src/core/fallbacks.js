@@ -1,8 +1,13 @@
 // ═══════════════════════════════════════════════════════════
-// core/fallbacks.js — Early boot shims
-// ✅ FINAL FIX: attendance/sales NEVER cached — always fresh
+// core/fallbacks.js — Early boot shims (load order: before app.js)
+//
+// Classic scripts (auth, chat, ui, …) run before the deferred ES
+// module entry assigns window.* from src/app.js. This file only
+// defines globals when they are still missing — never overwrites
+// real implementations from the app module.
 // ═══════════════════════════════════════════════════════════
 
+/** Same project URL/key as src/config.js (kept inline: this file is not an ES module). */
 const _SUPABASE_URL = 'https://lmszelfnosejdemxhodm.supabase.co';
 const _SUPABASE_ANON_KEY = 'sb_publishable_HCOQxXf5sEyulaPkqlSEzg_IK7elCQb';
 
@@ -16,124 +21,88 @@ if (typeof window.dbGet !== 'function') {
     Authorization: 'Bearer ' + _SUPABASE_ANON_KEY,
     'Content-Type': 'application/json',
   };
-
-  // ✅ KEY FIX: Tables that should NEVER be cached
-  // الحضور والمبيعات بيتغيروا كتير، الكاش بيسبب bugs
-  var _NO_CACHE_TABLES = ['attendance', 'sales', 'leave_requests', 'warnings'];
-
-  var _cache = {};
-  var _CACHE_TTL = 30000;
-
-  function _isCacheable(table) {
-    return _NO_CACHE_TABLES.indexOf(table) === -1;
-  }
-
-  function _cacheKey(table, q) { return table + '|' + (q || ''); }
-  function _cacheGet(table, q) {
-    if (!_isCacheable(table)) return null;
-    var k = _cacheKey(table, q);
-    var entry = _cache[k];
-    if (!entry) return null;
-    if (Date.now() - entry.t > _CACHE_TTL) { delete _cache[k]; return null; }
-    return entry.v;
-  }
-  function _cacheSet(table, q, v) {
-    if (!_isCacheable(table)) return;
-    _cache[_cacheKey(table, q)] = { v: v, t: Date.now() };
-  }
-  function _cacheInvalidate(table) {
-    Object.keys(_cache).forEach(function(k) { if (k.indexOf(table + '|') === 0) delete _cache[k]; });
-    if (typeof window.invalidateCache === 'function') {
-      try { window.invalidateCache(table); } catch(_) {}
-    }
-  }
-
-  window._cacheInvalidate = _cacheInvalidate;
-  window._cacheClear = function() { _cache = {}; };
-
-  window.dbGet = async function (table, q) {
-    q = q || '';
-    var cached = _cacheGet(table, q);
-    if (cached !== null) return cached;
-
-    // ✅ FIX: Add cache-busting param for no-cache tables to bypass any HTTP/SW cache
-    var url = _SUPABASE_URL + '/rest/v1/' + table + q;
-    var fetchOpts = { headers: _hdr };
-    if (!_isCacheable(table)) {
-      // إضافة timestamp للـ URL لو الجدول حساس — يمنع أي layer يكاش الـ response
-      url += (q.indexOf('?') >= 0 ? '&' : '?') + '_t=' + Date.now();
-      fetchOpts.cache = 'no-store';
-    }
-
-    var res = await fetch(url, fetchOpts);
-    if (!res.ok) {
-      var err = new Error('DB GET ' + table + ' failed (' + res.status + ')');
-      err.status = res.status;
-      throw err;
-    }
-    var data = await res.json();
-    _cacheSet(table, q, data);
-    return data;
-  };
-
-  window.dbPost = async function (table, body) {
-    var res = await fetch(_SUPABASE_URL + '/rest/v1/' + table, {
-      method: 'POST',
-      headers: Object.assign({}, _hdr, { Prefer: 'return=representation' }),
-      body: JSON.stringify(body),
-      cache: 'no-store',
-    });
-    if (!res.ok) {
-      var err = new Error('DB POST ' + table + ' failed (' + res.status + ')');
-      err.status = res.status;
-      try { err.detail = await res.text(); } catch(_) {}
-      throw err;
-    }
-    _cacheInvalidate(table);
+  window.dbGet = async function (table, q = '') {
+    const res = await fetch(_SUPABASE_URL + '/rest/v1/' + table + (q || ''), { headers: _hdr });
+    if (!res.ok) throw new Error('DB GET failed ' + res.status);
     return res.json();
   };
-
-  window.dbPatch = async function (table, bodyOrQuery, queryOrBody) {
-    var query, body;
-    if (typeof bodyOrQuery === 'string') { query = bodyOrQuery; body = queryOrBody; }
-    else { body = bodyOrQuery; query = queryOrBody || ''; }
-    var res = await fetch(_SUPABASE_URL + '/rest/v1/' + table + (query || ''), {
-      method: 'PATCH',
-      headers: Object.assign({}, _hdr, { Prefer: 'return=representation' }),
+  window.dbPost = async function (table, body) {
+    const res = await fetch(_SUPABASE_URL + '/rest/v1/' + table, {
+      method: 'POST',
+      headers: { ..._hdr, Prefer: 'return=representation' },
       body: JSON.stringify(body),
-      cache: 'no-store',
     });
-    if (!res.ok) {
-      var err = new Error('DB PATCH ' + table + ' failed (' + res.status + ')');
-      err.status = res.status;
-      throw err;
-    }
-    _cacheInvalidate(table);
+    if (!res.ok) throw new Error('DB POST failed ' + res.status);
+    return res.json();
+  };
+  window.dbPatch = async function (table, body, query) {
+    const res = await fetch(_SUPABASE_URL + '/rest/v1/' + table + (query || ''), {
+      method: 'PATCH',
+      headers: _hdr,
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error('DB PATCH failed ' + res.status);
     return res.status === 204 ? null : res.json();
   };
-
-  window.dbDel = async function (table, query) {
-    var res = await fetch(_SUPABASE_URL + '/rest/v1/' + table + (query || ''), {
-      method: 'DELETE', headers: _hdr, cache: 'no-store'
+  window.dbDelete = async function (table, query) {
+    const res = await fetch(_SUPABASE_URL + '/rest/v1/' + table + (query || ''), {
+      method: 'DELETE',
+      headers: _hdr,
     });
     if (!res.ok) throw new Error('DB DELETE failed ' + res.status);
-    _cacheInvalidate(table);
     return null;
   };
-  window.dbDelete = window.dbDel;
 }
 
-if (typeof window.todayStr !== 'function') { window.todayStr = function () { return new Date().toISOString().split('T')[0]; }; }
-if (typeof window.fmtDate !== 'function') { window.fmtDate = function (d) { return new Date(d).toISOString().split('T')[0]; }; }
-if (typeof window.fmtEGP !== 'function') { window.fmtEGP = function (n) { n = Number(n) || 0; if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'; if (n >= 1000) return (n / 1000).toFixed(1) + 'K'; return String(Math.round(n)); }; }
-if (typeof window.fmtTime !== 'function') { window.fmtTime = function (iso) { try { return new Date(iso).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }; }
+// notify: defined in modules/ui.js → window (do not stub here).
+
+if (typeof window.todayStr !== 'function') {
+  window.todayStr = function () {
+    return new Date().toISOString().split('T')[0];
+  };
+}
+if (typeof window.fmtDate !== 'function') {
+  window.fmtDate = function (d) {
+    return new Date(d).toISOString().split('T')[0];
+  };
+}
+if (typeof window.fmtEGP !== 'function') {
+  window.fmtEGP = function (n) {
+    n = Number(n) || 0;
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+    return String(Math.round(n));
+  };
+}
+if (typeof window.fmtTime !== 'function') {
+  window.fmtTime = function (iso) {
+    try {
+      return new Date(iso).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return '';
+    }
+  };
+}
 if (typeof window.getPayrollMonth !== 'function') {
   window.getPayrollMonth = function () {
-    const now = new Date(), d = now.getDate(), m = now.getMonth(), y = now.getFullYear();
-    let s, e;
-    if (d >= 21) { s = new Date(y, m, 21); e = new Date(y, m + 1, 20); }
-    else { s = new Date(y, m - 1, 21); e = new Date(y, m, 20); }
-    return { start: s.toISOString().split('T')[0], end: e.toISOString().split('T')[0], label: s.toLocaleString('ar-EG', { month: 'long' }) + ' 21' };
+    const now = new Date();
+    const d = now.getDate();
+    const m = now.getMonth();
+    const y = now.getFullYear();
+    let s;
+    let e;
+    if (d >= 21) {
+      s = new Date(y, m, 21);
+      e = new Date(y, m + 1, 20);
+    } else {
+      s = new Date(y, m - 1, 21);
+      e = new Date(y, m, 20);
+    }
+    return {
+      start: s.toISOString().split('T')[0],
+      end: e.toISOString().split('T')[0],
+      label: s.toLocaleString('ar-EG', { month: 'long' }) + ' 21',
+    };
   };
 }
 if (typeof window.applyLang !== 'function') {
@@ -142,19 +111,32 @@ if (typeof window.applyLang !== 'function') {
     document.documentElement.lang = window.currentLang;
     document.documentElement.dir = isAr ? 'rtl' : 'ltr';
     document.querySelectorAll('[data-ar],[data-en]').forEach((el) => {
-      const ar = el.dataset.ar, en = el.dataset.en;
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') { el.placeholder = isAr ? el.dataset.arPh || el.placeholder : el.dataset.enPh || el.placeholder; }
-      else if (ar && en) { el.textContent = isAr ? ar : en; }
+      const ar = el.dataset.ar;
+      const en = el.dataset.en;
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        el.placeholder = isAr ? el.dataset.arPh || el.placeholder : el.dataset.enPh || el.placeholder;
+      } else if (ar && en) {
+        el.textContent = isAr ? ar : en;
+      }
     });
   };
 }
-if (typeof window.toggleLang !== 'function') { window.toggleLang = function () { window.currentLang = window.currentLang === 'ar' ? 'en' : 'ar'; localStorage.setItem('oraimo_lang', window.currentLang); window.applyLang(); }; }
-if (typeof window.fixNavDirection !== 'function') { window.fixNavDirection = function () {}; }
+if (typeof window.toggleLang !== 'function') {
+  window.toggleLang = function () {
+    window.currentLang = window.currentLang === 'ar' ? 'en' : 'ar';
+    localStorage.setItem('oraimo_lang', window.currentLang);
+    window.applyLang();
+  };
+}
+if (typeof window.fixNavDirection !== 'function') {
+  window.fixNavDirection = function () {};
+}
 if (typeof window.DAYS_AR === 'undefined') {
   window.DAYS_AR = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
   window.DAYS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 }
 
+// ── Shared globals for classic scripts (bare `DAYS_AR` etc.) ──
 var allAdmins = [];
 var allBranches = [];
 var workSettings = { start: '09:00', end: '18:00' };
@@ -174,36 +156,84 @@ if (typeof window.sendPushNotification !== 'function') {
     try {
       await fetch(_SUPABASE_URL + '/functions/v1/send-notification', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + _SUPABASE_ANON_KEY, apikey: _SUPABASE_ANON_KEY },
-        body: JSON.stringify({ title: String(title).slice(0, 120), message: String(message).slice(0, 300), target_user_id: targetUserId ? String(targetUserId) : null }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + _SUPABASE_ANON_KEY,
+          apikey: _SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          title: String(title).slice(0, 120),
+          message: String(message).slice(0, 300),
+          target_user_id: targetUserId ? String(targetUserId) : null,
+        }),
       });
-    } catch (e) { console.warn('[sendPushNotification shim]', e.message); }
+    } catch (e) {
+      console.warn('[sendPushNotification shim]', e.message);
+    }
   };
 }
-if (typeof window.resetPushRegistrationState !== 'function') { window.resetPushRegistrationState = function () {}; }
+
+if (typeof window.resetPushRegistrationState !== 'function') {
+  window.resetPushRegistrationState = function () {};
+}
 if (typeof window.registerOneSignalUser !== 'function') {
   window.registerOneSignalUser = async function () {
-    const user = window.currentUser; if (!user || !user.id) return;
-    for (let i = 0; i < 10; i++) { if (window.OneSignal && window.OneSignal.Notifications && window.OneSignal.User) break; await new Promise((r) => setTimeout(r, 1500)); }
-    const OS = window.OneSignal; if (!OS || !OS.Notifications || !OS.User) return;
+    const user = window.currentUser;
+    if (!user || !user.id) return;
+    for (let i = 0; i < 10; i++) {
+      if (window.OneSignal && window.OneSignal.Notifications && window.OneSignal.User) break;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    const OS = window.OneSignal;
+    if (!OS || !OS.Notifications || !OS.User) return;
     try {
-      try { await OS.login(String(user.id)); } catch (_) {}
+      try {
+        await OS.login(String(user.id));
+      } catch (_) {}
       let ok = OS.Notifications.permission === true || OS.Notifications.permission === 'granted';
       if (!ok && typeof Notification !== 'undefined' && Notification.permission === 'granted') ok = true;
-      if (!ok) { const asked = await OS.Notifications.requestPermission().catch(() => false); ok = asked === true || asked === 'granted' || (typeof Notification !== 'undefined' && Notification.permission === 'granted'); }
+      if (!ok) {
+        const asked = await OS.Notifications.requestPermission().catch(() => false);
+        ok =
+          asked === true ||
+          asked === 'granted' ||
+          (typeof Notification !== 'undefined' && Notification.permission === 'granted');
+      }
       if (!ok) return;
-      const sub = OS.User.PushSubscription; if (sub && typeof sub.optIn === 'function') await sub.optIn().catch(() => {});
-      await OS.User.addTag('user_id', String(user.id)); await OS.User.addTag('name', String(user.name || '')); await OS.User.addTag('role', String(user.role || 'employee'));
-    } catch (e) { console.warn('[registerOneSignalUser shim]', e.message); }
+      const sub = OS.User.PushSubscription;
+      if (sub && typeof sub.optIn === 'function') await sub.optIn().catch(() => {});
+      await OS.User.addTag('user_id', String(user.id));
+      await OS.User.addTag('name', String(user.name || ''));
+      await OS.User.addTag('role', String(user.role || 'employee'));
+    } catch (e) {
+      console.warn('[registerOneSignalUser shim]', e.message);
+    }
   };
 }
+
 if (typeof window.chatSubscribeRealtime !== 'function') {
   window.chatSubscribeRealtime = async function (onNew) {
     try {
       const mod = await import('https://esm.sh/@supabase/supabase-js@2?bundle');
       const client = mod.createClient(_SUPABASE_URL, _SUPABASE_ANON_KEY);
-      const channel = client.channel('messages-realtime').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => { if (onNew) onNew(payload.new); }).subscribe();
-      return function unsub() { try { client.removeChannel(channel); } catch (_) {} };
-    } catch (e) { console.warn('[chatSubscribeRealtime shim]', e.message); throw e; }
+      const channel = client
+        .channel('messages-realtime')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'messages' },
+          (payload) => {
+            if (onNew) onNew(payload.new);
+          }
+        )
+        .subscribe();
+      return function unsub() {
+        try {
+          client.removeChannel(channel);
+        } catch (_) {}
+      };
+    } catch (e) {
+      console.warn('[chatSubscribeRealtime shim]', e.message);
+      throw e;
+    }
   };
 }

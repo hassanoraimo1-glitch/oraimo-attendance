@@ -14,7 +14,6 @@ const MAX_INPUT_BYTES = 15 * 1024 * 1024;
 const MAX_BASE64_CHARS = Math.ceil(MAX_INPUT_BYTES * 4 / 3) + 32;
 const UPLOAD_TIMEOUT_MS = 30_000;
 const ALLOWED_MIME = /^image\/(jpeg|png|webp|gif|heic|heif)$/i;
-const ALLOWED_ANY_MIME = /^(image\/(jpeg|png|webp|gif|heic|heif)|audio\/(webm|ogg|mpeg|mp3|wav|aac|mp4|x-m4a))$/i;
 
 function sanitisePath(p) {
   if (!p || typeof p !== 'string') throw new Error('invalid storage path');
@@ -132,35 +131,6 @@ export async function uploadAny(bucket, path, input) {
   else throw new Error('invalid image input');
 
   if (blob.size > MAX_INPUT_BYTES) throw new Error('file too large');
-  const mime = (blob.type || '').toLowerCase();
-  if (!ALLOWED_ANY_MIME.test(mime)) throw new Error('unsupported mime type');
-
-  if (/^image\//.test(mime)) {
-    const compressed = blob.size > 400_000 ? await compressImage(blob) : blob;
-    return uploadImage(bucket, path, compressed);
-  }
-
-  const safe = sanitisePath(path);
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), UPLOAD_TIMEOUT_MS);
-  try {
-    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${safe}`, {
-      method: 'POST',
-      signal: ctrl.signal,
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        'Content-Type': mime,
-        'x-upsert': 'true',
-      },
-      body: blob,
-    });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => '');
-      throw new Error(`upload failed (${res.status}): ${txt}`);
-    }
-    return getPublicUrl(bucket, safe);
-  } finally {
-    clearTimeout(timer);
-  }
+  const compressed = blob.size > 400_000 ? await compressImage(blob) : blob;
+  return uploadImage(bucket, path, compressed);
 }

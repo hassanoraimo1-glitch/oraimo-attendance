@@ -68,6 +68,7 @@ function viewSelfie(name,selfieIn,selfieOut,mapLink){
 function fullSelfie(src){document.getElementById('selfie-fs-img').src=src;document.getElementById('selfie-fullscreen').classList.add('open')}
 
 
+// ── NAVIGATION (employee + admin tabs) ──
 // ── NAVIGATION ──
 function empTab(tab,el){
   ['home','sales','visits','display','profile','chat','specs'].forEach(t=>{
@@ -93,7 +94,6 @@ function empTab(tab,el){
   if(tab==='specs'){renderSpecsList()}
   if(tab==='chat'&&typeof loadEmployeeChatList==='function'){loadEmployeeChatList()}
 }
-
 function adminTab(tab,el){
   ['dashboard','employees','branches','reports','settings','visits','chat'].forEach(t=>{
     const d=document.getElementById('admin-'+t);
@@ -108,9 +108,12 @@ function adminTab(tab,el){
   if(tab==='visits')loadTLVisitsTab();
   if(tab==='chat'){loadAdminChatList();}
   if(tab==='settings'){
+    // For team_leader: hide all settings sections, show only team members
     if(currentUser&&currentUser.role==='team_leader'){
       setTimeout(()=>{
+        // Hide all standard accordion items
         document.querySelectorAll('#admin-settings .acc-item').forEach(item=>{item.style.display='none';});
+        // Inject team section if not exists
         let tlSection=document.getElementById('tl-team-acc-item');
         if(!tlSection){
           tlSection=document.createElement('div');
@@ -132,6 +135,7 @@ function adminTab(tab,el){
         loadTLMyTeamSettings();
       },100);
     }
+    // For superadmin/admin: ensure shift accordion is injected
     if(currentUser&&['superadmin','admin','manager'].includes(currentUser.role)){
       setTimeout(()=>{
         let shiftSection=document.getElementById('acc-shifts-item');
@@ -150,6 +154,7 @@ function adminTab(tab,el){
               </div>
               <div id="shift-settings-list"><div style="text-align:center;padding:16px"><div class="loader"></div></div></div>
             </div>`;
+          // Insert after work hours accordion
           const hoursItem=document.querySelector('#admin-settings .acc-item');
           if(hoursItem&&hoursItem.parentNode){
             hoursItem.parentNode.insertBefore(shiftSection,hoursItem.nextSibling);
@@ -162,6 +167,7 @@ function adminTab(tab,el){
   if(tab==='reports'){
     loadAllEmployees();
     if(currentUser&&currentUser.role==='team_leader'){
+      // Team Leader: show only visits tab in reports
       setTimeout(()=>{
         document.querySelectorAll('#report-tabs .tab').forEach(t=>{
           const oc=t.getAttribute('onclick')||'';
@@ -177,26 +183,26 @@ function adminTab(tab,el){
 }
 
 // ── HELPERS ──
-function showErr(id,msg){const el=document.getElementById(id);if(el){el.textContent=msg;setTimeout(()=>el.textContent='',3000)}}
 
+// ── TOASTS & MODALS + iOS TWEAKS ──
+function showErr(id,msg){const el=document.getElementById(id);if(el){el.textContent=msg;setTimeout(()=>el.textContent='',3000)}}
 function notify(msg,type='success'){
+  // Use window.notify from dom.js if available
   if(window.notify && window.notify !== notify) { window.notify(msg,type); return; }
   const el=document.createElement('div');
-  const bg=type==='error'?'#ef4444':type==='success'?'#16a34a':'#3b82f6';
-  el.style.cssText='pointer-events:auto;background:'+bg+';color:#fff;padding:11px 18px;border-radius:14px;font-size:13px;font-weight:800;box-shadow:0 12px 34px rgba(0,0,0,.22);animation:toastIn .3s;font-family:Cairo,sans-serif;text-align:center';
+  const bg=type==='error'?'#ff3b3b':type==='success'?'#00C853':'#2979FF';
+  el.style.cssText='pointer-events:auto;background:'+bg+';color:'+(type==='success'?'#000':'#fff')+';padding:11px 18px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:toastIn .3s;font-family:Cairo,sans-serif;text-align:center';
   el.textContent=String(msg||'');
   let container=document.getElementById('toast-container');
   if(!container){container=document.createElement('div');container.id='toast-container';container.setAttribute('aria-live','polite');container.style.cssText='position:fixed;top:calc(20px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:90vw';document.body.appendChild(container);}
   container.appendChild(el);
   setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),300);},3000);
 }
-
 function openModal(id){const el=document.getElementById(id);if(el)el.classList.add('open')}
 function closeModal(id){const el=document.getElementById(id);if(el)el.classList.remove('open')}
-
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
-
-// ── تم حذف double-tap prevention لأنه يسبب تأخير في اللمس على iOS الحديث ──
+let lastTap=0;
+document.addEventListener('touchend',e=>{const now=Date.now();if(now-lastTap<300)e.preventDefault();lastTap=now},{passive:false});
 
 // iPhone: fix chat keyboard push layout
 (function(){
@@ -222,13 +228,21 @@ document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click
   }
 })();
 
-// ── ABSENT EMPLOYEES ──
+// ── ABSENT EMPLOYEES CLICK + profile photo + toggleAcc ──
 function showAbsentEmployees() {
   const ar = currentLang === 'ar';
+  const absentEmps = allEmployees.filter(emp => {
+    const att = document.querySelector(`[data-emp-id="${emp.id}"]`);
+    return !att;
+  });
+  // Simple modal with absent list
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
+  
+  // Get today attendance data from dashboard
   const presentIds = window._todayPresentIds || [];
   const absentList = allEmployees.filter(e => !presentIds.includes(e.id));
+  
   overlay.innerHTML = `<div style="background:var(--card);border-radius:22px 22px 0 0;padding:22px 18px;width:100%;max-height:70vh;overflow-y:auto;border-top:2px solid var(--red)">
     <div style="font-size:16px;font-weight:800;color:var(--red);margin-bottom:14px">😴 ${ar?'الغائبون اليوم':'Absent Today'} (${absentList.length})</div>
     ${absentList.length === 0 ? `<div style="text-align:center;color:var(--muted);padding:20px">${ar?'لا يوجد غياب':'No absences'}</div>` :
@@ -241,31 +255,13 @@ function showAbsentEmployees() {
   document.body.appendChild(overlay);
 }
 
-// ── PRESENT EMPLOYEES ──
-function showPresentEmployees(todayAtt){
-  const ar=currentLang==='ar';
-  const empMap={};(allEmployees||[]).forEach(e=>{empMap[e.id]=e;});
-  const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
-  overlay.innerHTML=`<div style="background:var(--card);border-radius:22px 22px 0 0;padding:22px 18px;width:100%;max-height:70vh;overflow-y:auto;border-top:2px solid var(--green)">
-    <div style="font-size:16px;font-weight:800;color:var(--green);margin-bottom:14px">✅ ${ar?'الحاضرون اليوم':'Present Today'} (${todayAtt.length})</div>
-    ${todayAtt.length===0?`<div style="text-align:center;color:var(--muted);padding:20px">${ar?'لا يوجد حضور':'None'}</div>`:
-    todayAtt.map(a=>{const emp=empMap[a.employee_id]||{};const lateT=a.late_minutes>0?`<span class="badge badge-yellow" style="font-size:10px">⚠️ ${a.late_minutes}${ar?'د':'m'}</span>`:`<span class="badge badge-green" style="font-size:10px">${ar?'في الوقت':'On time'}</span>`;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div class="emp-avatar" style="width:36px;height:36px;font-size:13px;overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:(emp.name||'?')[0].toUpperCase()}</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:700">${emp.name||a.employee_id}</div><div style="font-size:11px;color:var(--muted)">${emp.branch||''} · ${ar?'دخل':'In'}: ${a.check_in||'-'}</div></div>
-      ${lateT}
-    </div>`;}).join('')}
-    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px">${ar?'إغلاق':'Close'}</button>
-  </div>`;
-  document.body.appendChild(overlay);
-}
 
 // ── PROFILE PHOTO ──
 async function uploadProfilePhoto(event){
   const file = event.target.files[0];
   if(!file) return;
   const ar = currentLang==='ar';
+  // Compress image before saving
   const canvas = document.createElement('canvas');
   const img = new Image();
   const reader = new FileReader();
@@ -282,7 +278,9 @@ async function uploadProfilePhoto(event){
         document.getElementById('profile-avatar-img').src = base64;
         document.getElementById('profile-avatar-img').style.display = 'block';
         document.getElementById('profile-avatar-icon').style.display = 'none';
+        // Save to Supabase so team can see it
         await dbPatch('employees',{profile_photo:base64},`?id=eq.${currentUser.id}`).catch(()=>{});
+        // Update currentUser
         currentUser.profile_photo = base64;
         localStorage.setItem('oraimo_user', JSON.stringify(currentUser));
         notify(ar?'تم تحديث الصورة ✅':'Photo updated ✅','success');
@@ -303,26 +301,8 @@ function loadProfilePhoto(){
   }
 }
 
-function showPhotoSourceModal(){
-  const ar=currentLang==='ar';
-  const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;display:flex;align-items:flex-end';
-  overlay.innerHTML=`<div style="background:var(--card);border-radius:22px 22px 0 0;padding:20px 18px;width:100%">
-    <div style="font-size:15px;font-weight:800;margin-bottom:16px;text-align:center">${ar?'اختر مصدر الصورة':'Choose photo source'}</div>
-    <label style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--card2);border-radius:14px;margin-bottom:10px;cursor:pointer">
-      <span style="font-size:22px">📷</span>
-      <span style="font-size:14px;font-weight:700">${ar?'كاميرا':'Camera'}</span>
-      <input type="file" accept="image/*" capture="environment" style="display:none" onchange="uploadProfilePhoto(event);this.closest('[style*=fixed]').remove()">
-    </label>
-    <label style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--card2);border-radius:14px;margin-bottom:10px;cursor:pointer">
-      <span style="font-size:22px">🖼️</span>
-      <span style="font-size:14px;font-weight:700">${ar?'من المعرض':'Gallery'}</span>
-      <input type="file" accept="image/*" style="display:none" onchange="uploadProfilePhoto(event);this.closest('[style*=fixed]').remove()">
-    </label>
-    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:transparent;border:1px solid var(--border);border-radius:14px;color:var(--muted);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">${ar?'إلغاء':'Cancel'}</button>
-  </div>`;
-  document.body.appendChild(overlay);
-}
+
+
 
 // ── ACCORDION ──
 function toggleAcc(id){
@@ -331,6 +311,7 @@ function toggleAcc(id){
   const isOpen=body.style.display!=='none';
   body.style.display=isOpen?'none':'block';
   if(arrow)arrow.classList.toggle('open',!isOpen);
+  // Lazy load content
   if(!isOpen){
     if(id==='acc-branches')loadBranches();
     if(id==='acc-products')loadProductsSettings();
@@ -349,7 +330,7 @@ function loadSettingsEmpList(){
   if(allEmployees.length===0){el.innerHTML='<div class="empty"><div class="empty-icon">👥</div>No employees</div>';return}
   el.innerHTML=allEmployees.map(emp=>`
     <div class="emp-card">
-      <div class="emp-avatar" style="overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:((emp.name||'?')[0]||'?').toUpperCase()}</div>
+      <div class="emp-avatar" style="overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:( (emp.name||'?')[0]||'?').toUpperCase()}</div>
       <div class="emp-info"><div class="emp-name">${emp.name}</div><div class="emp-branch">${emp.branch||'-'}</div></div>
       <div class="emp-actions">
         <button class="action-btn edit" onclick="openEditEmp(${emp.id})">✏️</button>
@@ -357,6 +338,8 @@ function loadSettingsEmpList(){
       </div>
     </div>`).join('');
 }
+
+// ── Q1 ANALYTICS ──
 
 // ── Q1 ANALYTICS ──
 function loadQ1Analytics(){
@@ -374,18 +357,41 @@ function loadQ1Analytics(){
     return `<div class="q1-card">
       <div class="q1-store-name">${s.store}</div>
       <div class="q1-months">
-        <div class="q1-month"><div class="q1-month-label">${ar?'يناير':'Jan'}</div><div class="q1-month-val">${(s.jan/1000).toFixed(1)}K</div></div>
-        <div class="q1-month"><div class="q1-month-label">${ar?'فبراير':'Feb'}</div><div class="q1-month-val">${(s.feb/1000).toFixed(1)}K</div></div>
-        <div class="q1-month"><div class="q1-month-label">${ar?'مارس (فعلي)':'Mar (Actual)'}</div><div class="q1-month-val" style="color:var(--yellow)">${(marActual/1000).toFixed(1)}K</div><div style="font-size:8px;color:var(--muted)">${MARCH_DAYS_RECORDED}d</div></div>
-        <div class="q1-month" style="background:rgba(0,200,83,.12);border:1px solid rgba(0,200,83,.25)"><div class="q1-month-label" style="color:var(--green)">${ar?'مارس (متوقع)':'Mar (Proj.)'}</div><div class="q1-month-val" style="color:var(--green)">${(marProj/1000).toFixed(1)}K</div><div class="${trendUp?'q1-trend-up':'q1-trend-down'}">${trendUp?'▲':'▼'} ${Math.abs(vsFeb)}% vs Feb</div></div>
+        <div class="q1-month">
+          <div class="q1-month-label">${ar?'يناير':'Jan'}</div>
+          <div class="q1-month-val">${(s.jan/1000).toFixed(1)}K</div>
+        </div>
+        <div class="q1-month">
+          <div class="q1-month-label">${ar?'فبراير':'Feb'}</div>
+          <div class="q1-month-val">${(s.feb/1000).toFixed(1)}K</div>
+        </div>
+        <div class="q1-month">
+          <div class="q1-month-label">${ar?'مارس (فعلي)':'Mar (Actual)'}</div>
+          <div class="q1-month-val" style="color:var(--yellow)">${(marActual/1000).toFixed(1)}K</div>
+          <div style="font-size:8px;color:var(--muted)">${MARCH_DAYS_RECORDED}d</div>
+        </div>
+        <div class="q1-month" style="background:rgba(0,200,83,.12);border:1px solid rgba(0,200,83,.25)">
+          <div class="q1-month-label" style="color:var(--green)">${ar?'مارس (متوقع)':'Mar (Proj.)'}</div>
+          <div class="q1-month-val" style="color:var(--green)">${(marProj/1000).toFixed(1)}K</div>
+          <div class="${trendUp?'q1-trend-up':'q1-trend-down'}">${trendUp?'▲':'▼'} ${Math.abs(vsFeb)}% vs Feb</div>
+        </div>
       </div>
-      <div class="q1-proj"><div><div class="q1-proj-label">${ar?'المعدل اليومي':'Daily Rate'}</div><div style="font-size:12px;color:var(--muted)">EGP ${dailyRate.toLocaleString()} / ${ar?'يوم':'day'}</div></div><div class="q1-proj-val">EGP ${(marProj/1000).toFixed(1)}K</div></div>
+      <div class="q1-proj">
+        <div>
+          <div class="q1-proj-label">${ar?'المعدل اليومي':'Daily Rate'}</div>
+          <div style="font-size:12px;color:var(--muted)">EGP ${dailyRate.toLocaleString()} / ${ar?'يوم':'day'}</div>
+        </div>
+        <div class="q1-proj-val">EGP ${(marProj/1000).toFixed(1)}K</div>
+      </div>
       <div class="run-rate-bar"><div class="run-rate-fill" style="width:${Math.min(100,Math.round(marProj/maxVal*100))}%"></div></div>
     </div>`;
   }).join('');
 }
+// splash & init handled by initApp above
 
-// ── SHIFT SETTINGS ──
+// ── SHIFT SETTINGS (admin/superadmin) ──
+
+// ── SHIFTS MANAGEMENT (settings) ──
 async function loadShiftSettings(){
   const el=document.getElementById('shift-settings-list');if(!el)return;
   const ar=currentLang==='ar';
@@ -394,8 +400,12 @@ async function loadShiftSettings(){
     if(!emps.length){el.innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">${ar?'لا يوجد موظفون':'No employees'}</div>`;return;}
     el.innerHTML=emps.map(emp=>`
       <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${emp.name}</div><div style="font-size:10px;color:var(--muted)">${emp.branch||''}</div></div>
-        <select data-empid="${emp.id}" onchange="updateEmpShift(${emp.id},this.value)" style="padding:7px 10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;flex-shrink:0">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${emp.name}</div>
+          <div style="font-size:10px;color:var(--muted)">${emp.branch||''}</div>
+        </div>
+        <select data-empid="${emp.id}" onchange="updateEmpShift(${emp.id},this.value)"
+          style="padding:7px 10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;flex-shrink:0">
           <option value="morning" ${(emp.shift||'morning')==='morning'?'selected':''}>🌅 ${ar?'صباحي':'Morning'}</option>
           <option value="evening" ${emp.shift==='evening'?'selected':''}>🌙 ${ar?'مسائي':'Evening'}</option>
         </select>
@@ -413,7 +423,7 @@ async function updateEmpShift(empId,shift){
   }catch(e){notify('Error: '+e.message,'error');}
 }
 
-// ── TEAM LEADER: MY TEAM ──
+// ── TEAM LEADER: MY TEAM IN SETTINGS ──
 async function loadTLMyTeamSettings(){
   const el=document.getElementById('tl-myteam-list');if(!el)return;
   const ar=currentLang==='ar';
@@ -421,48 +431,118 @@ async function loadTLMyTeamSettings(){
   try{
     const teamRes=await dbGet('manager_teams',`?manager_id=eq.${currentUser.id}&select=employee_id`).catch(()=>[])||[];
     const teamIds=teamRes.map(r=>r.employee_id);
-    if(!teamIds.length){el.innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">${ar?'لا يوجد موظفون في فريقك':'No team members'}</div>`;return;}
+    if(!teamIds.length){
+      el.innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">${ar?'لا يوجد موظفون في فريقك':'No team members'}</div>`;
+      return;
+    }
     const emps=await dbGet('employees','?select=*')||[];
     const myTeam=emps.filter(e=>teamIds.includes(e.id));
     const today=todayStr();
     const attToday=await dbGet('attendance',`?date=eq.${today}&select=employee_id,check_in,check_out,late_minutes`).catch(()=>[])||[];
     const attMap={};attToday.forEach(a=>{attMap[a.employee_id]=a;});
-    if(!myTeam.length){el.innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">${ar?'لا يوجد موظفون':'No team members'}</div>`;return;}
+    if(!myTeam.length){
+      el.innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">${ar?'لا يوجد موظفون':'No team members'}</div>`;
+      return;
+    }
     el.innerHTML=myTeam.map(emp=>{
       const att=attMap[emp.id];
       const shiftLabel=emp.shift==='evening'?(ar?'🌙 مسائي':'🌙 Eve'):(ar?'🌅 صباحي':'🌅 Mor');
-      const attBadge=att?(att.check_out?`<span class="badge badge-blue" style="font-size:9px">${ar?'خرج':'Out'} ${att.check_out}</span>`:`<span class="badge badge-green" style="font-size:9px">${ar?'حاضر':'In'} ${att.check_in}${att.late_minutes>0?' ⚠️':''}</span>`):`<span class="badge badge-yellow" style="font-size:9px;background:rgba(255,59,59,.15);color:var(--red)">${ar?'غائب':'Absent'}</span>`;
+      const attBadge=att
+        ?(att.check_out
+          ?`<span class="badge badge-blue" style="font-size:9px">${ar?'خرج':'Out'} ${att.check_out}</span>`
+          :`<span class="badge badge-green" style="font-size:9px">${ar?'حاضر':'In'} ${att.check_in}${att.late_minutes>0?' ⚠️':''}</span>`)
+        :`<span class="badge badge-yellow" style="font-size:9px;background:rgba(255,59,59,.15);color:var(--red)">${ar?'غائب':'Absent'}</span>`;
       return `<div class="emp-card" style="margin-bottom:8px">
         <div class="emp-avatar" style="overflow:hidden;flex-shrink:0">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover">`:(((emp.name||'?')[0])||'?').toUpperCase()}</div>
-        <div class="emp-info" style="flex:1;min-width:0"><div class="emp-name">${emp.name}</div><div class="emp-branch" style="font-size:10px">${shiftLabel} ${emp.branch?'· '+emp.branch:''}</div></div>
+        <div class="emp-info" style="flex:1;min-width:0">
+          <div class="emp-name">${emp.name}</div>
+          <div class="emp-branch" style="font-size:10px">${shiftLabel} ${emp.branch?'· '+emp.branch:''}</div>
+        </div>
         ${attBadge}
       </div>`;
     }).join('');
   }catch(e){el.innerHTML=`<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`;}
 }
 
-// ── SHIFT LABEL ──
+// ── SHIFT LABEL HELPER for employee home ──
 function getShiftLabel(shift,lang){
   const ar=lang==='ar';
   if(shift==='evening') return ar?'🌙 مسائي (2م - 10م)':'🌙 Evening (2PM - 10PM)';
   return ar?'🌅 صباحي (10ص - 6م)':'🌅 Morning (10AM - 6PM)';
 }
 
-function showProductEmployees(modelName){
+
+// ── HELPERS: Present employees, Product details, Photo source choice ──
+
+// ── PRESENT EMPLOYEES CLICK + product employees + photo source modal ──
+function showPresentEmployees(todayAtt){
   const ar=currentLang==='ar';
+  const empMap={};(allEmployees||[]).forEach(e=>{empMap[e.id]=e;});
   const overlay=document.createElement('div');
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
-  overlay.innerHTML=`<div style="background:var(--card);border-radius:22px 22px 0 0;padding:22px 18px;width:100%;max-height:70vh;overflow-y:auto">
-    <div style="font-size:15px;font-weight:800;margin-bottom:14px">📦 ${modelName}</div>
-    <div id="prod-emp-list-inner"><div class="full-loader"><div class="loader"></div></div></div>
+  overlay.innerHTML=`<div style="background:var(--card);border-radius:22px 22px 0 0;padding:22px 18px;width:100%;max-height:70vh;overflow-y:auto;border-top:2px solid var(--green)">
+    <div style="font-size:16px;font-weight:800;color:var(--green);margin-bottom:14px">✅ ${ar?'الحاضرون اليوم':'Present Today'} (${todayAtt.length})</div>
+    ${todayAtt.length===0?`<div style="text-align:center;color:var(--muted);padding:20px">${ar?'لا يوجد حضور':'None'}</div>`:
+    todayAtt.map(a=>{const emp=empMap[a.employee_id]||{};const lateT=a.late_minutes>0?`<span class="badge badge-yellow" style="font-size:10px">⚠️ ${a.late_minutes}${ar?'د':'m'}</span>`:`<span class="badge badge-green" style="font-size:10px">${ar?'في الوقت':'On time'}</span>`;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div class="emp-avatar" style="width:36px;height:36px;font-size:13px;overflow:hidden">${emp.profile_photo?`<img src="${emp.profile_photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:(emp.name||'?')[0].toUpperCase()}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:700">${emp.name||a.employee_id}</div><div style="font-size:11px;color:var(--muted)">${emp.branch||''} · ${ar?'دخل':'In'}: ${a.check_in||'-'}</div></div>
+      ${lateT}</div>`;}).join('')}
     <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px">${ar?'إغلاق':'Close'}</button>
   </div>`;
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
   document.body.appendChild(overlay);
-  const inner=overlay.querySelector('#prod-emp-list-inner');
-  const today=todayStr();
-  dbGet('sales',`?date=eq.${today}&model=eq.${encodeURIComponent(modelName)}&select=employee_id,quantity`).then(rows=>{
-    if(!rows||!rows.length){inner.innerHTML=`<div style="color:var(--muted);text-align:center;padding:20px">${ar?'لا توجد مبيعات اليوم':'No sales today'}</div>`;return;}
-    const empMap={};(allEmployees||[]).forEach(e=>{empMap[e.id]=e;});
-    inner.innerHTML=rows.map(r=>{const emp=empMap[r.employee_id]||{name:'#'+r.employee_id};return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-size:13px;font-weight:700">${emp.name}</div><div style="font-size:13px;font-weight:800;color:var(--green)">${r.quantity} ${ar?'قطعة':'units'}</div></div>`;}).join('');
-  }).catch(()=>{inner.innerHTML=`<div style="color:var(--red);text-align:center;padding:20px">Error</div>`;});
+}
+
+function showProductEmployees(productName){
+  const ar=currentLang==='ar';
+  const sales=(window._productSalesData||[]).filter(s=>s.product_name===productName);
+  const emps=window._allEmpsData||[];
+  const empMap={};emps.forEach(e=>{empMap[e.id]=e;});
+  const byEmp={};
+  sales.forEach(s=>{if(!byEmp[s.employee_id])byEmp[s.employee_id]={name:(empMap[s.employee_id]?.name||s.employee_id),qty:0,total:0};byEmp[s.employee_id].qty+=s.quantity;byEmp[s.employee_id].total+=s.total_amount;});
+  const sorted=Object.values(byEmp).sort((a,b)=>b.qty-a.qty);
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
+  overlay.innerHTML=`<div style="background:var(--card);border-radius:22px 22px 0 0;padding:22px 18px;width:100%;max-height:75vh;overflow-y:auto;border-top:2px solid var(--green)">
+    <div style="font-size:15px;font-weight:800;margin-bottom:4px;direction:ltr">${productName}</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px">${ar?'مبيعات الموظفين':'Employee Sales'}</div>
+    ${sorted.length===0?`<div style="text-align:center;color:var(--muted);padding:20px">${ar?'لا توجد مبيعات':'No sales'}</div>`:
+    sorted.map((e,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="width:26px;font-size:13px;font-weight:800;color:var(--muted);text-align:center">${i+1}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:700">${e.name}</div></div>
+      <div style="text-align:left"><div style="font-size:14px;font-weight:800;color:var(--green)">${e.qty} ${ar?'قطعة':'pcs'}</div><div style="font-size:10px;color:var(--muted)">EGP ${fmtEGP(e.total)}</div></div></div>`).join('')}
+    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:14px">${ar?'إغلاق':'Close'}</button>
+  </div>`;
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  document.body.appendChild(overlay);
+}
+
+function showPhotoSourceModal(inputId){
+  const ar=currentLang==='ar';
+  const input=document.getElementById(inputId);if(!input)return;
+  const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
+  if(isIOS){input.removeAttribute('capture');input.click();return;}
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
+  overlay.innerHTML=`<div style="background:var(--card);border-radius:22px 22px 0 0;padding:24px 18px;width:100%;border-top:2px solid var(--green)">
+    <div style="font-size:15px;font-weight:800;margin-bottom:18px;text-align:center">${ar?'اختر مصدر الصورة':'Choose image source'}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <button onclick="document.getElementById('${inputId}').setAttribute('capture','environment');document.getElementById('${inputId}').click();this.closest('[style*=fixed]').remove()" style="padding:16px;background:var(--card2);border:1.5px solid var(--green);border-radius:14px;color:var(--green);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">📷 ${ar?'الكاميرا':'Camera'}</button>
+      <button onclick="document.getElementById('${inputId}').removeAttribute('capture');document.getElementById('${inputId}').click();this.closest('[style*=fixed]').remove()" style="padding:16px;background:var(--card2);border:1.5px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">🖼️ ${ar?'المعرض':'Gallery'}</button>
+    </div>
+    <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:transparent;border:none;color:var(--muted);font-family:Cairo,sans-serif;font-size:13px;cursor:pointer;margin-top:10px">${ar?'إلغاء':'Cancel'}</button>
+  </div>`;
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  document.body.appendChild(overlay);
+}
+
+// ── SPECS (Models Database) ──
+
+// ── FIX NAV DIRECTION (RTL/LTR) ──
+function fixNavDirection(){
+  const isAr = (window.currentLang || 'ar') === 'ar';
+  document.querySelectorAll('.bottom-nav').forEach(nav => {
+    nav.style.direction = isAr ? 'rtl' : 'ltr';
+  });
 }

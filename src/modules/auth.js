@@ -25,10 +25,7 @@ function _runAdminShell(){
       if(typeof loadAllEmployees==='function') await loadAllEmployees();
       if(typeof loadBranches==='function') await loadBranches();
       if(typeof loadAdminDashboard==='function') await loadAdminDashboard();
-    }catch(e){
-      console.error('[admin data boot]', e);
-      if(typeof notify==='function') notify(currentLang==='ar'?'تعذر تحميل البيانات — حاول تحديث الصفحة':'Failed to load data — please refresh','error');
-    }
+    }catch(e){ console.error('[admin data boot]', e); }
   })();
   clearOldVisitPhotos();
   if(currentUser.role==='superadmin'||currentUser.role==='admin')loadAdminsList();
@@ -112,7 +109,7 @@ function showApp(){
     const dayLabel=currentLang==='ar'?DAYS_AR[currentUser.day_off]:DAYS_EN[currentUser.day_off];
     document.getElementById('profile-dayoff').innerHTML=`<span class="badge badge-blue">${currentLang==='ar'?'الإجازة:':'Day Off:'} ${dayLabel||'-'}</span>`;
     loadEmpData();renderProducts();loadModelTargetAlert();
-    const visNav=document.querySelector('#emp-app .nav-item[onclick*="visits"]');
+    const visNav=document.querySelector('#emp-app .nav-item[onclick*=\"visits\"]');
     if(visNav) visNav.style.display='none';
     if(typeof registerOneSignalUser==='function') registerOneSignalUser();
     setTimeout(fixNavDirection, 100);
@@ -123,7 +120,6 @@ function showApp(){
 
 // ── AUTH ──
 function _saveUser(u){try{localStorage.setItem('oraimo_user',JSON.stringify(u));}catch(_){try{sessionStorage.setItem('oraimo_user',JSON.stringify(u));}catch(_){}}}
-
 
 async function doLogin(){
   if(_isSubmitting) return;
@@ -161,15 +157,17 @@ async function doLogin(){
     if(btn){btn.disabled=false;btn.textContent=ar?'تسجيل الدخول':'Sign In';}
   }
 }
-
 function doLogout(){
   try { if (typeof resetPushRegistrationState === 'function') resetPushRegistrationState(); } catch (_) {}
+  // Stop any active camera
   if(videoStream){try{videoStream.getTracks().forEach(t=>t.stop());}catch(_){}videoStream=null;}
+  // Stop chat polling
   if(chatSubscription){
     try{if(typeof chatSubscription==='function')chatSubscription();else clearInterval(chatSubscription);}catch(_){}
     chatSubscription=null;
   }
   currentChat=null;
+  // Clear session — مش بنعمل reload عشان التطبيق يفضل شغال
   try{localStorage.removeItem('oraimo_user');}catch(_){}
   try{sessionStorage.removeItem('oraimo_user');}catch(_){}
   window.currentUser=null;
@@ -177,13 +175,16 @@ function doLogout(){
   allAdmins=[];allBranches=[];allEmployees=[];
   try{window.branches=[];}catch(_){}
   managerTeamData={};
+  // Reset admin nav
   document.querySelectorAll('#admin-app .bottom-nav .nav-item').forEach(n=>{n.style.display='';n.classList.remove('active');});
   const visNav=document.getElementById('adm-visits-nav');if(visNav)visNav.style.display='none';
+  // Reset tabs
   ['dashboard','employees','branches','reports','settings','visits'].forEach(t=>{
     const d=document.getElementById('admin-'+t);if(d)d.style.display='none';
   });
   document.querySelectorAll('#report-tabs .tab').forEach(t=>t.style.display='');
   ['add-emp-btn','add-emp-btn2'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='';});
+  // Clear login form
   const lu=document.getElementById('login-user');if(lu)lu.value='';
   const lp=document.getElementById('login-pass');if(lp)lp.value='';
   const le=document.getElementById('login-err');if(le)le.textContent='';
@@ -200,3 +201,5 @@ function startClock(){
   }
   tick();setInterval(tick,1000);
 }
+
+// ── EMP DATA ──

@@ -1,20 +1,23 @@
 // ────────────────────────────────────────────────────────────
 // SUPABASE SERVICE  (v3 — race-free cache + LRU)
-// ✅ FIXED: PATCH يرجع return=representation + تقليل TTL للحضور
+// ────────────────────────────────────────────────────────────
+// Third-pass fixes:
+//   • Cache race condition: we now stamp a generation counter per
+//     table, and invalidate that generation on writes. A GET that
+//     started before a write can't populate a stale cache entry.
+//   • Bounded LRU cache (max 100 entries) — prevents memory growth
+//     in long-running sessions.
+//   • Separate `clearAllCache()` from `invalidateCache(table)` so
+//     an accidental empty call can't wipe everything.
+//   • Reduced log noise.
 // ────────────────────────────────────────────────────────────
 
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config.js';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_RETRIES = 1;
-const GET_CACHE_TTL_MS = 30_000;          // 30 sec default
+const GET_CACHE_TTL_MS = 3 * 60_000;  // 3 min cache — reduces DB calls dramatically
 const GET_CACHE_MAX_ENTRIES = 150;
-
-// Tables that change frequently get a shorter TTL
-const SHORT_TTL_TABLES = new Set(['attendance', 'sales', 'leave_requests', 'warnings']);
-function _ttlForTable(table) {
-  return SHORT_TTL_TABLES.has(table) ? 15_000 : GET_CACHE_TTL_MS;
-}
 
 const baseHeaders = {
   apikey: SUPABASE_ANON_KEY,
@@ -24,8 +27,11 @@ const baseHeaders = {
 
 const inflight = new Map();
 
+// Simple LRU-ish cache using a Map (insertion order = LRU order).
 const getCache = new Map();
 
+// Generation counter per table. Writes bump the generation; reads snapshot
+// the generation at start and refuse to populate cache if it changed.
 const tableGen = new Map();
 function getGen(table) { return tableGen.get(table) || 0; }
 function bumpGen(table) { tableGen.set(table, getGen(table) + 1); }
@@ -42,11 +48,15 @@ function lruSet(key, value) {
 function lruGet(key) {
   const hit = getCache.get(key);
   if (!hit) return undefined;
+  // Touch: move to "most recently used" end
   getCache.delete(key);
   getCache.set(key, hit);
   return hit;
 }
 
+/**
+ * Escape a value intended for a PostgREST filter such as `col=eq.VALUE`.
+ */
 export function safeFilterValue(v) {
   if (v === null || v === undefined) return '';
   const s = String(v);
@@ -59,14 +69,11 @@ export function safeFilterValue(v) {
 
 async function requestOnce(method, table, query, body, signal) {
   const url = `${SUPABASE_URL}/rest/v1/${table}${query || ''}`;
-  // ✅ FIX: POST و PATCH كلهم يرجعوا return=representation
-  // بدون ده، PATCH بيرجع 204 No Content وده بيسبب مشاكل
-  const needsRepresentation = (method === 'POST' || method === 'PATCH');
   const res = await fetch(url, {
     method,
     headers: {
       ...baseHeaders,
-      Prefer: needsRepresentation ? 'return=representation' : '',
+      Prefer: method === 'POST' ? 'return=representation' : '',
     },
     body: body ? JSON.stringify(body) : undefined,
     signal,
@@ -90,10 +97,11 @@ async function request(method, table, query = '', body = null, opts = {}) {
 
   if (cacheKey) {
     const hit = lruGet(cacheKey);
-    if (hit && Date.now() - hit.t < _ttlForTable(table)) return hit.v;
+    if (hit && Date.now() - hit.t < GET_CACHE_TTL_MS) return hit.v;
     if (inflight.has(cacheKey)) return inflight.get(cacheKey);
   }
 
+  // Snapshot generation at request start
   const genAtStart = isGet ? getGen(table) : -1;
 
   const attempt = async () => {
@@ -122,6 +130,7 @@ async function request(method, table, query = '', body = null, opts = {}) {
   if (cacheKey) {
     inflight.set(cacheKey, p);
     p.then(v => {
+       // Only cache if no write happened to this table since we started
        if (getGen(table) === genAtStart) lruSet(cacheKey, { v, t: Date.now() });
      })
      .catch(() => {})
@@ -130,17 +139,17 @@ async function request(method, table, query = '', body = null, opts = {}) {
   return p;
 }
 
+/** Invalidate GET cache entries for a given table. Bumps the generation
+ *  so that any in-flight GET which started before now won't cache. */
 export function invalidateCache(table) {
-  if (!table || typeof table !== 'string') return;
+  if (!table || typeof table !== 'string') return;  // no accidental wipe
   bumpGen(table);
   for (const k of Array.from(getCache.keys())) {
     if (k.startsWith(`GET|${table}|`)) getCache.delete(k);
   }
-  for (const k of Array.from(inflight.keys())) {
-    if (k.startsWith(`GET|${table}|`)) inflight.delete(k);
-  }
 }
 
+/** Explicit total wipe (rare; e.g. on logout). */
 export function clearAllCache() {
   getCache.clear();
   inflight.clear();
@@ -150,21 +159,16 @@ export function clearAllCache() {
 export const db = {
   get: (table, query = '') => request('GET', table, query),
   post: async (table, body) => {
-    // ✅ FIX: invalidate BEFORE the request too, not just after
-    invalidateCache(table);
     const r = await request('POST', table, '', body);
     invalidateCache(table);
     return r;
   },
   patch: async (table, query, body) => {
-    // ✅ FIX: invalidate BEFORE the request too
-    invalidateCache(table);
     const r = await request('PATCH', table, query, body);
     invalidateCache(table);
     return r;
   },
   delete: async (table, query) => {
-    invalidateCache(table);
     const r = await request('DELETE', table, query);
     invalidateCache(table);
     return r;

@@ -1,17 +1,34 @@
 // ═══════════════════════════════════════════════════════════
-// modules/auth.js — Login, logout, app routing, clock
-// SAFE ROLE PATCH:
-//   • Final supported roles:
-//       superadmin, admin, team_leader, employee
-//   • Legacy role "manager" is auto-mapped to "admin"
-//   • Visits:
-//       - view: superadmin / admin / team_leader
-//       - manage/upload: team_leader only
+// modules/auth.js
+// Login / Logout / App Routing / Role Permissions
+//
+// Final roles:
+//   - superadmin
+//   - admin
+//   - team_leader
+//   - employee
+//
+// Legacy compatibility:
+//   - manager => admin
+//
+// Visits permissions:
+//   - view visits: superadmin / admin / team_leader
+//   - upload/manage visits: team_leader only
 // ═══════════════════════════════════════════════════════════
 
-// ── SAFE HELPERS ──
+// ─────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────
 function _id(id) {
   return document.getElementById(id);
+}
+
+function _qs(selector, root = document) {
+  return root.querySelector(selector);
+}
+
+function _qsa(selector, root = document) {
+  return Array.from(root.querySelectorAll(selector));
 }
 
 function _setText(id, value) {
@@ -32,14 +49,34 @@ function _setDisplay(id, value) {
   return el;
 }
 
-function _forEach(selector, cb) {
-  document.querySelectorAll(selector).forEach(cb);
+function _forEach(selector, cb, root = document) {
+  root.querySelectorAll(selector).forEach(cb);
 }
 
 function _safeCall(fnName, ...args) {
   const fn = window[fnName];
-  if (typeof fn === 'function') return fn(...args);
+  if (typeof fn === 'function') {
+    try {
+      return fn(...args);
+    } catch (e) {
+      console.error(`[auth] ${fnName} failed:`, e);
+    }
+  }
   return undefined;
+}
+
+function _notify(msg) {
+  if (typeof window.notify === 'function') {
+    window.notify(msg);
+  } else {
+    console.warn('[notify]', msg);
+  }
+}
+
+function _getDbGet() {
+  if (typeof window.dbGet === 'function') return window.dbGet;
+  if (typeof dbGet === 'function') return dbGet;
+  return null;
 }
 
 function _clearSavedUser() {
@@ -47,11 +84,12 @@ function _clearSavedUser() {
   try { sessionStorage.removeItem('oraimo_user'); } catch (_) {}
 }
 
-function _saveUser(u) {
+function _saveUser(user) {
   try {
-    localStorage.setItem('oraimo_user', JSON.stringify(u));
+    localStorage.setItem('oraimo_user', JSON.stringify(user));
   } catch (_) {
-    try { sessionStorage.setItem('oraimo_user', JSON.stringify(u));
+    try {
+      sessionStorage.setItem('oraimo_user', JSON.stringify(user));
     } catch (_) {}
   }
 }
@@ -59,7 +97,6 @@ function _saveUser(u) {
 function _normalizeRole(role) {
   const r = String(role || '').trim().toLowerCase();
 
-  // Legacy mapping
   if (r === 'manager') return 'admin';
 
   if (r === 'superadmin') return 'superadmin';
@@ -91,6 +128,21 @@ function _canManageVisits(role) {
   return r === 'team_leader';
 }
 
+function _canUploadOwnDisplay(role) {
+  const r = _normalizeRole(role);
+  return r === 'employee' || r === 'team_leader';
+}
+
+function _sanitizeUser(userObj) {
+  const user = { ...(userObj || {}) };
+  delete user.password;
+  user.role = _normalizeRole(user.role);
+  return user;
+}
+
+// ─────────────────────────────────────────
+// Role & permissions state
+// ─────────────────────────────────────────
 function _setVisitPermissions(user) {
   const role = _normalizeRole(user && user.role);
 
@@ -105,7 +157,7 @@ function _setVisitPermissions(user) {
     canViewVisits: _canViewVisits(role),
     canManageVisits: _canManageVisits(role),
     canViewAllVisits: role === 'superadmin' || role === 'admin',
-    canUploadOwnDisplay: role === 'employee' || role === 'team_leader'
+    canUploadOwnDisplay: _canUploadOwnDisplay(role)
   };
 
   document.body.dataset.role = role;
@@ -113,45 +165,138 @@ function _setVisitPermissions(user) {
   document.body.dataset.canManageVisits = window.visitPermissions.canManageVisits ? '1' : '0';
 }
 
+// ─────────────────────────────────────────
+// Visits UI controls
+// ─────────────────────────────────────────
 function _applyVisitsNavVisibility(role) {
   const canView = _canViewVisits(role);
 
-  // Main admin visits nav
-  const admVisitsNav = _id('adm-visits-nav');
-  if (admVisitsNav) admVisitsNav.style.display = canView ? 'flex' : 'none';
+  const navIds = [
+    'adm-visits-nav',
+    'nav-visits'
+  ];
 
-  // Legacy/alternate ids if present
-  const navVisits = _id('nav-visits');
-  if (navVisits) navVisits.style.display = canView ? 'flex' : 'none';
+  navIds.forEach(id => {
+    const el = _id(id);
+    if (el) el.style.display = canView ? 'flex' : 'none';
+  });
 }
 
 function _applyVisitsActionVisibility(role) {
   const canManage = _canManageVisits(role);
+  const canView = _canViewVisits(role);
 
-  // Known possible buttons/containers for visits create/upload
-  [
+  const visitsRoot =
+    _id('admin-visits') ||
+    _id('visits-page') ||
+    document;
+
+  const managedSelectors = [
+    '#visit-add-btn',
+    '#add-visit-btn',
+    '#visit-camera-btn',
+    '#save-visit-btn',
+    '#upload-visit-btn',
+    '#visit-submit-btn',
+    '#new-visit-btn',
+    '#visit-image-input',
+    '#visit-photo-input',
+    '#visit-file-input',
+    '#visit-form',
+    '#new-visit-form',
+    '#visit-actions',
+    '#visit-upload-box',
+    '[data-visits-manage]'
+  ];
+
+  managedSelectors.forEach(selector => {
+    visitsRoot.querySelectorAll(selector).forEach(el => {
+      if (canManage) {
+        el.style.display = '';
+        el.disabled = false;
+      } else {
+        el.style.display = 'none';
+        el.disabled = true;
+
+        if (el.tagName === 'INPUT' && el.type === 'file') {
+          try { el.value = ''; } catch (_) {}
+        }
+      }
+    });
+  });
+
+  visitsRoot.querySelectorAll('[data-visits-view-only]').forEach(el => {
+    el.style.display = canView && !canManage ? '' : 'none';
+  });
+}
+
+function _installVisitsReadOnlyGuard() {
+  if (window.__visitsReadOnlyGuardInstalled) return;
+  window.__visitsReadOnlyGuardInstalled = true;
+
+  const blockedIds = new Set([
     'visit-add-btn',
     'add-visit-btn',
     'visit-camera-btn',
     'save-visit-btn',
     'upload-visit-btn',
     'visit-submit-btn',
-    'new-visit-btn'
-  ].forEach(id => {
-    const el = _id(id);
-    if (el) el.style.display = canManage ? '' : 'none';
-  });
+    'new-visit-btn',
+    'visit-image-input',
+    'visit-photo-input',
+    'visit-file-input'
+  ]);
 
-  // Generic hooks if you already have them in HTML
-  _forEach('[data-visits-manage]', el => {
-    el.style.display = canManage ? '' : 'none';
-  });
+  document.addEventListener('click', function (e) {
+    const target = e.target.closest('button, a, label, input, div');
+    if (!target) return;
 
-  _forEach('[data-visits-view-only]', el => {
-    el.style.display = canManage ? 'none' : '';
-  });
+    const role = _normalizeRole(window.currentUser && window.currentUser.role);
+    if (_canManageVisits(role)) return;
+
+    const inManagedArea = target.closest(
+      '#visit-form, #new-visit-form, #visit-actions, #visit-upload-box, [data-visits-manage]'
+    );
+
+    const blockedById = blockedIds.has(target.id);
+
+    if (blockedById || inManagedArea) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === 'function') {
+        e.stopImmediatePropagation();
+      }
+
+      _notify('رفع الزيارات متاح للتيم ليدر فقط');
+      return false;
+    }
+  }, true);
+
+  document.addEventListener('change', function (e) {
+    const el = e.target;
+    if (!el) return;
+
+    const role = _normalizeRole(window.currentUser && window.currentUser.role);
+    if (_canManageVisits(role)) return;
+
+    const isVisitFileInput =
+      el.matches('#visit-image-input, #visit-photo-input, #visit-file-input') ||
+      !!el.closest('#visit-form, #new-visit-form, #visit-upload-box, [data-visits-manage]');
+
+    if (isVisitFileInput) {
+      try { el.value = ''; } catch (_) {}
+      e.preventDefault();
+      e.stopPropagation();
+
+      _notify('رفع الزيارات متاح للتيم ليدر فقط');
+      return false;
+    }
+  }, true);
 }
 
+// ─────────────────────────────────────────
+// Admin UI reset
+// ─────────────────────────────────────────
 function _resetAdminUI() {
   _forEach('#admin-app .bottom-nav .nav-item', n => {
     n.style.display = '';
@@ -163,21 +308,18 @@ function _resetAdminUI() {
   });
 
   ['add-emp-btn', 'add-emp-btn2'].forEach(id => {
-    const e = _id(id);
-    if (e) e.style.display = '';
+    const el = _id(id);
+    if (el) el.style.display = '';
   });
 
   _setDisplay('admins-section', 'none');
-
-  const firstNav = document.querySelector('#admin-app .bottom-nav .nav-item');
-  if (firstNav) firstNav.classList.add('active');
 }
 
+// ─────────────────────────────────────────
+// Finalize login
+// ─────────────────────────────────────────
 function _finalizeLogin(userObj) {
-  const normalizedUser = {
-    ...userObj,
-    role: _normalizeRole(userObj && userObj.role)
-  };
+  const normalizedUser = _sanitizeUser(userObj);
 
   window.currentUser = normalizedUser;
   _setVisitPermissions(normalizedUser);
@@ -187,7 +329,7 @@ function _finalizeLogin(userObj) {
     showApp();
     return true;
   } catch (uiErr) {
-    console.error('[showApp after login]', uiErr);
+    console.error('[auth] showApp after login failed:', uiErr);
     _clearSavedUser();
     window.currentUser = null;
     window.visitPermissions = null;
@@ -196,7 +338,9 @@ function _finalizeLogin(userObj) {
   }
 }
 
-// ── APP ROUTING ──
+// ─────────────────────────────────────────
+// App routing
+// ─────────────────────────────────────────
 function showApp() {
   const user = window.currentUser;
   const lang = window.currentLang || 'ar';
@@ -210,11 +354,11 @@ function showApp() {
   _setVisitPermissions(user);
 
   _safeCall('applyLang');
-
-  // Always reset first
   _resetAdminUI();
 
   if (_isAdminAreaRole(role)) {
+    _safeCall('showPage', 'admin-app');
+
     _setText('admin-name-top', user.name || 'Admin');
 
     const chip = _id('admin-role-chip');
@@ -223,13 +367,12 @@ function showApp() {
       chip.className = 'role-chip badge role-' + role;
     }
 
-    if (role === 'superadmin') _setDisplay('admins-section', 'block');
+    if (role === 'superadmin') {
+      _setDisplay('admins-section', 'block');
+    }
 
-    _safeCall('showPage', 'admin-app');
-
-    // Default dashboard for admin/superadmin
     if (role === 'admin' || role === 'superadmin') {
-      const dashNav = document.querySelector('#admin-app .bottom-nav .nav-item');
+      const dashNav = _qs('#admin-app .bottom-nav .nav-item');
       if (typeof window.adminTab === 'function' && dashNav) {
         window.adminTab('dashboard', dashNav);
       } else {
@@ -237,19 +380,18 @@ function showApp() {
       }
     }
 
-    // Team leader defaults to visits tab
     if (role === 'team_leader') {
       setTimeout(() => {
-        const visNavEl = _id('adm-visits-nav');
+        const visNavEl = _id('adm-visits-nav') || _id('nav-visits');
 
         _forEach('#admin-app .nav-item', n => n.classList.remove('active'));
 
         ['dashboard', 'employees', 'branches', 'reports', 'settings', 'chat'].forEach(t => {
-          const d = _id('admin-' + t);
-          if (d) d.style.display = 'none';
+          const page = _id('admin-' + t);
+          if (page) page.style.display = 'none';
         });
 
-        const visitsPage = _id('admin-visits');
+        const visitsPage = _id('admin-visits') || _id('visits-page');
         if (visitsPage) visitsPage.style.display = 'block';
 
         if (visNavEl) visNavEl.classList.add('active');
@@ -258,7 +400,6 @@ function showApp() {
       }, 200);
     }
 
-    // Shared admin-area loaders
     _safeCall('loadAdminDashboard');
     _safeCall('loadAllEmployees');
     _safeCall('loadBranches');
@@ -268,7 +409,6 @@ function showApp() {
       _safeCall('loadAdminsList');
     }
 
-    // Team leader restrictions
     if (role === 'team_leader') {
       setTimeout(() => {
         const settingsNavEl = _id('settings-nav-item');
@@ -277,7 +417,6 @@ function showApp() {
         const branchesNavEl = _id('adm-branches-nav');
         if (branchesNavEl) branchesNavEl.style.display = 'none';
 
-        // Hide reports from TL if your old UI used them
         _forEach('#admin-app .bottom-nav .nav-item', n => {
           const oc = n.getAttribute('onclick') || '';
           if (oc.includes('reports')) n.style.display = 'none';
@@ -292,12 +431,14 @@ function showApp() {
 
     _applyVisitsNavVisibility(role);
     _applyVisitsActionVisibility(role);
+    _installVisitsReadOnlyGuard();
+
     setTimeout(() => _safeCall('fixNavDirection'), 100);
   } else {
     _safeCall('showPage', 'emp-app');
 
     if (typeof window.empTab === 'function') {
-      const homeNav = document.querySelector('#emp-app .nav-item');
+      const homeNav = _qs('#emp-app .nav-item');
       window.empTab('home', homeNav);
     } else {
       _setDisplay('emp-home', 'block');
@@ -321,9 +462,8 @@ function showApp() {
     _safeCall('renderProducts');
     _safeCall('loadModelTargetAlert');
 
-    // Employee never sees visits tab
-    const visNav = document.querySelector('#emp-app .nav-item[onclick*="visits"]');
-    if (visNav) visNav.style.display = 'none';
+    const empVisitsNav = _qs('#emp-app .nav-item[onclick*="visits"]');
+    if (empVisitsNav) empVisitsNav.style.display = 'none';
   }
 
   if (typeof window.registerOneSignalUser === 'function') {
@@ -333,7 +473,9 @@ function showApp() {
   setTimeout(() => _safeCall('fixNavDirection'), 100);
 }
 
-// ── AUTH ──
+// ─────────────────────────────────────────
+// Login
+// ─────────────────────────────────────────
 async function doLogin() {
   if (window._isSubmitting) return;
 
@@ -354,6 +496,12 @@ async function doLogin() {
     return;
   }
 
+  const dbGetFn = _getDbGet();
+  if (!dbGetFn) {
+    if (errEl) errEl.textContent = ar ? 'خدمة الاتصال غير جاهزة' : 'Connection service is not ready';
+    return;
+  }
+
   window._isSubmitting = true;
 
   if (btn) {
@@ -364,60 +512,65 @@ async function doLogin() {
   if (errEl) errEl.textContent = '';
 
   try {
-    // Hardcoded superadmin
+    // Fixed super admin
     if (username === 'admin' && pass === 'Oraimo@Admin2026') {
-      _finalizeLogin({ role: 'superadmin', name: 'Super Admin' });
+      _finalizeLogin({
+        role: 'superadmin',
+        name: 'Super Admin',
+        username: 'admin'
+      });
       return;
     }
 
     const uname = encodeURIComponent(username);
 
-    // Admins
-    let admRes;
+    // Admins table
+    let admRes = [];
     try {
-      admRes = await dbGet('admins', `?username=eq.${uname}&select=*`);
-    } catch (_) {
+      admRes = await dbGetFn('admins', `?username=eq.${uname}&select=*`);
+    } catch (e) {
+      console.warn('[auth] admins query failed:', e);
       admRes = [];
     }
 
-    const admMatch = (admRes || []).find(r => r.password === pass);
+    const admMatch = (admRes || []).find(r => String(r.password || '') === pass);
     if (admMatch) {
-      const adminUser = {
+      const adminUser = _sanitizeUser({
         ...admMatch,
         role: _normalizeRole(admMatch.role || 'admin')
-      };
-      delete adminUser.password;
+      });
       _finalizeLogin(adminUser);
       return;
     }
 
-    // Employees
-    let empRes;
+    // Employees table
+    let empRes = [];
     try {
-      empRes = await dbGet('employees', `?username=eq.${uname}&select=*`);
-    } catch (_) {
+      empRes = await dbGetFn('employees', `?username=eq.${uname}&select=*`);
+    } catch (e) {
+      console.warn('[auth] employees query failed:', e);
       empRes = [];
     }
 
-    const empMatch = (empRes || []).find(r => r.password === pass);
+    const empMatch = (empRes || []).find(r => String(r.password || '') === pass);
     if (!empMatch) {
       if (errEl) errEl.textContent = ar ? 'بيانات دخول غير صحيحة' : 'Invalid credentials';
       return;
     }
 
-    const empUser = {
+    const empUser = _sanitizeUser({
       ...empMatch,
       role: _normalizeRole(empMatch.role || 'employee')
-    };
-    delete empUser.password;
+    });
+
     _finalizeLogin(empUser);
   } catch (e) {
-    console.error('[login]', e);
+    console.error('[auth][login]', e);
 
     const uiError =
       e &&
       (e.name === 'TypeError' ||
-       /Cannot read|undefined|null|classList|style|textContent|innerHTML/.test(String(e.message || '')));
+        /Cannot read|undefined|null|classList|style|textContent|innerHTML/.test(String(e.message || '')));
 
     if (errEl) {
       errEl.textContent = uiError
@@ -434,18 +587,24 @@ async function doLogin() {
   }
 }
 
+// ─────────────────────────────────────────
+// Logout
+// ─────────────────────────────────────────
 function doLogout() {
   if (window.videoStream) {
     try {
-      window.videoStream.getTracks().forEach(t => t.stop());
+      window.videoStream.getTracks().forEach(track => track.stop());
     } catch (_) {}
     window.videoStream = null;
   }
 
   if (window.chatSubscription) {
     try {
-      if (typeof window.chatSubscription === 'function') window.chatSubscription();
-      else clearInterval(window.chatSubscription);
+      if (typeof window.chatSubscription === 'function') {
+        window.chatSubscription();
+      } else {
+        clearInterval(window.chatSubscription);
+      }
     } catch (_) {}
     window.chatSubscription = null;
   }
@@ -453,6 +612,7 @@ function doLogout() {
   window.currentChat = null;
 
   _clearSavedUser();
+
   window.currentUser = null;
   window.visitPermissions = null;
   window._isSubmitting = false;
@@ -476,8 +636,8 @@ function doLogout() {
   });
 
   ['add-emp-btn', 'add-emp-btn2'].forEach(id => {
-    const e = _id(id);
-    if (e) e.style.display = '';
+    const el = _id(id);
+    if (el) el.style.display = '';
   });
 
   const lu = _id('login-user');
@@ -492,20 +652,23 @@ function doLogout() {
   _safeCall('showPage', 'login-page');
 }
 
-// ── CLOCK ──
+// ─────────────────────────────────────────
+// Live clock
+// ─────────────────────────────────────────
 function startClock() {
   function tick() {
     const now = new Date();
     const locale = (window.currentLang || 'ar') === 'ar' ? 'ar-EG' : 'en-US';
-    const el = _id('live-clock');
-    const del = _id('live-date');
 
-    if (el) {
-      el.textContent = now.toLocaleTimeString(locale, { hour12: false });
+    const clockEl = _id('live-clock');
+    const dateEl = _id('live-date');
+
+    if (clockEl) {
+      clockEl.textContent = now.toLocaleTimeString(locale, { hour12: false });
     }
 
-    if (del) {
-      del.textContent = now.toLocaleDateString(locale, {
+    if (dateEl) {
+      dateEl.textContent = now.toLocaleDateString(locale, {
         weekday: 'long',
         year: 'numeric',
         month: 'long',

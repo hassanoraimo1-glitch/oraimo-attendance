@@ -16,6 +16,25 @@ function _getShiftTimes(shift, dayOfWeek) {
   return { start: '10:00', end: '18:00', labelAr: '🌅 صباحي: 10ص – 6م', labelEn: '🌅 Morning: 10AM–6PM' };
 }
 
+// Helper: check if display photos exist for today (required for checkout)
+async function checkTodayDisplay() {
+  try {
+    const today = todayStr();
+
+    const res = await dbGet(
+      'display_photos',
+      `?employee_id=eq.${currentUser.id}&photo_date=eq.${today}&select=*`
+    );
+
+    console.log('DISPLAY CHECK:', res);
+
+    return res && res.length > 0;
+  } catch (e) {
+    console.error('Display check error', e);
+    return false;
+  }
+}
+
 // Helper: ensure shift-info element exists on the home screen.
 // Injects it above the attend button if missing.
 function _ensureShiftInfoEl() {
@@ -263,6 +282,11 @@ async function confirmAttendance() {
       notify(ar ? 'تم تسجيل الدخول ✅' : 'Checked in ✅', 'success');
     } else {
       if (todayAtt && todayAtt.length > 0) {
+        const hasDisplay = await checkTodayDisplay();
+        if (!hasDisplay) {
+          notify(ar ? 'يجب رفع صور الديسبلاي أولاً' : 'Please upload display photos first', 'error');
+          return;
+        }
         await dbPatch('attendance', { check_out: timeStr, selfie_out: capturedPhoto }, `?employee_id=eq.${currentUser.id}&date=eq.${today}`);
         notify(ar ? 'تم تسجيل الخروج ✅' : 'Checked out ✅', 'success');
       }

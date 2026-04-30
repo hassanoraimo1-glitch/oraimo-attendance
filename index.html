@@ -266,13 +266,24 @@ navigator.serviceWorker.register('/sw.js')
 <!-- PROFILE TAB -->
 <div id="emp-profile" class="content" style="display:none">
   <div class="card" style="text-align:center;padding:24px">
-    <div style="position:relative;width:80px;margin:0 auto 12px;cursor:pointer" onclick="document.getElementById('profile-photo-input').click()">
+    <div
+      style="position:relative;width:80px;margin:0 auto 12px;cursor:pointer"
+      onclick="document.getElementById('profile-photo-input').click()"
+    >
       <div id="profile-avatar-wrap" style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;font-size:28px;border:3px solid rgba(0,200,83,.3);overflow:hidden">
         <img id="profile-avatar-img" src="" style="display:none;width:100%;height:100%;object-fit:cover">
         <span id="profile-avatar-icon">👤</span>
       </div>
+
       <div style="position:absolute;bottom:0;right:0;width:26px;height:26px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid var(--black)">📷</div>
-      <input type="file" id="profile-photo-input" accept="image/*" style="display:none" onchange="uploadProfilePhoto(event)">
+
+      <input
+        type="file"
+        id="profile-photo-input"
+        accept="image/*"
+        style="display:none"
+        onchange="uploadProfilePhoto(event)"
+      >
     </div>
 
     <div style="font-size:18px;font-weight:800" id="profile-name">-</div>
@@ -290,7 +301,14 @@ navigator.serviceWorker.register('/sw.js')
     <div id="monthly-report-emp"></div>
   </div>
 
-  <button class="btn btn-outline" onclick="doLogout()" style="margin-top:8px" data-ar="🚪 تسجيل الخروج" data-en="🚪 Sign Out">🚪 تسجيل الخروج</button>
+  <button
+    type="button"
+    class="btn btn-outline"
+    onclick="doLogout()"
+    style="margin-top:8px"
+    data-ar="🚪 تسجيل الخروج"
+    data-en="🚪 Sign Out"
+  >🚪 تسجيل الخروج</button>
 </div>
 
 <!-- DISPLAY TAB (Employee) -->
@@ -305,11 +323,17 @@ navigator.serviceWorker.register('/sw.js')
 
     <div class="photo-previews" id="display-photo-previews"></div>
 
-    <div class="photo-upload-zone" id="display-upload-zone" onclick="openDisplayCamera()">
+    <button
+      type="button"
+      class="photo-upload-zone"
+      id="display-upload-zone"
+      onclick="openDisplayCamera()"
+      style="width:100%;border:none;cursor:pointer;background:transparent"
+    >
       <div style="font-size:28px">📷</div>
       <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
       <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور يومياً</div>
-    </div>
+    </button>
 
     <div class="inp-grp" style="margin-top:10px">
       <label>ملاحظة (اختياري)</label>
@@ -320,28 +344,30 @@ navigator.serviceWorker.register('/sw.js')
       ></textarea>
     </div>
 
-    <button class="btn btn-green" onclick="submitDisplayPhotos()">✅ رفع صور الديسبلاي</button>
+    <button type="button" class="btn btn-green" onclick="submitDisplayPhotos()">✅ رفع صور الديسبلاي</button>
   </div>
 
   <div class="sh" style="margin-top:8px">
     <div class="sh-title">📋 سجل الديسبلاي</div>
   </div>
+
   <div id="display-history-list"></div>
 </div>
 
 <!-- DISPLAY CAMERA MODAL -->
-<div id="display-camera-modal" style="
-  display:none;
-  position:fixed;
-  inset:0;
-  width:100vw;
-  height:100vh;
-  background:#000;
-  z-index:99999;
-  align-items:center;
-  justify-content:center;
-  overflow:hidden;
-">
+<div
+  id="display-camera-modal"
+  style="
+    display:none;
+    position:fixed;
+    inset:0;
+    width:100vw;
+    height:100vh;
+    background:#000;
+    z-index:99999;
+    overflow:hidden;
+  "
+>
   <video
     id="display-camera-video"
     autoplay
@@ -350,67 +376,97 @@ navigator.serviceWorker.register('/sw.js')
     webkit-playsinline
     x-webkit-airplay="allow"
     style="
-      width:100vw;
-      height:100vh;
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
       object-fit:cover;
       background:#000;
       display:block;
+      z-index:1;
+      pointer-events:none;
     "
   ></video>
 
   <canvas id="display-camera-canvas" style="display:none"></canvas>
 
-  <div style="
-    position:absolute;
-    inset:0;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:flex-end;
-    padding:32px 20px calc(32px + env(safe-area-inset-bottom));
-    background:linear-gradient(to top, rgba(0,0,0,.45), rgba(0,0,0,.08), rgba(0,0,0,.2));
-    pointer-events:none;
-  ">
-    <div style="
+  <!-- top title -->
+  <div
+    style="
+      position:absolute;
+      top:0;
+      left:0;
+      right:0;
+      z-index:3;
+      padding:calc(18px + env(safe-area-inset-top)) 16px 12px;
+      text-align:center;
+      background:linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,.12), transparent);
       color:#fff;
       font-size:14px;
-      margin-bottom:auto;
-      margin-top:22px;
       font-weight:800;
-      text-align:center;
-      pointer-events:auto;
-    ">
-      📸 التقط صورة الديسبلاي
-    </div>
+      pointer-events:none;
+    "
+  >
+    📸 التقط صورة الديسبلاي
+  </div>
 
+  <!-- bottom controls -->
+  <div
+    style="
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:0;
+      z-index:4;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-end;
+      padding:20px 20px calc(28px + env(safe-area-inset-bottom));
+      background:linear-gradient(to top, rgba(0,0,0,.58), rgba(0,0,0,.18), transparent);
+    "
+  >
     <button
+      id="display-capture-btn"
       type="button"
       onclick="captureDisplayPhoto()"
+      aria-label="التقاط الصورة"
       style="
-        width:84px;
-        height:84px;
+        width:92px;
+        height:92px;
         border-radius:50%;
         border:6px solid #fff;
         background:rgba(255,255,255,.18);
         box-shadow:0 0 0 6px rgba(255,255,255,.18);
         cursor:pointer;
+        display:block;
+        outline:none;
+        -webkit-appearance:none;
+        appearance:none;
+        touch-action:manipulation;
         pointer-events:auto;
       "
     ></button>
 
-    <div
+    <button
+      id="display-cancel-btn"
+      type="button"
       onclick="closeDisplayCamera()"
       style="
-        color:rgba(255,255,255,.82);
-        font-size:14px;
         margin-top:18px;
-        cursor:pointer;
-        pointer-events:auto;
+        border:none;
+        background:transparent;
+        color:rgba(255,255,255,.92);
+        font-size:14px;
         font-weight:700;
+        cursor:pointer;
+        padding:8px 14px;
+        touch-action:manipulation;
+        pointer-events:auto;
       "
     >
       إلغاء
-    </div>
+    </button>
   </div>
 </div>
 

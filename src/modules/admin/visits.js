@@ -1,9 +1,10 @@
 // ═══════════════════════════════════════════════════════════
-// modules/admin/visits.js — Branch visits (regular + TL)
+// modules/admin/visits.js — Branch visits (employee + team leader + admin review)
 // Fixed:
-// 1) duplicate photo on TL input
-// 2) branches not loaded before select render
-// 3) strong guard to block admin/superadmin from TL visit capture UI
+// 1) TL save 400 by using existing table schema only
+// 2) admin can open visits tab and review all visits
+// 3) team leader still can upload via camera only
+// 4) no duplicate photo issue
 // ═══════════════════════════════════════════════════════════
 
 let visitPhotos = [];
@@ -38,11 +39,19 @@ function _normalizeRole(role) {
   if (r === 'manager') return 'team_leader';
   if (r === 'team_leader') return 'team_leader';
   if (r === 'super_admin') return 'superadmin';
+  if (r === 'superadmin') return 'superadmin';
+  if (r === 'admin') return 'admin';
+  if (r === 'employee') return 'employee';
   return r || 'employee';
 }
 
 function _isTeamLeaderUser() {
   return _normalizeRole(window.currentUser?.role) === 'team_leader';
+}
+
+function _isAdminReviewUser() {
+  const r = _normalizeRole(window.currentUser?.role);
+  return r === 'admin' || r === 'superadmin';
 }
 
 function _getBranchName(branch) {
@@ -129,7 +138,45 @@ function _safeFullImage(src) {
   }
 }
 
-function _visitCard(v) {
+function _getAdminVisitsContainerParts() {
+  const page = _vId('admin-visits');
+  if (!page) return {};
+
+  const glowCard = page.querySelector('.card.card-glow');
+  const shTitle = page.querySelector('.sh .sh-title');
+  const headerText = page.querySelector('div[style*="font-size:16px"]');
+  const statLabels = page.querySelectorAll('.stat-card .stat-label');
+
+  return { page, glowCard, shTitle, headerText, statLabels };
+}
+
+function _applyAdminVisitsReviewMode() {
+  const { glowCard, shTitle, headerText, statLabels } = _getAdminVisitsContainerParts();
+
+  if (glowCard) glowCard.style.display = 'none';
+  if (shTitle) shTitle.textContent = _vLangAr() ? '📋 كل الزيارات هذا الشهر' : '📋 All Visits This Month';
+  if (headerText) headerText.textContent = _vLangAr() ? '📸 كل الزيارات' : '📸 All Visits';
+
+  if (statLabels && statLabels.length >= 2) {
+    statLabels[0].textContent = _vLangAr() ? 'إجمالي الزيارات' : 'Total Visits';
+    statLabels[1].textContent = _vLangAr() ? 'إجمالي الصور' : 'Total Photos';
+  }
+}
+
+function _applyTeamLeaderVisitsMode() {
+  const { glowCard, shTitle, headerText, statLabels } = _getAdminVisitsContainerParts();
+
+  if (glowCard) glowCard.style.display = 'block';
+  if (shTitle) shTitle.textContent = _vLangAr() ? '📋 زياراتي هذا الشهر' : '📋 My Visits This Month';
+  if (headerText) headerText.textContent = _vLangAr() ? '📸 صور الديسبلاي' : '📸 Display Visits';
+
+  if (statLabels && statLabels.length >= 2) {
+    statLabels[0].textContent = _vLangAr() ? 'زيارة هذا الشهر' : 'Visits This Month';
+    statLabels[1].textContent = _vLangAr() ? 'متبقي' : 'Remaining';
+  }
+}
+
+function _visitCard(v, showOwner = false) {
   const photos = [v.photo1, v.photo2, v.photo3].filter(Boolean);
 
   return `
@@ -138,6 +185,7 @@ function _visitCard(v) {
         <div>
           <div class="visit-branch-name">🏪 ${_escapeHtml(v.branch_name || '-')}</div>
           <div class="visit-meta">${_escapeHtml(v.visit_date || '-')}</div>
+          ${showOwner ? `<div class="visit-meta" style="margin-top:4px;color:var(--green)">👤 ${_escapeHtml(v.employee_name || v.manager_name || '-')}</div>` : ''}
         </div>
         <span class="badge badge-green">${photos.length} 📷</span>
       </div>
@@ -216,7 +264,7 @@ function _ensureEmployeeVisitInput() {
 function _ensureTLVisitInput() {
   let input = _vId('tl-visit-input');
 
-  // مهم: لو موجود في HTML، ما نضيفش listener تاني
+  // لو موجود في HTML، ما نضيفش listener ثاني
   if (input) {
     _setCameraAttrs(input);
     return input;
@@ -263,7 +311,7 @@ function openTLVisitCamera() {
   input.click();
 }
 
-// التوافق مع HTML الحالي
+// توافق مع HTML الحالي
 function showPhotoSourceModal(inputId) {
   if (inputId === 'tl-visit-input') {
     openTLVisitCamera();
@@ -388,8 +436,7 @@ async function submitVisit() {
       photo1: visitPhotos[0] || null,
       photo2: visitPhotos[1] || null,
       photo3: visitPhotos[2] || null,
-      visit_date: todayStr(),
-      created_by_role: currentUser.role || 'employee'
+      visit_date: todayStr()
     });
 
     _vNotify('تم حفظ الزيارة ✅', 'Visit saved ✅', 'success');
@@ -448,7 +495,7 @@ async function loadVisitsTab() {
     return;
   }
 
-  el.innerHTML = _sortVisitsDesc(visits).map(_visitCard).join('');
+  el.innerHTML = _sortVisitsDesc(visits).map(v => _visitCard(v, false)).join('');
 }
 
 // ── CLEAR OLD VISIT PHOTOS ────────────────────────────────
@@ -468,7 +515,7 @@ async function clearOldVisitPhotos() {
   console.log(`Cleared photos from ${old.length} old visits`);
 }
 
-// ── TEAM LEADER VISITS ────────────────────────────────────
+// ── TEAM LEADER / ADMIN VISITS TAB ────────────────────────
 async function _populateTLVisitBranchSelect() {
   await _ensureBranchesLoaded();
 
@@ -570,9 +617,8 @@ async function submitTLVisit() {
   }
 
   try {
+    // ✅ مهم: نفس schema الموجودة في branch_visits
     await dbPost('branch_visits', {
-      manager_id: currentUser.id,
-      manager_name: currentUser.name,
       employee_id: currentUser.id,
       employee_name: currentUser.name,
       branch_name: branch,
@@ -580,8 +626,7 @@ async function submitTLVisit() {
       photo1: tlVisitPhotos[0] || null,
       photo2: tlVisitPhotos[1] || null,
       photo3: tlVisitPhotos[2] || null,
-      visit_date: todayStr(),
-      created_by_role: 'team_leader'
+      visit_date: todayStr()
     });
 
     _vNotify('تم حفظ الزيارة ✅', 'Visit saved ✅', 'success');
@@ -598,58 +643,88 @@ async function submitTLVisit() {
 }
 
 async function loadTLVisitsTab() {
+  if (!window.currentUser) return;
+
   const page = _vId('admin-visits');
   const nav = _vId('adm-visits-nav');
+  const doneEl = _vId('tl-vis-done');
+  const remEl = _vId('tl-vis-remain');
+  const cntEl = _vId('tl-visit-count');
+  const el = _vId('tl-visit-history');
 
-  // منع قوي لغير التيم ليدر
-  if (!_isTeamLeaderUser()) {
-    if (nav) nav.style.display = 'none';
-    if (page) page.style.display = 'none';
-    return;
-  }
+  if (!page || !el) return;
 
   if (nav) nav.style.display = 'flex';
-  if (page) page.style.display = 'block';
-
-  await _populateTLVisitBranchSelect();
-  _ensureTLVisitInput();
+  page.style.display = 'block';
 
   const pm = getPayrollMonth();
-
-  const monthRows = await dbGet(
+  const allMonthRows = await dbGet(
     'branch_visits',
     `?visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`
   ).catch(() => []) || [];
 
-  const filtered = _dedupeById(
-    monthRows.filter(v =>
-      String(v.manager_id || '') === String(currentUser.id) ||
-      String(v.employee_id || '') === String(currentUser.id)
-    )
-  );
+  // ── TEAM LEADER MODE ──
+  if (_isTeamLeaderUser()) {
+    _applyTeamLeaderVisitsMode();
+    await _populateTLVisitBranchSelect();
+    _ensureTLVisitInput();
 
-  const visits = _sortVisitsDesc(filtered);
-  const done = visits.length;
-  const remain = Math.max(0, 150 - done);
+    const visits = _sortVisitsDesc(
+      _dedupeById(
+        allMonthRows.filter(v =>
+          String(v.employee_id || '') === String(currentUser.id) ||
+          String(v.manager_id || '') === String(currentUser.id)
+        )
+      )
+    );
 
-  const doneEl = _vId('tl-vis-done');
-  if (doneEl) doneEl.textContent = done;
+    const done = visits.length;
+    const remain = Math.max(0, 150 - done);
 
-  const remEl = _vId('tl-vis-remain');
-  if (remEl) remEl.textContent = remain;
+    if (doneEl) doneEl.textContent = done;
+    if (remEl) remEl.textContent = remain;
+    if (cntEl) cntEl.textContent = done + ' / 150';
 
-  const cntEl = _vId('tl-visit-count');
-  if (cntEl) cntEl.textContent = done + ' / 150';
+    if (!visits.length) {
+      el.innerHTML = `<div class="empty"><div class="empty-icon">📸</div>${_vLangAr() ? 'لا توجد زيارات هذا الشهر' : 'No visits this month'}</div>`;
+      return;
+    }
 
-  const el = _vId('tl-visit-history');
-  if (!el) return;
-
-  if (!visits.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">📸</div>${_vLangAr() ? 'لا توجد زيارات هذا الشهر' : 'No visits this month'}</div>`;
+    el.innerHTML = visits.map(v => _visitCard(v, false)).join('');
     return;
   }
 
-  el.innerHTML = visits.map(_visitCard).join('');
+  // ── ADMIN / SUPERADMIN REVIEW MODE ──
+  if (_isAdminReviewUser()) {
+    _applyAdminVisitsReviewMode();
+
+    const visits = _sortVisitsDesc(_dedupeById(allMonthRows));
+
+    const done = visits.length;
+    const photoCount = visits.reduce((sum, v) => {
+      let c = 0;
+      if (v.photo1) c++;
+      if (v.photo2) c++;
+      if (v.photo3) c++;
+      return sum + c;
+    }, 0);
+
+    if (doneEl) doneEl.textContent = done;
+    if (remEl) remEl.textContent = photoCount;
+    if (cntEl) cntEl.textContent = String(done);
+
+    if (!visits.length) {
+      el.innerHTML = `<div class="empty"><div class="empty-icon">📸</div>${_vLangAr() ? 'لا توجد زيارات هذا الشهر' : 'No visits this month'}</div>`;
+      return;
+    }
+
+    el.innerHTML = visits.map(v => _visitCard(v, true)).join('');
+    return;
+  }
+
+  // أي دور آخر: أخفِ الصفحة
+  if (nav) nav.style.display = 'none';
+  page.style.display = 'none';
 }
 
 // ── INIT ──────────────────────────────────────────────────

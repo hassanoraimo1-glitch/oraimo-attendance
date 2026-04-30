@@ -216,7 +216,6 @@ function _injectVisitsStyles() {
   const style = document.createElement('style');
   style.id = 'visits-module-inline-style';
   style.textContent = `
-    /* hide native file inputs */
     #visit-input,
     #visit-camera-input,
     #tl-visit-input,
@@ -237,7 +236,6 @@ function _injectVisitsStyles() {
       display:block !important;
     }
 
-    /* force old TL cards list hidden if select exists */
     #admin-visits #tl-coverage-branches-list{
       display:none !important;
     }
@@ -538,6 +536,30 @@ function _toggleTLSelectionUI(show) {
   if (info) info.style.display = show ? '' : 'none';
 }
 
+function _setTLCreateVisitSectionVisible(show) {
+  const page = document.getElementById('admin-visits');
+  if (!page) return;
+
+  const createCard =
+    document.getElementById('tl-create-visit-card') ||
+    page.querySelector('.tlv-card') ||
+    document.getElementById('tl-visit-form-wrap')?.closest('.card');
+
+  if (createCard) {
+    createCard.style.display = show ? '' : 'none';
+  }
+
+  const select = document.getElementById('tl-visit-branch');
+  const branchInfo = page.querySelector('.tlv-branch-info');
+  const formWrap = document.getElementById('tl-visit-form-wrap');
+  const list = document.getElementById('tl-coverage-branches-list');
+
+  if (select) _setClosestWrapDisplay(select, show);
+  if (branchInfo) branchInfo.style.display = show ? '' : 'none';
+  if (formWrap) formWrap.style.display = show ? '' : 'none';
+  if (list) list.style.display = 'none';
+}
+
 function _hideTLUploadUI() {
   const select = document.getElementById('tl-visit-branch');
   const fields = [
@@ -590,6 +612,7 @@ function _hideTLUploadUI() {
 
   _toggleTLSelectionUI(false);
   _toggleTLFormDetails(false);
+  _setTLCreateVisitSectionVisible(false);
 }
 
 function _showTLUploadUI() {
@@ -643,6 +666,7 @@ function _showTLUploadUI() {
   if (zone) zone.style.display = 'none';
 
   _toggleTLSelectionUI(true);
+  _setTLCreateVisitSectionVisible(true);
 }
 
 function _setAdminVisitsHeader() {
@@ -1425,6 +1449,7 @@ async function loadTLVisitsTab() {
   // TEAM LEADER
   if (_isTeamLeaderUser()) {
     _showTLUploadUI();
+    _setTLCreateVisitSectionVisible(true);
     _setTLVisitsHeader();
 
     const employeeId = _getCurrentEmployeeId();
@@ -1467,6 +1492,7 @@ async function loadTLVisitsTab() {
   // ADMIN / SUPER ADMIN
   if (_isAdminReviewUser()) {
     _hideTLUploadUI();
+    _setTLCreateVisitSectionVisible(false);
     _setAdminVisitsHeader();
 
     const range = _getPayrollTimestampRange();
@@ -1504,6 +1530,8 @@ async function loadTLVisitsTab() {
 
   // OTHER ROLES
   _hideTLUploadUI();
+  _setTLCreateVisitSectionVisible(false);
+
   if (doneEl) doneEl.textContent = '0';
   if (remEl) remEl.textContent = '0';
   if (cntEl) cntEl.textContent = '0';
@@ -1601,8 +1629,13 @@ function initVisitsModule() {
   if (_isEmployeeUser()) _showEmployeeUploadUI();
   else _hideEmployeeUploadUI();
 
-  if (_isTeamLeaderUser()) _showTLUploadUI();
-  else _hideTLUploadUI();
+  if (_isTeamLeaderUser()) {
+    _showTLUploadUI();
+    _setTLCreateVisitSectionVisible(true);
+  } else {
+    _hideTLUploadUI();
+    _setTLCreateVisitSectionVisible(false);
+  }
 
   populateVisitBranchSelect();
   populateTLCoverageBranches();

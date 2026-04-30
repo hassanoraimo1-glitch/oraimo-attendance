@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// modules/admin/visits.js — Branch visits
+// src/modules/admin/visits.js — Branch visits
 // Employee: upload own visits
 // Team Leader: upload own visits
 // Admin/Superadmin: review all visits only
@@ -38,10 +38,7 @@ function _normalizeRole(role) {
   if (!r) return 'employee';
   if (r === 'super_admin') return 'superadmin';
   if (r === 'superadmin') return 'superadmin';
-
-  // مهم جدًا: manager عندك = admin
   if (r === 'manager') return 'admin';
-
   if (r === 'viewer') return 'admin';
   if (r === 'admin') return 'admin';
   if (r === 'teamleader') return 'team_leader';
@@ -127,10 +124,9 @@ async function _ensureBranchesLoaded() {
     return window.allBranches;
   }
 
-  // fallback مباشر
   try {
-    const direct = await dbGet('branches', '?select=*');
-    if (Array.isArray(direct)) {
+    const direct = await dbGet('branches', '?select=*').catch(() => []);
+    if (Array.isArray(direct) && direct.length) {
       window.allBranches = direct;
       return direct;
     }
@@ -230,14 +226,27 @@ function _findTLUploadCards() {
 function _setTLUploadVisibility(show) {
   _findTLUploadCards().forEach(card => {
     card.style.display = show ? '' : 'none';
+    card.style.pointerEvents = show ? '' : 'none';
   });
 
-  // لو العناصر ليست داخل card واضحة
-  ['tl-visit-branch', 'tl-visit-note', 'tl-visit-zone', 'tl-visit-previews'].forEach(id => {
+  ['tl-visit-branch', 'tl-visit-note', 'tl-visit-zone', 'tl-visit-previews', 'tl-visit-input'].forEach(id => {
     const el = _vId(id);
-    if (el && !el.closest('.card')) {
+    if (!el) return;
+
+    if (!el.closest('.card')) {
       el.style.display = show ? '' : 'none';
     }
+
+    if ('disabled' in el) el.disabled = !show;
+    el.style.pointerEvents = show ? '' : 'none';
+  });
+
+  document.querySelectorAll(
+    '#admin-visits [onclick*="submitTLVisit"], #admin-visits [onclick*="showPhotoSourceModal"], #admin-visits [onclick*="openTLVisitCamera"]'
+  ).forEach(btn => {
+    btn.style.display = show ? '' : 'none';
+    btn.style.pointerEvents = show ? '' : 'none';
+    if ('disabled' in btn) btn.disabled = !show;
   });
 }
 
@@ -365,7 +374,7 @@ function openVisitCamera() {
 
 function openTLVisitCamera() {
   if (!_isTeamLeaderUser()) {
-    _vNotify('فقط التيم ليدر يمكنه رفع الزيارات', 'Only team leader can upload visits', 'error');
+    _vNotify('هذا الجزء للمراجعة فقط', 'This section is review only', 'info');
     return;
   }
 
@@ -577,7 +586,7 @@ async function _populateTLVisitBranchSelect() {
 async function addTLVisitPhoto(e) {
   if (!_isTeamLeaderUser()) {
     if (e?.target) e.target.value = '';
-    _vNotify('فقط التيم ليدر يمكنه رفع الزيارات', 'Only team leader can upload visits', 'error');
+    _vNotify('هذا الجزء للمراجعة فقط', 'This section is review only', 'info');
     return;
   }
 
@@ -634,7 +643,7 @@ function removeTLPhoto(i) {
 
 async function submitTLVisit() {
   if (!_isTeamLeaderUser()) {
-    _vNotify('فقط التيم ليدر يمكنه رفع الزيارات', 'Only team leader can upload visits', 'error');
+    _vNotify('هذا الجزء للمراجعة فقط وليس للرفع', 'This section is review only, not upload', 'info');
     return;
   }
 
@@ -754,7 +763,7 @@ async function loadTLVisitsTab() {
   }
 
   // Admin / Superadmin review only
-  if (role === 'admin' || role === 'superadmin') {
+  if (_isAdminReviewUser()) {
     _applyAdminVisitsReviewMode();
 
     const visits = _sortVisitsDesc(_dedupeById(allMonthRows));

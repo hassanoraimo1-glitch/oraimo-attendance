@@ -9,6 +9,7 @@
 
 let displayPhotos = [];
 let displayCameraStream = null;
+let displayInitRetries = 0;
 
 // ── HELPERS ───────────────────────────────────────────────
 function _dId(id) {
@@ -26,29 +27,58 @@ function _dNotify(arMsg, enMsg, type = 'info') {
 }
 
 function _dNormalizeRole(role) {
-  const r = String(role || '').trim().toLowerCase();
+  const raw = String(role || '').trim().toLowerCase();
+  if (!raw) return '';
 
-  if (!r) return 'employee';
-  if (r === 'super_admin') return 'superadmin';
-  if (r === 'superadmin') return 'superadmin';
-  if (r === 'manager') return 'admin';
-  if (r === 'viewer') return 'admin';
-  if (r === 'admin') return 'admin';
-  if (r === 'teamleader') return 'team_leader';
-  if (r === 'team_leader') return 'team_leader';
-  if (r === 'employee') return 'employee';
+  const r = raw.replace(/[\s-]+/g, '_');
+
+  // super admin
+  if (
+    r === 'super_admin' ||
+    r === 'superadmin' ||
+    r === 'سوبر_ادمن' ||
+    r === 'سوبرادمن'
+  ) return 'superadmin';
+
+  // admin
+  if (
+    r === 'admin' ||
+    r === 'manager' ||
+    r === 'viewer' ||
+    r === 'ادمن' ||
+    r === 'أدمن' ||
+    r === 'مشاهد'
+  ) return 'admin';
+
+  // team leader
+  if (
+    r === 'teamleader' ||
+    r === 'team_leader' ||
+    r === 'teamlead' ||
+    r === 'tl' ||
+    r === 'تيم_ليدر' ||
+    r === 'تيمليدر' ||
+    r === 'قائد_فريق'
+  ) return 'team_leader';
+
+  // employee
+  if (
+    r === 'employee' ||
+    r === 'emp' ||
+    r === 'موظف'
+  ) return 'employee';
 
   return r;
 }
 
 function _dCanUploadDisplay() {
+  if (!window.currentUser) return null; // user not ready yet
   const role = _dNormalizeRole(window.currentUser?.role);
-
-  // المسموح لهم فقط
   return role === 'employee' || role === 'team_leader';
 }
 
 function _dIsReviewOnlyUser() {
+  if (!window.currentUser) return false;
   const role = _dNormalizeRole(window.currentUser?.role);
   return role === 'admin' || role === 'superadmin';
 }
@@ -65,7 +95,9 @@ function _dStopDisplayCameraStream() {
 function _dApplyDisplayUploadPermissions() {
   const canUpload = _dCanUploadDisplay();
 
-  // عناصر الإدخال والرفع
+  // لو currentUser لسه متحملش، ما نقفلش الزر بدري
+  if (canUpload === null) return;
+
   [
     'display-upload-zone',
     'display-note',
@@ -77,10 +109,10 @@ function _dApplyDisplayUploadPermissions() {
     if (id !== 'display-camera-modal') {
       if ('disabled' in el) el.disabled = !canUpload;
       el.style.pointerEvents = canUpload ? '' : 'none';
+      el.style.opacity = canUpload ? '' : '0.6';
     }
   });
 
-  // الأزرار التي تستدعي الرفع / التصوير
   document.querySelectorAll(
     '[onclick*="openDisplayCamera"], [onclick*="captureDisplayPhoto"], [onclick*="submitDisplayPhotos"]'
   ).forEach(btn => {
@@ -89,14 +121,14 @@ function _dApplyDisplayUploadPermissions() {
     btn.style.opacity = canUpload ? '' : '0.6';
   });
 
-  // عند الأدمن لا نسمح بفتح مودال الكاميرا أساسًا
   if (!canUpload) {
     closeDisplayCamera();
   }
 }
 
 function _dSetRemoveButtonsVisibility() {
-  const canUpload = _dCanUploadDisplay();
+  const canUpload = _dCanUploadDisplay() === true;
+
   document.querySelectorAll('#display-photo-previews .photo-preview-del').forEach(btn => {
     btn.style.display = canUpload ? 'flex' : 'none';
     btn.style.pointerEvents = canUpload ? '' : 'none';
@@ -104,7 +136,9 @@ function _dSetRemoveButtonsVisibility() {
 }
 
 function _dEscapeAttr(value) {
-  return String(value ?? '').replace(/'/g, "\\'");
+  return String(value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'");
 }
 
 function _dBuildDisplayPayload() {
@@ -146,10 +180,82 @@ function _dCanvasToOptimizedJpeg(canvas) {
   return optimized.toDataURL('image/jpeg', 0.72);
 }
 
+function _dBindDisplayEvents() {
+  const zone = _dId('display-upload-zone');
+  if (zone && !zone.dataset.boundDisplayZone) {
+    zone.dataset.boundDisplayZone = '1';
+    zone.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      openDisplayCamera();
+    });
+  }
+
+  const modal = _dId('display-camera-modal');
+  if (modal && !modal.dataset.boundDisplayModal) {
+    modal.dataset.boundDisplayModal = '1';
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) {
+        closeDisplayCamera();
+      }
+    });
+  }
+}
+
+function _dEnsureDisplayModuleReady() {
+  _dBindDisplayEvents();
+  _dApplyDisplayUploadPermissions();
+  renderDisplayPreviews();
+
+  if (!window.currentUser && displayInitRetries < 20) {
+    displayInitRetries += 1;
+    setTimeout(() => {
+      _dApplyDisplayUploadPermissions();
+      renderDisplayPreviews();
+    }, 300);
+  }
+}
+
+function _dWaitForVideoReady(video) {
+  return new Promise((resolve) => {
+    if (!video) return resolve(false);
+    if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+      return resolve(true);
+    }
+
+    let done = false;
+    const finish = (ok) => {
+      if (done) return;
+      done = true;
+      cleanup();
+      resolve(ok);
+    };
+
+    const onLoaded = () => finish(true);
+    const onPlaying = () => finish(true);
+    const cleanup = () => {
+      video.removeEventListener('loadedmetadata', onLoaded);
+      video.removeEventListener('playing', onPlaying);
+    };
+
+    video.addEventListener('loadedmetadata', onLoaded);
+    video.addEventListener('playing', onPlaying);
+
+    setTimeout(() => finish(video.videoWidth > 0 && video.videoHeight > 0), 1500);
+  });
+}
+
 // ── CAMERA ────────────────────────────────────────────────
 async function openDisplayCamera() {
-  if (!_dCanUploadDisplay()) {
-    _dNotify('هذا القسم للموظف أو التيم ليدر فقط', 'This section is only for employee or team leader', 'info');
+  _dApplyDisplayUploadPermissions();
+
+  const canUpload = _dCanUploadDisplay();
+  if (canUpload !== true) {
+    _dNotify(
+      'هذا القسم للموظف أو التيم ليدر فقط',
+      'This section is only for employee or team leader',
+      'info'
+    );
     return;
   }
 
@@ -166,7 +272,18 @@ async function openDisplayCamera() {
     return;
   }
 
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    _dNotify(
+      'هذا الجهاز لا يدعم فتح الكاميرا',
+      'This device does not support camera access',
+      'error'
+    );
+    return;
+  }
+
   try {
+    _dStopDisplayCameraStream();
+
     displayCameraStream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: { ideal: 'environment' },
@@ -181,11 +298,15 @@ async function openDisplayCamera() {
     video.setAttribute('autoplay', '');
     video.muted = true;
 
-    await video.play().catch(() => {});
     modal.classList.add('open');
     modal.style.display = 'flex';
+
+    await video.play().catch(() => {});
+    await _dWaitForVideoReady(video);
   } catch (e) {
     try {
+      _dStopDisplayCameraStream();
+
       displayCameraStream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: false
@@ -196,9 +317,11 @@ async function openDisplayCamera() {
       video.setAttribute('autoplay', '');
       video.muted = true;
 
-      await video.play().catch(() => {});
       modal.classList.add('open');
       modal.style.display = 'flex';
+
+      await video.play().catch(() => {});
+      await _dWaitForVideoReady(video);
     } catch (e2) {
       _dNotify(
         `❌ تعذر فتح الكاميرا: ${e2.message || ''}`,
@@ -241,8 +364,13 @@ function roundRect(ctx, x, y, width, height, radius) {
 }
 
 function captureDisplayPhoto() {
-  if (!_dCanUploadDisplay()) {
-    _dNotify('هذا القسم للموظف أو التيم ليدر فقط', 'This section is only for employee or team leader', 'info');
+  const canUpload = _dCanUploadDisplay();
+  if (canUpload !== true) {
+    _dNotify(
+      'هذا القسم للموظف أو التيم ليدر فقط',
+      'This section is only for employee or team leader',
+      'info'
+    );
     return;
   }
 
@@ -340,7 +468,7 @@ function captureDisplayPhoto() {
 
 // التوافق مع الأكواد القديمة
 function addDisplayPhoto() {
-  _dNotify('استخدم الكاميرا فقط لإضافة صورة الديسبلاي', 'Use camera only to add display photo', 'info');
+  openDisplayCamera();
 }
 
 // ── PREVIEWS ──────────────────────────────────────────────
@@ -358,14 +486,14 @@ function renderDisplayPreviews() {
   const zone = _dId('display-upload-zone');
   if (zone) {
     zone.style.display = displayPhotos.length >= 3 ? 'none' : 'block';
-    if (!_dCanUploadDisplay()) zone.style.display = 'none';
+    if (_dCanUploadDisplay() !== true) zone.style.display = 'none';
   }
 
   _dSetRemoveButtonsVisibility();
 }
 
 function removeDisplayPhoto(i) {
-  if (!_dCanUploadDisplay()) {
+  if (_dCanUploadDisplay() !== true) {
     _dNotify('هذا القسم للمشاهدة فقط', 'This section is view only', 'info');
     return;
   }
@@ -384,8 +512,12 @@ async function submitDisplayPhotos() {
     return;
   }
 
-  if (!_dCanUploadDisplay()) {
-    _dNotify('هذا القسم للمشاهدة فقط وليس للرفع', 'This section is view only, not upload', 'info');
+  if (_dCanUploadDisplay() !== true) {
+    _dNotify(
+      'هذا القسم للمشاهدة فقط وليس للرفع',
+      'This section is view only, not upload',
+      'info'
+    );
     return;
   }
 
@@ -459,7 +591,7 @@ async function submitDisplayPhotos() {
 
   _dNotify(
     ar ? `تعذر حفظ الصورة: ${msg || 'خطأ غير معروف'}` : `Failed to save image: ${msg || 'Unknown error'}`,
-    ar ? 'Failed to save image' : 'Failed to save image',
+    ar ? `تعذر حفظ الصورة: ${msg || 'خطأ غير معروف'}` : `Failed to save image: ${msg || 'Unknown error'}`,
     'error'
   );
 }
@@ -487,7 +619,12 @@ async function loadDisplayTab() {
   ).catch(() => []) || [];
 
   if (!records.length) {
-    hist.innerHTML = `<div class="empty"><div class="empty-icon">🖼️</div>${_dLangAr() ? 'لا توجد صور هذا الشهر' : 'No photos this month'}</div>`;
+    hist.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🖼️</div>
+        ${_dLangAr() ? 'لا توجد صور هذا الشهر' : 'No photos this month'}
+      </div>
+    `;
     renderDisplayPreviews();
     return;
   }
@@ -516,7 +653,6 @@ async function loadDisplayTab() {
 
 // ── EXPORTS (Excel/CSV) ───────────────────────────────────
 async function exportToExcel(type) {
-  const ar = _dLangAr();
   const pm = typeof window.getPayrollMonth === 'function'
     ? window.getPayrollMonth()
     : {
@@ -600,8 +736,7 @@ function downloadCSV(csv, filename) {
 
 // ── INIT ──────────────────────────────────────────────────
 function initDisplayModule() {
-  _dApplyDisplayUploadPermissions();
-  renderDisplayPreviews();
+  _dEnsureDisplayModuleReady();
 }
 
 if (document.readyState === 'loading') {
@@ -609,6 +744,14 @@ if (document.readyState === 'loading') {
 } else {
   initDisplayModule();
 }
+
+window.addEventListener('app:ready', () => {
+  _dEnsureDisplayModuleReady();
+});
+
+window.addEventListener('load', () => {
+  _dEnsureDisplayModuleReady();
+});
 
 // ── EXPOSE GLOBALS ────────────────────────────────────────
 window.addDisplayPhoto = addDisplayPhoto;

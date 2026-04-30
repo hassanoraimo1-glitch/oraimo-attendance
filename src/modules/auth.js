@@ -243,17 +243,18 @@ function showApp() {
     }
 
     if (user.role === 'admin' || user.role === 'superadmin') {
-      _openAdminDefaultTab();
+  _openAdminDefaultTab();
 
-      _safeCall('loadAdminDashboard');
-      _safeCall('loadAllEmployees');
-      _safeCall('loadBranches');
-      _safeCall('clearOldVisitPhotos');
-      _safeCall('loadAdminsList');
+  _safeCall('loadAdminDashboard');
+  _safeCall('loadAllEmployees');
+  _safeCall('loadBranches');
+  _safeCall('clearOldVisitPhotos');
+  _safeCall('loadAdminsList');
 
-      const admVisitsNav = _id('adm-visits-nav');
-      if (admVisitsNav) admVisitsNav.style.display = 'none';
-    }
+  const admVisitsNav = _id('adm-visits-nav');
+  if (admVisitsNav) admVisitsNav.style.display = 'flex';
+}
+
 
     if (user.role === 'team_leader') {
       setTimeout(() => {

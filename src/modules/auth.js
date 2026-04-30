@@ -1,11 +1,7 @@
 // ═══════════════════════════════════════════════════════════
 // modules/auth.js — Login, logout, app routing, clock
 // Provides globals: showApp, doLogin, doLogout, startClock
-// Depends on: fallbacks.js (dbGet/dbPost, notify, applyLang)
-// STAGE 1 SAFE PATCH:
-//   • Prevent login UI crashes when some DOM nodes are missing
-//   • Prevent "Connection error" masking UI/render errors
-//   • Keep behavior as-is with minimal safe guards
+// Safe upgraded version
 // ═══════════════════════════════════════════════════════════
 
 // ── SAFE HELPERS ──
@@ -41,6 +37,18 @@ function _safeCall(fnName, ...args) {
   return undefined;
 }
 
+function _hideSplash() {
+  const splash = _id('splash');
+  if (!splash) return;
+
+  splash.style.opacity = '0';
+  splash.style.pointerEvents = 'none';
+
+  setTimeout(() => {
+    splash.style.display = 'none';
+  }, 300);
+}
+
 function _clearSavedUser() {
   try { localStorage.removeItem('oraimo_user'); } catch (_) {}
   try { sessionStorage.removeItem('oraimo_user'); } catch (_) {}
@@ -56,12 +64,52 @@ function _saveUser(u) {
   }
 }
 
+function _getSavedUser() {
+  try {
+    const raw = localStorage.getItem('oraimo_user') || sessionStorage.getItem('oraimo_user');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (_) {
+    return null;
+  }
+}
+
+function _normalizeRole(role) {
+  const r = String(role || '').trim().toLowerCase();
+
+  if (!r) return 'employee';
+  if (r === 'super_admin') return 'superadmin';
+  if (r === 'superadmin') return 'superadmin';
+  if (r === 'manager') return 'team_leader';
+  if (r === 'teamleader') return 'team_leader';
+  if (r === 'team_leader') return 'team_leader';
+  if (r === 'viewer') return 'admin';
+  if (r === 'admin') return 'admin';
+  if (r === 'employee') return 'employee';
+
+  return r;
+}
+
+function _sanitizeUser(userObj) {
+  if (!userObj || typeof userObj !== 'object') return null;
+
+  const clean = { ...userObj };
+  delete clean.password;
+  clean.role = _normalizeRole(clean.role);
+
+  return clean;
+}
+
 function _roleLabel(role) {
-  if (role === 'superadmin') return 'Super Admin';
-  if (role === 'manager') return 'Team Leader';
-  if (role === 'team_leader') return 'Team Leader';
-  if (!role) return 'Admin';
-  return role.charAt(0).toUpperCase() + role.slice(1);
+  const r = _normalizeRole(role);
+  const ar = (window.currentLang || 'ar') === 'ar';
+
+  if (r === 'superadmin') return ar ? 'سوبر أدمن' : 'Super Admin';
+  if (r === 'admin') return ar ? 'أدمن' : 'Admin';
+  if (r === 'team_leader') return ar ? 'تيم ليدر' : 'Team Leader';
+  if (r === 'employee') return ar ? 'موظف' : 'Employee';
+
+  return r;
 }
 
 function _resetAdminUI() {
@@ -73,8 +121,15 @@ function _resetAdminUI() {
   const visNavReset = _id('adm-visits-nav');
   if (visNavReset) visNavReset.style.display = 'none';
 
+  const settingsNav = _id('settings-nav-item');
+  if (settingsNav) settingsNav.style.display = '';
+
+  const branchesNav = _id('adm-branches-nav');
+  if (branchesNav) branchesNav.style.display = '';
+
   _forEach('#report-tabs .tab', t => {
     t.style.display = '';
+    t.classList.remove('active');
   });
 
   ['add-emp-btn', 'add-emp-btn2'].forEach(id => {
@@ -84,13 +139,54 @@ function _resetAdminUI() {
 
   _setDisplay('admins-section', 'none');
 
+  ['dashboard', 'employees', 'branches', 'reports', 'settings', 'visits', 'chat'].forEach(t => {
+    const d = _id('admin-' + t);
+    if (d) d.style.display = 'none';
+  });
+
   const firstNav = document.querySelector('#admin-app .bottom-nav .nav-item');
   if (firstNav) firstNav.classList.add('active');
 }
 
+function _resetEmployeeUI() {
+  _forEach('#emp-app .bottom-nav .nav-item', n => {
+    n.style.display = '';
+    n.classList.remove('active');
+  });
+
+  ['home', 'sales', 'display', 'visits', 'specs', 'chat', 'profile'].forEach(t => {
+    const d = _id('emp-' + t);
+    if (d) d.style.display = 'none';
+  });
+
+  const firstNav = document.querySelector('#emp-app .bottom-nav .nav-item');
+  if (firstNav) firstNav.classList.add('active');
+}
+
+function _openAdminDefaultTab() {
+  const dashNav = document.querySelector('#admin-app .bottom-nav .nav-item');
+  if (typeof window.adminTab === 'function' && dashNav) {
+    window.adminTab('dashboard', dashNav);
+  } else {
+    _setDisplay('admin-dashboard', 'block');
+  }
+}
+
+function _openEmployeeDefaultTab() {
+  const homeNav = document.querySelector('#emp-app .nav-item');
+  if (typeof window.empTab === 'function') {
+    window.empTab('home', homeNav || null);
+  } else {
+    _setDisplay('emp-home', 'block');
+  }
+}
+
 function _finalizeLogin(userObj) {
-  window.currentUser = userObj;
-  _saveUser(window.currentUser);
+  const cleanUser = _sanitizeUser(userObj);
+  if (!cleanUser) throw new Error('Invalid user object');
+
+  window.currentUser = cleanUser;
+  _saveUser(cleanUser);
 
   try {
     showApp();
@@ -106,22 +202,30 @@ function _finalizeLogin(userObj) {
 
 // ── APP ROUTING ──
 function showApp() {
-  const user = window.currentUser;
+  const user = _sanitizeUser(window.currentUser);
   const lang = window.currentLang || 'ar';
 
   if (!user) {
-    return _safeCall('showPage', 'login-page');
+    _safeCall('showPage', 'login-page');
+    _hideSplash();
+    return;
   }
 
-  _safeCall('applyLang');
+  window.currentUser = user;
 
-  // ALWAYS reset admin UI first to prevent bleed from previous session
+  try {
+    _safeCall('applyLang');
+  } catch (e) {
+    console.warn('[applyLang]', e);
+  }
+
   _resetAdminUI();
+  _resetEmployeeUI();
 
-  const isAdmin = ['superadmin', 'admin', 'manager', 'viewer', 'team_leader'].includes(user.role);
+  const isAdminLike = ['superadmin', 'admin', 'team_leader'].includes(user.role);
 
-  if (isAdmin) {
-    _setText('admin-name-top', user.name || 'Admin');
+  if (isAdminLike) {
+    _setText('admin-name-top', user.name || _roleLabel(user.role));
 
     const chip = _id('admin-role-chip');
     if (chip) {
@@ -129,45 +233,25 @@ function showApp() {
       chip.className = 'role-chip badge role-' + (user.role || 'admin');
     }
 
-    if (user.role === 'viewer') _setDisplay('settings-nav-item', 'none');
-    if (user.role === 'superadmin') _setDisplay('admins-section', 'block');
-    if (user.role === 'viewer') _setDisplay('add-emp-btn', 'none');
-
     _safeCall('showPage', 'admin-app');
 
-    // Ensure dashboard visible
-    const dashNav = document.querySelector('#admin-app .bottom-nav .nav-item');
-    if (typeof window.adminTab === 'function' && dashNav) {
-      window.adminTab('dashboard', dashNav);
-    } else {
-      _setDisplay('admin-dashboard', 'block');
+    if (user.role === 'superadmin') {
+      _setDisplay('admins-section', 'block');
     }
 
-    _safeCall('loadAdminDashboard');
-    _safeCall('loadAllEmployees');
-    _safeCall('loadBranches');
-    _safeCall('clearOldVisitPhotos');
+    if (user.role === 'admin' || user.role === 'superadmin') {
+      _openAdminDefaultTab();
 
-    if (user.role === 'superadmin' || user.role === 'admin') {
+      _safeCall('loadAdminDashboard');
+      _safeCall('loadAllEmployees');
+      _safeCall('loadBranches');
+      _safeCall('clearOldVisitPhotos');
       _safeCall('loadAdminsList');
+
+      const admVisitsNav = _id('adm-visits-nav');
+      if (admVisitsNav) admVisitsNav.style.display = 'none';
     }
 
-    // Admin / Superadmin / Viewer
-    if (user.role === 'superadmin' || user.role === 'admin' || user.role === 'viewer') {
-      _forEach('#admin-app .bottom-nav .nav-item', n => {
-        n.style.display = '';
-      });
-      _setDisplay('adm-visits-nav', 'none');
-    }
-
-    // Manager currently has no visits nav here (kept as-is for now)
-    if (user.role === 'manager') {
-      // Stage 2 will unify manager/team_leader visits logic safely
-    }
-
-    setTimeout(() => _safeCall('fixNavDirection'), 100);
-
-    // Team leader special UI
     if (user.role === 'team_leader') {
       setTimeout(() => {
         const admVisNav = _id('adm-visits-nav');
@@ -189,63 +273,65 @@ function showApp() {
           if (el) el.style.display = 'none';
         });
 
-        const visNavEl = _id('adm-visits-nav');
-        if (visNavEl) {
-          _forEach('#admin-app .nav-item', n => n.classList.remove('active'));
-          visNavEl.classList.add('active');
+        _forEach('#admin-app .nav-item', n => n.classList.remove('active'));
+        if (admVisNav) admVisNav.classList.add('active');
 
-          ['dashboard', 'employees', 'branches', 'reports', 'settings'].forEach(t => {
-            const d = _id('admin-' + t);
-            if (d) d.style.display = 'none';
-          });
+        ['dashboard', 'employees', 'branches', 'reports', 'settings', 'chat'].forEach(t => {
+          const d = _id('admin-' + t);
+          if (d) d.style.display = 'none';
+        });
 
-          const vd = _id('admin-visits');
-          if (vd) vd.style.display = 'block';
+        const vd = _id('admin-visits');
+        if (vd) vd.style.display = 'block';
 
-          _safeCall('loadTLVisitsTab');
-        }
-      }, 200);
-    }
-  } else {
-    _safeCall('showPage', 'emp-app');
-
-    // Ensure home tab visible
-    if (typeof window.empTab === 'function') {
-      const homeNav = document.querySelector('#emp-app .nav-item');
-      window.empTab('home', homeNav);
-    } else {
-      _setDisplay('emp-home', 'block');
+        _safeCall('loadTLVisitsTab');
+        _safeCall('loadAllEmployees');
+        _safeCall('loadBranches');
+      }, 120);
     }
 
-    _setText('emp-name-top', user.name || '');
-    _setText('profile-name', user.name || '');
-    _setText('profile-branch', user.branch || '');
-
-    const dayOffIndex = Number(user.day_off);
-    const dayLabel = lang === 'ar'
-      ? ((window.DAYS_AR && window.DAYS_AR[dayOffIndex]) || '-')
-      : ((window.DAYS_EN && window.DAYS_EN[dayOffIndex]) || '-');
-
-    _setHTML(
-      'profile-dayoff',
-      `<span class="badge badge-blue">${lang === 'ar' ? 'الإجازة:' : 'Day Off:'} ${dayLabel || '-'}</span>`
-    );
-
-    _safeCall('loadEmpData');
-    _safeCall('renderProducts');
-    _safeCall('loadModelTargetAlert');
-
-    // Hide visits tab in employee app
-    const visNav = document.querySelector('#emp-app .nav-item[onclick*="visits"]');
-    if (visNav) visNav.style.display = 'none';
+    setTimeout(() => _safeCall('fixNavDirection'), 100);
+    _hideSplash();
+    return;
   }
 
-  // Register OneSignal for all users if available
+  // employee
+  _safeCall('showPage', 'emp-app');
+  _openEmployeeDefaultTab();
+
+  _setText('emp-name-top', user.name || '');
+  _setText('profile-name', user.name || '');
+  _setText('profile-branch', user.branch || user.branch_name || '');
+
+  const dayOffIndex = Number(user.day_off);
+  const dayLabel = lang === 'ar'
+    ? ((window.DAYS_AR && window.DAYS_AR[dayOffIndex]) || '-')
+    : ((window.DAYS_EN && window.DAYS_EN[dayOffIndex]) || '-');
+
+  _setHTML(
+    'profile-dayoff',
+    `<span class="badge badge-blue">${lang === 'ar' ? 'الإجازة:' : 'Day Off:'} ${dayLabel || '-'}</span>`
+  );
+
+  _safeCall('loadEmpData');
+  _safeCall('renderProducts');
+  _safeCall('loadModelTargetAlert');
+  _safeCall('loadEmpDailyLog');
+  _safeCall('loadEmpMonthlyReport');
+  _safeCall('loadDisplayHistory');
+  _safeCall('loadVisitHistory');
+  _safeCall('loadProfilePhoto');
+
+  // hide visits nav in normal employee app if exists in future
+  const visNav = document.querySelector('#emp-app .nav-item[onclick*="visits"]');
+  if (visNav) visNav.style.display = 'none';
+
   if (typeof window.registerOneSignalUser === 'function') {
     try { window.registerOneSignalUser(); } catch (_) {}
   }
 
   setTimeout(() => _safeCall('fixNavDirection'), 100);
+  _hideSplash();
 }
 
 // ── AUTH ──
@@ -281,52 +367,68 @@ async function doLogin() {
   try {
     // Hardcoded superadmin
     if (username === 'admin' && pass === 'Oraimo@Admin2026') {
-      _finalizeLogin({ role: 'superadmin', name: 'Super Admin' });
+      _finalizeLogin({
+        id: 'superadmin-local',
+        role: 'superadmin',
+        name: 'Super Admin',
+        username: 'admin'
+      });
       return;
     }
 
     const uname = encodeURIComponent(username);
 
     // Admins
-    let admRes;
+    let admRes = [];
     try {
       admRes = await dbGet('admins', `?username=eq.${uname}&select=*`);
-    } catch (_) {
+    } catch (e) {
+      console.warn('[admins login query]', e);
       admRes = [];
     }
 
-    const admMatch = (admRes || []).find(r => r.password === pass);
+    const admMatch = (admRes || []).find(r => String(r.password || '') === pass);
     if (admMatch) {
-      const adminUser = { ...admMatch, role: admMatch.role || 'admin' };
-      delete adminUser.password;
+      const adminUser = _sanitizeUser({
+        ...admMatch,
+        role: admMatch.role || 'admin'
+      });
+
       _finalizeLogin(adminUser);
       return;
     }
 
     // Employees
-    let empRes;
+    let empRes = [];
     try {
       empRes = await dbGet('employees', `?username=eq.${uname}&select=*`);
-    } catch (_) {
+    } catch (e) {
+      console.warn('[employees login query]', e);
       empRes = [];
     }
 
-    const empMatch = (empRes || []).find(r => r.password === pass);
+    const empMatch = (empRes || []).find(r => String(r.password || '') === pass);
+
     if (!empMatch) {
       if (errEl) errEl.textContent = ar ? 'بيانات دخول غير صحيحة' : 'Invalid credentials';
       return;
     }
 
-    const empUser = { ...empMatch, role: empMatch.role || 'employee' };
-    delete empUser.password;
+    const empUser = _sanitizeUser({
+      ...empMatch,
+      role: empMatch.role || 'employee'
+    });
+
     _finalizeLogin(empUser);
   } catch (e) {
     console.error('[login]', e);
 
     const uiError =
       e &&
-      (e.name === 'TypeError' ||
-       /Cannot read|undefined|null|classList|style|textContent|innerHTML/.test(String(e.message || '')));
+      (
+        e.name === 'TypeError' ||
+        /Cannot read|undefined|null|classList|style|textContent|innerHTML/.test(String(e.message || ''))
+      );
 
     if (errEl) {
       errEl.textContent = uiError
@@ -344,7 +446,7 @@ async function doLogin() {
 }
 
 function doLogout() {
-  // Stop active camera
+  // stop active camera
   if (window.videoStream) {
     try {
       window.videoStream.getTracks().forEach(t => t.stop());
@@ -352,7 +454,7 @@ function doLogout() {
     window.videoStream = null;
   }
 
-  // Stop chat polling / realtime unsub
+  // stop chat subscription / interval
   if (window.chatSubscription) {
     try {
       if (typeof window.chatSubscription === 'function') window.chatSubscription();
@@ -361,10 +463,14 @@ function doLogout() {
     window.chatSubscription = null;
   }
 
-  window.currentChat = null;
+  // close modals if helper exists
+  try {
+    document.querySelectorAll('.modal-overlay.open, #camera-modal.open, #selfie-fullscreen.open').forEach(el => {
+      el.classList.remove('open');
+    });
+  } catch (_) {}
 
-  // Clear session
-  _clearSavedUser();
+  window.currentChat = null;
   window.currentUser = null;
   window._isSubmitting = false;
 
@@ -373,31 +479,13 @@ function doLogout() {
   window.allEmployees = [];
   window.managerTeamData = {};
 
-  // Reset admin nav
-  _forEach('#admin-app .bottom-nav .nav-item', n => {
-    n.style.display = '';
-    n.classList.remove('active');
-  });
+  _clearSavedUser();
+  _resetAdminUI();
+  _resetEmployeeUI();
 
   const visNav = _id('adm-visits-nav');
   if (visNav) visNav.style.display = 'none';
 
-  // Reset tabs
-  ['dashboard', 'employees', 'branches', 'reports', 'settings', 'visits', 'chat'].forEach(t => {
-    const d = _id('admin-' + t);
-    if (d) d.style.display = 'none';
-  });
-
-  _forEach('#report-tabs .tab', t => {
-    t.style.display = '';
-  });
-
-  ['add-emp-btn', 'add-emp-btn2'].forEach(id => {
-    const e = _id(id);
-    if (e) e.style.display = '';
-  });
-
-  // Clear login form
   const lu = _id('login-user');
   if (lu) lu.value = '';
 
@@ -407,33 +495,102 @@ function doLogout() {
   const le = _id('login-err');
   if (le) le.textContent = '';
 
+  const loginBtn = document.querySelector('#login-page .btn-green');
+  if (loginBtn) {
+    loginBtn.disabled = false;
+    loginBtn.textContent = (window.currentLang || 'ar') === 'ar' ? 'تسجيل الدخول' : 'Sign In';
+  }
+
   _safeCall('showPage', 'login-page');
+  _hideSplash();
 }
 
 // ── CLOCK ──
 function startClock() {
+  if (window._authClockStarted) return;
+  window._authClockStarted = true;
+
   function tick() {
     const now = new Date();
     const locale = (window.currentLang || 'ar') === 'ar' ? 'ar-EG' : 'en-US';
+
     const el = _id('live-clock');
     const del = _id('live-date');
+    const splashClock = _id('splash-clock');
 
-    if (el) {
-      el.textContent = now.toLocaleTimeString(locale, { hour12: false });
-    }
+    const timeText = now.toLocaleTimeString(locale, { hour12: false });
+    const dateText = now.toLocaleDateString(locale, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
 
-    if (del) {
-      del.textContent = now.toLocaleDateString(locale, {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    }
+    if (el) el.textContent = timeText;
+    if (del) del.textContent = dateText;
+    if (splashClock) splashClock.textContent = timeText.substring(0, 5);
   }
 
   tick();
-  setInterval(tick, 1000);
+  window._authClockTimer = setInterval(tick, 1000);
 }
 
-// ── EMP DATA ──
+// ── RESTORE SESSION ──
+function restoreSavedSession() {
+  try {
+    if (window.currentUser) {
+      showApp();
+      return true;
+    }
+
+    const saved = _getSavedUser();
+    if (!saved) {
+      _safeCall('showPage', 'login-page');
+      _hideSplash();
+      return false;
+    }
+
+    const clean = _sanitizeUser(saved);
+    if (!clean) {
+      _clearSavedUser();
+      _safeCall('showPage', 'login-page');
+      _hideSplash();
+      return false;
+    }
+
+    window.currentUser = clean;
+    showApp();
+    return true;
+  } catch (e) {
+    console.error('[restoreSavedSession]', e);
+    _clearSavedUser();
+    window.currentUser = null;
+    _safeCall('showPage', 'login-page');
+    _hideSplash();
+    return false;
+  }
+}
+
+// ── AUTO INIT ──
+(function initAuthModule() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      startClock();
+      setTimeout(() => {
+        restoreSavedSession();
+      }, 0);
+    });
+  } else {
+    startClock();
+    setTimeout(() => {
+      restoreSavedSession();
+    }, 0);
+  }
+})();
+
+// ── EXPOSE GLOBALS ──
+window.showApp = showApp;
+window.doLogin = doLogin;
+window.doLogout = doLogout;
+window.startClock = startClock;
+window.restoreSavedSession = restoreSavedSession;

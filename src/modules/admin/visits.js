@@ -6,13 +6,13 @@
 //   addTLVisitPhoto, renderTLPreviews, removeTLPhoto, submitTLVisit,
 //   loadTLVisitsTab, openVisitCamera, openTLVisitCamera, showPhotoSourceModal,
 //   populateTLCoverageBranches, populateTLVisitBranchSelect,
-//   selectTLCoverageBranch, handleTLBranchSelectChange
+//   selectTLCoverageBranch, handleTLBranchSelectChange, initVisitsModule
 // State:
 //   visitPhotos, tlVisitPhotos, tlCoverageBranches, tlCoverageBranchId
 // ═══════════════════════════════════════════════════════════
 
 let visitPhotos = [];
-let tlVisitPhotos = []; // compatibility state
+let tlVisitPhotos = [];
 let tlCoverageBranches = [];
 let tlCoverageBranchId = null;
 let tlBeforePhoto = null;
@@ -80,6 +80,11 @@ function _escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function _safeImg(url, cls = 'visit-photo', alt = '') {
+  if (!url) return '';
+  return `<img class="${cls}" src="${_escapeAttr(url)}" alt="${_escapeAttr(alt)}" onclick="fullSelfie('${_escapeAttr(url)}')" onerror="this.style.display='none'">`;
 }
 
 function _setCameraAttrs(inputEl) {
@@ -168,7 +173,7 @@ function _setText(id, value) {
 
 function _setClosestWrapDisplay(el, show) {
   if (!el) return;
-  const wrap = el.closest('.form-group, .field, .input-group, .row, .col, .card, .section');
+  const wrap = el.closest('.inp-grp, .form-group, .field, .input-group, .row, .col, .card, .section');
   if (wrap) wrap.style.display = show ? '' : 'none';
   else el.style.display = show ? '' : 'none';
 }
@@ -205,6 +210,263 @@ function _getPayrollTimestampRange() {
   };
 }
 
+function _injectVisitsStyles() {
+  if (document.getElementById('visits-module-inline-style')) return;
+
+  const style = document.createElement('style');
+  style.id = 'visits-module-inline-style';
+  style.textContent = `
+    /* hide native file inputs */
+    #visit-input,
+    #visit-camera-input,
+    #tl-visit-input,
+    #tl-before-input,
+    #tl-after-input,
+    #tl-before-photo-input,
+    #tl-after-photo-input,
+    .force-hidden-file{
+      position:fixed !important;
+      left:-99999px !important;
+      top:auto !important;
+      width:1px !important;
+      height:1px !important;
+      opacity:0 !important;
+      pointer-events:none !important;
+      z-index:-1 !important;
+      overflow:hidden !important;
+      display:block !important;
+    }
+
+    /* force old TL cards list hidden if select exists */
+    #admin-visits #tl-coverage-branches-list{
+      display:none !important;
+    }
+
+    #admin-visits .inp-grp label,
+    #emp-visits .inp-grp label{
+      display:block;
+      font-size:11px;
+      color:var(--muted);
+      font-weight:700;
+      margin-bottom:8px;
+    }
+
+    #admin-visits select,
+    #admin-visits input[type="text"],
+    #admin-visits input[type="number"],
+    #admin-visits textarea,
+    #emp-visits select,
+    #emp-visits textarea{
+      width:100%;
+      box-sizing:border-box;
+      background:var(--card2);
+      color:var(--text);
+      border:1.5px solid var(--border);
+      border-radius:12px;
+      padding:12px 14px;
+      font-family:Cairo,sans-serif;
+      font-size:13px;
+      outline:none;
+    }
+
+    #admin-visits select:focus,
+    #admin-visits input[type="text"]:focus,
+    #admin-visits input[type="number"]:focus,
+    #admin-visits textarea:focus,
+    #emp-visits select:focus,
+    #emp-visits textarea:focus{
+      border-color:var(--green);
+      box-shadow:0 0 0 3px rgba(0,200,83,.10);
+    }
+
+    .visit-card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:12px;
+      margin-bottom:12px;
+      box-shadow:0 6px 18px rgba(0,0,0,.15);
+    }
+
+    .coverage-card{
+      overflow:hidden;
+    }
+
+    .visit-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:10px;
+      margin-bottom:8px;
+    }
+
+    .visit-branch-name{
+      font-size:14px;
+      font-weight:800;
+      margin-bottom:3px;
+      word-break:break-word;
+    }
+
+    .visit-meta{
+      font-size:11px;
+      color:var(--muted);
+      margin-bottom:2px;
+      word-break:break-word;
+    }
+
+    .visit-note{
+      background:rgba(255,255,255,.03);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px;
+      font-size:12px;
+      margin-top:8px;
+      word-break:break-word;
+    }
+
+    .visit-photos-row{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:10px;
+      margin-top:10px;
+    }
+
+    .visit-photo{
+      width:100%;
+      height:130px;
+      object-fit:cover;
+      border-radius:12px;
+      border:1px solid var(--border);
+      cursor:pointer;
+      background:#111;
+    }
+
+    .visit-stats{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:8px;
+      margin-top:8px;
+    }
+
+    .stat-box{
+      background:rgba(255,255,255,.03);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:9px 10px;
+    }
+
+    .stat-box .label{
+      display:block;
+      font-size:10px;
+      color:var(--muted);
+      margin-bottom:4px;
+    }
+
+    .stat-box .value{
+      display:block;
+      font-size:13px;
+      font-weight:800;
+      word-break:break-word;
+    }
+
+    .photo-preview-wrap{
+      position:relative;
+      width:88px;
+      height:88px;
+      border-radius:12px;
+      overflow:hidden;
+      border:1px solid var(--border);
+      background:var(--card2);
+    }
+
+    .photo-preview-wrap img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+
+    .photo-preview-del{
+      position:absolute;
+      top:4px;
+      right:4px;
+      width:22px;
+      height:22px;
+      border:none;
+      border-radius:50%;
+      background:rgba(255,59,59,.95);
+      color:#fff;
+      font-size:12px;
+      cursor:pointer;
+    }
+
+    .photo-preview-label{
+      position:absolute;
+      left:6px;
+      bottom:6px;
+      font-size:10px;
+      font-weight:700;
+      background:rgba(0,0,0,.6);
+      color:#fff;
+      padding:2px 6px;
+      border-radius:8px;
+    }
+
+    .photo-previews{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      min-height:8px;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:4px;
+      font-size:10px;
+      padding:5px 8px;
+      border-radius:999px;
+      font-weight:800;
+      border:1px solid var(--border);
+      white-space:nowrap;
+    }
+
+    .badge-green{
+      background:rgba(0,200,83,.12);
+      color:var(--green);
+      border-color:rgba(0,200,83,.25);
+    }
+
+    .badge.a, .badge.b, .badge.c, .badge.s{
+      background:rgba(255,255,255,.04);
+      color:var(--text);
+    }
+
+    .empty{
+      text-align:center;
+      padding:18px 12px;
+      border:1px dashed var(--border);
+      border-radius:14px;
+      color:var(--muted);
+      background:rgba(255,255,255,.02);
+    }
+
+    .empty-icon{
+      font-size:24px;
+      margin-bottom:6px;
+    }
+
+    @media (max-width: 768px){
+      .visit-photos-row,
+      .visit-stats{
+        grid-template-columns:1fr;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function _hideEmployeeUploadUI() {
   const branch = document.getElementById('visit-branch-select');
   const note = document.getElementById('visit-note-input');
@@ -221,7 +483,6 @@ function _hideEmployeeUploadUI() {
   }
   if (input) {
     input.disabled = true;
-    input.style.pointerEvents = 'none';
   }
   if (zone) zone.style.display = 'none';
 
@@ -253,7 +514,6 @@ function _showEmployeeUploadUI() {
   }
   if (input) {
     input.disabled = false;
-    input.style.pointerEvents = '';
   }
 
   document.querySelectorAll(
@@ -270,55 +530,119 @@ function _showEmployeeUploadUI() {
   _setClosestWrapDisplay(note, true);
 }
 
+function _toggleTLSelectionUI(show) {
+  const select = document.getElementById('tl-visit-branch');
+  if (select) _setClosestWrapDisplay(select, show);
+
+  const info = document.querySelector('#admin-visits .tlv-branch-info');
+  if (info) info.style.display = show ? '' : 'none';
+}
+
 function _hideTLUploadUI() {
   const select = document.getElementById('tl-visit-branch');
-  const note = document.getElementById('tl-visit-note') || document.getElementById('tl-notes');
-  const zone = document.getElementById('tl-visit-zone');
-  const oldInput = document.getElementById('tl-visit-input');
-  const beforeInput = document.getElementById('tl-before-input') || document.getElementById('tl-before-photo-input');
-  const afterInput = document.getElementById('tl-after-input') || document.getElementById('tl-after-photo-input');
+  const fields = [
+    'tl-key-model',
+    'tl-stock-qty',
+    'tl-bestseller-earbuds',
+    'tl-bestseller-watch',
+    'tl-notes',
+    'tl-visit-note'
+  ];
 
-  [select, note, oldInput, beforeInput, afterInput].forEach(el => {
+  if (select) {
+    select.disabled = true;
+    select.style.pointerEvents = 'none';
+  }
+
+  fields.forEach(id => {
+    const el = document.getElementById(id);
     if (!el) return;
     el.disabled = true;
     el.style.pointerEvents = 'none';
   });
 
+  [
+    'tl-before-input',
+    'tl-after-input',
+    'tl-before-photo-input',
+    'tl-after-photo-input',
+    'tl-visit-input'
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = true;
+  });
+
+  [
+    'tl-before-photo',
+    'tl-after-photo',
+    'tl-save-visit-btn',
+    'tl-submit-visit-btn'
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if ('disabled' in el) el.disabled = true;
+    el.style.pointerEvents = 'none';
+    el.style.display = 'none';
+  });
+
+  const zone = document.getElementById('tl-visit-zone');
   if (zone) zone.style.display = 'none';
 
-  document.querySelectorAll(
-    '[onclick*="submitTLVisit"], [onclick*="openTLVisitCamera"], [onclick*="showPhotoSourceModal(\'tl"], [onclick*="showPhotoSourceModal(&quot;tl"]'
-  ).forEach(btn => {
-    if ('disabled' in btn) btn.disabled = true;
-    btn.style.pointerEvents = 'none';
-    btn.style.display = 'none';
-  });
+  _toggleTLSelectionUI(false);
+  _toggleTLFormDetails(false);
 }
 
 function _showTLUploadUI() {
   const select = document.getElementById('tl-visit-branch');
-  const note = document.getElementById('tl-visit-note') || document.getElementById('tl-notes');
-  const zone = document.getElementById('tl-visit-zone');
-  const oldInput = document.getElementById('tl-visit-input');
-  const beforeInput = document.getElementById('tl-before-input') || document.getElementById('tl-before-photo-input');
-  const afterInput = document.getElementById('tl-after-input') || document.getElementById('tl-after-photo-input');
+  const fields = [
+    'tl-key-model',
+    'tl-stock-qty',
+    'tl-bestseller-earbuds',
+    'tl-bestseller-watch',
+    'tl-notes',
+    'tl-visit-note'
+  ];
 
-  [select, note, oldInput, beforeInput, afterInput].forEach(el => {
+  if (select) {
+    select.disabled = false;
+    select.style.pointerEvents = '';
+  }
+
+  fields.forEach(id => {
+    const el = document.getElementById(id);
     if (!el) return;
     el.disabled = false;
+    el.style.pointerEvents = '';
+  });
+
+  [
+    'tl-before-input',
+    'tl-after-input',
+    'tl-before-photo-input',
+    'tl-after-photo-input',
+    'tl-visit-input'
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = false;
+  });
+
+  [
+    'tl-before-photo',
+    'tl-after-photo',
+    'tl-save-visit-btn',
+    'tl-submit-visit-btn'
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if ('disabled' in el) el.disabled = false;
     el.style.pointerEvents = '';
     el.style.display = '';
   });
 
-  document.querySelectorAll(
-    '[onclick*="submitTLVisit"], [onclick*="openTLVisitCamera"], [onclick*="showPhotoSourceModal(\'tl"], [onclick*="showPhotoSourceModal(&quot;tl"]'
-  ).forEach(btn => {
-    if ('disabled' in btn) btn.disabled = false;
-    btn.style.pointerEvents = '';
-    btn.style.display = '';
-  });
+  const zone = document.getElementById('tl-visit-zone');
+  if (zone) zone.style.display = 'none';
 
-  if (zone) zone.style.display = 'block';
+  _toggleTLSelectionUI(true);
 }
 
 function _setAdminVisitsHeader() {
@@ -372,7 +696,7 @@ function _renderVisitCard(v, showOwner = false) {
       ${v.note ? `<div class="visit-note">📝 ${_escapeHtml(v.note)}</div>` : ''}
       ${photos.length ? `
         <div class="visit-photos-row">
-          ${photos.map(src => `<img class="visit-photo" src="${_escapeAttr(src)}" onclick="fullSelfie('${_escapeAttr(src)}')">`).join('')}
+          ${photos.map(src => _safeImg(src, 'visit-photo')).join('')}
         </div>
       ` : ''}
     </div>
@@ -399,16 +723,16 @@ function compressImageFile(file, callback) {
 
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const maxW = 800;
+      const maxW = 1000;
       const scale = Math.min(1, maxW / img.width);
 
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
 
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      const compressed = canvas.toDataURL('image/jpeg', 0.35);
+      const compressed = canvas.toDataURL('image/jpeg', 0.6);
       callback(compressed);
     };
 
@@ -455,9 +779,14 @@ function _renderTLCoverageBranchSelect(selectEl, rows) {
     '<option value="">-- اختر الفرع --</option>' +
     rows.map(row => `
       <option value="${row.id}" ${Number(row.id) === Number(tlCoverageBranchId) ? 'selected' : ''}>
-        ${_escapeHtml(row.account_name || '')} - ${_escapeHtml(row.branch_name || '')}
+        ${_escapeHtml(row.account_name || '')} - ${_escapeHtml(row.branch_name || '')}${row.segment ? ` (${_escapeHtml(row.segment)})` : ''}
       </option>
     `).join('');
+
+  if (!selectEl.dataset.boundChange) {
+    selectEl.addEventListener('change', handleTLBranchSelectChange);
+    selectEl.dataset.boundChange = '1';
+  }
 }
 
 function _toggleTLFormDetails(show) {
@@ -488,16 +817,23 @@ function _toggleTLFormDetails(show) {
 }
 
 function _fillTLStaticDisplays(row) {
-  if (!row) return;
-
   const setText = (id, val) => {
     const el = document.getElementById(id);
-    if (el) el.textContent = val ?? '';
+    if (el) el.textContent = val ?? '-';
   };
 
-  setText('tl-account-display', row.account_name || '');
-  setText('tl-branch-display', row.branch_name || '');
-  setText('tl-segment-display', row.segment || '');
+  if (!row) {
+    setText('tl-account-display', '-');
+    setText('tl-branch-display', '-');
+    setText('tl-segment-display', '-');
+    setText('tl-march-sales-display', '-');
+    setText('tl-april-sales-display', '-');
+    return;
+  }
+
+  setText('tl-account-display', row.account_name || '-');
+  setText('tl-branch-display', row.branch_name || '-');
+  setText('tl-segment-display', row.segment || '-');
   setText('tl-march-sales-display', row.march_sales ?? '-');
   setText('tl-april-sales-display', row.april_sales ?? '-');
 }
@@ -525,18 +861,14 @@ function _selectTLCoverageRow(row) {
 
 function _resetTLSelection() {
   tlCoverageBranchId = null;
+
   const listItems = document.querySelectorAll('.coverage-branch-item');
   listItems.forEach(item => item.classList.remove('selected'));
 
   const selectEl = document.getElementById('tl-visit-branch');
   if (selectEl) selectEl.value = '';
 
-  ['tl-account-display', 'tl-branch-display', 'tl-segment-display', 'tl-march-sales-display', 'tl-april-sales-display']
-    .forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = '';
-    });
-
+  _fillTLStaticDisplays(null);
   _toggleTLFormDetails(false);
 }
 
@@ -544,10 +876,13 @@ async function populateTLCoverageBranches() {
   const container = document.getElementById('tl-coverage-branches-list');
   const selectEl = document.getElementById('tl-visit-branch');
 
+  if (container) container.style.display = 'none';
+
   if (!_isTeamLeaderUser()) {
     if (container) container.innerHTML = '';
     if (selectEl) selectEl.innerHTML = '<option value="">-- اختر الفرع --</option>';
     tlCoverageBranches = [];
+    _resetTLSelection();
     return;
   }
 
@@ -562,6 +897,7 @@ async function populateTLCoverageBranches() {
     }
     console.warn('No employee id found in currentUser:', currentUser);
     tlCoverageBranches = [];
+    _resetTLSelection();
     return;
   }
 
@@ -587,13 +923,18 @@ async function populateTLCoverageBranches() {
       return;
     }
 
-    // keep selection if still valid
     const selectedRow = _getSelectedTLCoverageRow();
     if (selectedRow) {
       _selectTLCoverageRow(selectedRow);
-    } else {
-      _resetTLSelection();
+      return;
     }
+
+    if (tlCoverageBranches.length === 1) {
+      _selectTLCoverageRow(tlCoverageBranches[0]);
+      return;
+    }
+
+    _resetTLSelection();
   } catch (e) {
     console.error('Failed to load coverage branches:', e);
     tlCoverageBranches = [];
@@ -815,7 +1156,6 @@ function _inferTLPhotoKind(inputEl) {
   if (id.includes('before')) return 'before';
   if (id.includes('after')) return 'after';
 
-  // old compatibility input = after photo
   return 'after';
 }
 
@@ -912,7 +1252,7 @@ function renderTLPreviews() {
   }
 
   const zone = document.getElementById('tl-visit-zone');
-  if (zone) zone.style.display = _isTeamLeaderUser() ? 'block' : 'none';
+  if (zone) zone.style.display = 'none';
 }
 
 function removeTLPhoto(which) {
@@ -1064,8 +1404,8 @@ function _renderTLVisitCard(v, showOwner = false) {
 
       ${(v.before_photo_url || v.after_photo_url) ? `
         <div class="visit-photos-row">
-          ${v.before_photo_url ? `<img class="visit-photo" src="${_escapeAttr(v.before_photo_url)}" onclick="fullSelfie('${_escapeAttr(v.before_photo_url)}')">` : ''}
-          ${v.after_photo_url ? `<img class="visit-photo" src="${_escapeAttr(v.after_photo_url)}" onclick="fullSelfie('${_escapeAttr(v.after_photo_url)}')">` : ''}
+          ${v.before_photo_url ? _safeImg(v.before_photo_url, 'visit-photo', 'before') : ''}
+          ${v.after_photo_url ? _safeImg(v.after_photo_url, 'visit-photo', 'after') : ''}
         </div>
       ` : ''}
     </div>
@@ -1255,6 +1595,7 @@ function showPhotoSourceModal(inputId) {
 
 // ── INIT ─────────────────────────────────────────────────
 function initVisitsModule() {
+  _injectVisitsStyles();
   _ensureCameraAttrsOnKnownInputs();
 
   if (_isEmployeeUser()) _showEmployeeUploadUI();
@@ -1275,12 +1616,6 @@ function initVisitsModule() {
   }
 
   _toggleTLFormDetails(false);
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initVisitsModule);
-} else {
-  initVisitsModule();
 }
 
 // ── GLOBALS ──────────────────────────────────────────────
@@ -1306,3 +1641,15 @@ window.populateTLCoverageBranches = populateTLCoverageBranches;
 window.populateTLVisitBranchSelect = populateTLVisitBranchSelect;
 window.selectTLCoverageBranch = selectTLCoverageBranch;
 window.handleTLBranchSelectChange = handleTLBranchSelectChange;
+window.initVisitsModule = initVisitsModule;
+
+// auto init
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    try { initVisitsModule(); } catch (e) { console.error('initVisitsModule error:', e); }
+  }, { once: true });
+} else {
+  setTimeout(() => {
+    try { initVisitsModule(); } catch (e) { console.error('initVisitsModule error:', e); }
+  }, 0);
+}

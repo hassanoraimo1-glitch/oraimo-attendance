@@ -8,7 +8,6 @@
 // Module state: visitPhotos, tlVisitPhotos
 // ═══════════════════════════════════════════════════════════
 
-// ── STATE ────────────────────────────────────────────────
 let visitPhotos = [];
 let tlVisitPhotos = [];
 
@@ -17,6 +16,7 @@ function _vRole() {
   const r = String(currentUser?.role || '').trim().toLowerCase();
   if (r === 'super_admin') return 'superadmin';
   if (r === 'teamleader') return 'team_leader';
+  if (r === 'manager') return 'admin';
   return r;
 }
 
@@ -59,40 +59,211 @@ function _ensureCameraAttrsOnKnownInputs() {
   });
 }
 
-function _toggleEmployeeVisitUploadUI(canUpload) {
-  const zone = document.getElementById('visit-upload-zone');
-  const branch = document.getElementById('visit-branch-select');
-  const note = document.getElementById('visit-note-input');
+function _getBranchName(branch) {
+  if (!branch) return '';
+  return String(
+    branch.name ||
+    branch.branch_name ||
+    branch.title ||
+    branch.label ||
+    branch.branch ||
+    branch.name_ar ||
+    branch.name_en ||
+    ''
+  ).trim();
+}
 
-  if (zone) zone.style.pointerEvents = canUpload ? '' : 'none';
-  if (branch) branch.disabled = !canUpload;
-  if (note) note.disabled = !canUpload;
+function _getAllBranchNames() {
+  const rows = Array.isArray(window.allBranches) ? window.allBranches : [];
+  const names = rows
+    .map(_getBranchName)
+    .filter(Boolean);
+
+  return [...new Set(names)];
+}
+
+function _setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function _hideElement(el) {
+  if (!el) return;
+  el.style.display = 'none';
+}
+
+function _showElement(el, displayValue = '') {
+  if (!el) return;
+  el.style.display = displayValue;
+}
+
+function _hideEmployeeUploadUI() {
+  const ids = ['visit-branch-select', 'visit-note-input', 'visit-upload-zone', 'visit-camera-input'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if ('disabled' in el) el.disabled = true;
+    el.style.pointerEvents = 'none';
+  });
 
   document.querySelectorAll(
     '[onclick*="submitVisit"], [onclick*="openVisitCamera"], [onclick*="showPhotoSourceModal(\'visit"], [onclick*="showPhotoSourceModal(&quot;visit"]'
   ).forEach(btn => {
-    if ('disabled' in btn) btn.disabled = !canUpload;
-    btn.style.pointerEvents = canUpload ? '' : 'none';
-    btn.style.opacity = canUpload ? '' : '0.65';
+    if ('disabled' in btn) btn.disabled = true;
+    btn.style.pointerEvents = 'none';
+    btn.style.display = 'none';
   });
+
+  const zone = document.getElementById('visit-upload-zone');
+  if (zone) zone.style.display = 'none';
 }
 
-function _toggleTLVisitUploadUI(canUpload) {
-  const branch = document.getElementById('tl-visit-branch');
-  const note = document.getElementById('tl-visit-note');
-  const zone = document.getElementById('tl-visit-zone');
+function _showEmployeeUploadUI() {
+  const ids = ['visit-branch-select', 'visit-note-input', 'visit-upload-zone', 'visit-camera-input'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if ('disabled' in el) el.disabled = false;
+    el.style.pointerEvents = '';
+  });
 
-  if (branch) branch.disabled = !canUpload;
-  if (note) note.disabled = !canUpload;
-  if (zone) zone.style.pointerEvents = canUpload ? '' : 'none';
+  document.querySelectorAll(
+    '[onclick*="submitVisit"], [onclick*="openVisitCamera"], [onclick*="showPhotoSourceModal(\'visit"], [onclick*="showPhotoSourceModal(&quot;visit"]'
+  ).forEach(btn => {
+    if ('disabled' in btn) btn.disabled = false;
+    btn.style.pointerEvents = '';
+    btn.style.display = '';
+  });
+
+  const zone = document.getElementById('visit-upload-zone');
+  if (zone) zone.style.display = visitPhotos.length >= 3 ? 'none' : 'block';
+}
+
+function _hideTLUploadUI() {
+  const ids = ['tl-visit-branch', 'tl-visit-note', 'tl-visit-zone', 'tl-visit-input'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if ('disabled' in el) el.disabled = true;
+    el.style.pointerEvents = 'none';
+  });
 
   document.querySelectorAll(
     '[onclick*="submitTLVisit"], [onclick*="openTLVisitCamera"], [onclick*="showPhotoSourceModal(\'tl-visit-input"], [onclick*="showPhotoSourceModal(&quot;tl-visit-input"]'
   ).forEach(btn => {
-    if ('disabled' in btn) btn.disabled = !canUpload;
-    btn.style.pointerEvents = canUpload ? '' : 'none';
-    btn.style.opacity = canUpload ? '' : '0.65';
+    if ('disabled' in btn) btn.disabled = true;
+    btn.style.pointerEvents = 'none';
+    btn.style.display = 'none';
   });
+
+  const zone = document.getElementById('tl-visit-zone');
+  if (zone) zone.style.display = 'none';
+
+  const branch = document.getElementById('tl-visit-branch');
+  const note = document.getElementById('tl-visit-note');
+  if (branch) {
+    const wrap = branch.closest('.form-group, .field, .input-group, .row, .col, .card, .section');
+    if (wrap && !wrap.querySelector('#tl-visit-history')) wrap.style.display = 'none';
+    else branch.style.display = 'none';
+  }
+  if (note) {
+    const wrap = note.closest('.form-group, .field, .input-group, .row, .col, .card, .section');
+    if (wrap && !wrap.querySelector('#tl-visit-history')) wrap.style.display = 'none';
+    else note.style.display = 'none';
+  }
+}
+
+function _showTLUploadUI() {
+  const ids = ['tl-visit-branch', 'tl-visit-note', 'tl-visit-zone', 'tl-visit-input'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if ('disabled' in el) el.disabled = false;
+    el.style.pointerEvents = '';
+    if (id !== 'tl-visit-input') el.style.display = '';
+  });
+
+  document.querySelectorAll(
+    '[onclick*="submitTLVisit"], [onclick*="openTLVisitCamera"], [onclick*="showPhotoSourceModal(\'tl-visit-input"], [onclick*="showPhotoSourceModal(&quot;tl-visit-input"]'
+  ).forEach(btn => {
+    if ('disabled' in btn) btn.disabled = false;
+    btn.style.pointerEvents = '';
+    btn.style.display = '';
+  });
+
+  const zone = document.getElementById('tl-visit-zone');
+  if (zone) zone.style.display = tlVisitPhotos.length >= 3 ? 'none' : 'block';
+
+  const branch = document.getElementById('tl-visit-branch');
+  const note = document.getElementById('tl-visit-note');
+  if (branch) {
+    const wrap = branch.closest('.form-group, .field, .input-group, .row, .col, .card, .section');
+    if (wrap && !wrap.querySelector('#tl-visit-history')) wrap.style.display = '';
+    branch.style.display = '';
+  }
+  if (note) {
+    const wrap = note.closest('.form-group, .field, .input-group, .row, .col, .card, .section');
+    if (wrap && !wrap.querySelector('#tl-visit-history')) wrap.style.display = '';
+    note.style.display = '';
+  }
+}
+
+function _setAdminVisitsHeader() {
+  const page = document.getElementById('admin-visits');
+  if (!page) return;
+
+  const title = page.querySelector('.sh .sh-title');
+  if (title) {
+    title.textContent = currentLang === 'ar' ? '📋 كل الزيارات هذا الشهر' : '📋 All Visits This Month';
+  }
+
+  const labels = page.querySelectorAll('.stat-card .stat-label');
+  if (labels[0]) labels[0].textContent = currentLang === 'ar' ? 'إجمالي الزيارات' : 'Total Visits';
+  if (labels[1]) labels[1].textContent = currentLang === 'ar' ? 'إجمالي الصور' : 'Total Photos';
+}
+
+function _setTLVisitsHeader() {
+  const page = document.getElementById('admin-visits');
+  if (!page) return;
+
+  const title = page.querySelector('.sh .sh-title');
+  if (title) {
+    title.textContent = currentLang === 'ar' ? '📋 زياراتي هذا الشهر' : '📋 My Visits This Month';
+  }
+
+  const labels = page.querySelectorAll('.stat-card .stat-label');
+  if (labels[0]) labels[0].textContent = currentLang === 'ar' ? 'زيارة هذا الشهر' : 'Visits This Month';
+  if (labels[1]) labels[1].textContent = currentLang === 'ar' ? 'متبقي' : 'Remaining';
+}
+
+function _setEmployeeVisitsHeader() {
+  const labels = document.querySelectorAll('.stat-card .stat-label');
+  if (labels[0]) labels[0].textContent = currentLang === 'ar' ? 'زيارة هذا الشهر' : 'Visits This Month';
+  if (labels[1]) labels[1].textContent = currentLang === 'ar' ? 'متبقي' : 'Remaining';
+}
+
+function _renderVisitCard(v, showOwner = false) {
+  const photos = [v.photo1, v.photo2, v.photo3].filter(Boolean);
+  const owner = v.manager_name || v.employee_name || '';
+
+  return `
+    <div class="visit-card">
+      <div class="visit-header">
+        <div>
+          <div class="visit-branch-name">🏪 ${v.branch_name || ''}</div>
+          <div class="visit-meta">${v.visit_date || ''}</div>
+          ${showOwner && owner ? `<div class="visit-meta">👤 ${owner}</div>` : ''}
+        </div>
+        <span class="badge badge-green">${photos.length} 📷</span>
+      </div>
+      ${v.note ? `<div class="visit-note">📝 ${v.note}</div>` : ''}
+      ${photos.length ? `
+        <div class="visit-photos-row">
+          ${photos.map(src => `<img class="visit-photo" src="${src}" onclick="fullSelfie('${_escapeAttr(src)}')">`).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `;
 }
 
 // ── CAMERA VALIDATION ────────────────────────────────────
@@ -141,10 +312,10 @@ function populateVisitBranchSelect() {
   const sel = document.getElementById('visit-branch-select');
   if (!sel) return;
 
-  const branches = Array.isArray(allBranches) ? allBranches : [];
+  const names = _getAllBranchNames();
   sel.innerHTML =
     '<option value="">-- اختر الفرع --</option>' +
-    branches.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
+    names.map(name => `<option value="${name}">${name}</option>`).join('');
 }
 
 function addVisitPhoto(e) {
@@ -252,15 +423,21 @@ async function submitVisit() {
 
 async function loadVisitsTab() {
   populateVisitBranchSelect();
-  _toggleEmployeeVisitUploadUI(_isEmployeeUser());
+  _setEmployeeVisitsHeader();
 
   const el = document.getElementById('visit-history-list');
+
   if (!_isEmployeeUser()) {
-    if (el) {
-      el.innerHTML = '';
-    }
+    _hideEmployeeUploadUI();
+    if (el) el.innerHTML = '';
+    _setText('vis-done', '0');
+    _setText('vis-remain', '0');
+    _setText('vis-photos', '0');
+    _setText('emp-visits-count', '0 / 150');
     return;
   }
+
+  _showEmployeeUploadUI();
 
   const pm = getPayrollMonth();
   const visits = await dbGet(
@@ -279,17 +456,10 @@ async function loadVisitsTab() {
   const done = visits.length;
   const remain = Math.max(0, 150 - done);
 
-  const visDone = document.getElementById('vis-done');
-  if (visDone) visDone.textContent = done;
-
-  const visRem = document.getElementById('vis-remain');
-  if (visRem) visRem.textContent = remain;
-
-  const visPhotos = document.getElementById('vis-photos');
-  if (visPhotos) visPhotos.textContent = photoCount;
-
-  const empVisitsCount = document.getElementById('emp-visits-count');
-  if (empVisitsCount) empVisitsCount.textContent = done + ' / 150';
+  _setText('vis-done', String(done));
+  _setText('vis-remain', String(remain));
+  _setText('vis-photos', String(photoCount));
+  _setText('emp-visits-count', done + ' / 150');
 
   if (!el) return;
 
@@ -298,26 +468,7 @@ async function loadVisitsTab() {
     return;
   }
 
-  el.innerHTML = visits.map(v => {
-    const photos = [v.photo1, v.photo2, v.photo3].filter(Boolean);
-    return `
-      <div class="visit-card">
-        <div class="visit-header">
-          <div>
-            <div class="visit-branch-name">🏪 ${v.branch_name}</div>
-            <div class="visit-meta">${v.visit_date}</div>
-          </div>
-          <span class="badge badge-green">${photos.length} 📷</span>
-        </div>
-        ${v.note ? `<div class="visit-note">📝 ${v.note}</div>` : ''}
-        ${photos.length > 0 ? `
-          <div class="visit-photos-row">
-            ${photos.map(src => `<img class="visit-photo" src="${src}" onclick="fullSelfie('${_escapeAttr(src)}')">`).join('')}
-          </div>
-        ` : ''}
-      </div>
-    `;
-  }).join('');
+  el.innerHTML = visits.map(v => _renderVisitCard(v, false)).join('');
 }
 
 // ── CLEAR OLD VISIT PHOTOS ───────────────────────────────
@@ -439,12 +590,12 @@ async function submitTLVisit() {
 
 async function loadTLVisitsTab() {
   const sel = document.getElementById('tl-visit-branch');
-  const branches = Array.isArray(allBranches) ? allBranches : [];
+  const names = _getAllBranchNames();
 
   if (sel) {
     sel.innerHTML =
       '<option value="">-- اختر الفرع --</option>' +
-      branches.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
+      names.map(name => `<option value="${name}">${name}</option>`).join('');
   }
 
   const doneEl = document.getElementById('tl-vis-done');
@@ -453,21 +604,29 @@ async function loadTLVisitsTab() {
   const el = document.getElementById('tl-visit-history');
   if (!el) return;
 
-  // Team Leader: upload + view own visits
+  // TEAM LEADER
   if (_isTeamLeaderUser()) {
-    _toggleTLVisitUploadUI(true);
+    _showTLUploadUI();
+    _setTLVisitsHeader();
 
     const pm = getPayrollMonth();
-    const visits =
-      await dbGet('branch_visits', `?manager_id=eq.${currentUser.id}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`).catch(() => [])
-      || await dbGet('branch_visits', `?employee_id=eq.${currentUser.id}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`).catch(() => [])
-      || [];
+    const byManager = await dbGet(
+      'branch_visits',
+      `?manager_id=eq.${currentUser.id}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`
+    ).catch(() => []);
+
+    const byEmployee = await dbGet(
+      'branch_visits',
+      `?employee_id=eq.${currentUser.id}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`
+    ).catch(() => []);
+
+    const visits = (Array.isArray(byManager) && byManager.length) ? byManager : (Array.isArray(byEmployee) ? byEmployee : []);
 
     const done = visits.length;
     const remain = Math.max(0, 150 - done);
 
-    if (doneEl) doneEl.textContent = done;
-    if (remEl) remEl.textContent = remain;
+    if (doneEl) doneEl.textContent = String(done);
+    if (remEl) remEl.textContent = String(remain);
     if (cntEl) cntEl.textContent = done + ' / 150';
 
     if (!visits.length) {
@@ -475,31 +634,14 @@ async function loadTLVisitsTab() {
       return;
     }
 
-    el.innerHTML = visits.map(v => {
-      const photos = [v.photo1, v.photo2, v.photo3].filter(Boolean);
-      return `
-        <div class="visit-card">
-          <div class="visit-header">
-            <div>
-              <div class="visit-branch-name">🏪 ${v.branch_name}</div>
-              <div class="visit-meta">${v.visit_date}</div>
-            </div>
-            <span class="badge badge-green">${photos.length} 📷</span>
-          </div>
-          ${v.note ? `<div class="visit-note">📝 ${v.note}</div>` : ''}
-          <div class="visit-photos-row">
-            ${photos.map(src => `<img class="visit-photo" src="${src}" onclick="fullSelfie('${_escapeAttr(src)}')">`).join('')}
-          </div>
-        </div>
-      `;
-    }).join('');
-
+    el.innerHTML = visits.map(v => _renderVisitCard(v, false)).join('');
     return;
   }
 
-  // Admin / Superadmin: review only
+  // ADMIN / SUPERADMIN
   if (_isAdminReviewUser()) {
-    _toggleTLVisitUploadUI(false);
+    _hideTLUploadUI();
+    _setAdminVisitsHeader();
 
     const pm = getPayrollMonth();
     const visits = await dbGet(
@@ -516,8 +658,8 @@ async function loadTLVisitsTab() {
       return s + c;
     }, 0);
 
-    if (doneEl) doneEl.textContent = totalVisits;
-    if (remEl) remEl.textContent = totalPhotos;
+    if (doneEl) doneEl.textContent = String(totalVisits);
+    if (remEl) remEl.textContent = String(totalPhotos);
     if (cntEl) cntEl.textContent = String(totalVisits);
 
     if (!visits.length) {
@@ -525,32 +667,12 @@ async function loadTLVisitsTab() {
       return;
     }
 
-    el.innerHTML = visits.map(v => {
-      const photos = [v.photo1, v.photo2, v.photo3].filter(Boolean);
-      const owner = v.manager_name || v.employee_name || '';
-      return `
-        <div class="visit-card">
-          <div class="visit-header">
-            <div>
-              <div class="visit-branch-name">🏪 ${v.branch_name}</div>
-              <div class="visit-meta">${v.visit_date}</div>
-              ${owner ? `<div class="visit-meta">👤 ${owner}</div>` : ''}
-            </div>
-            <span class="badge badge-green">${photos.length} 📷</span>
-          </div>
-          ${v.note ? `<div class="visit-note">📝 ${v.note}</div>` : ''}
-          <div class="visit-photos-row">
-            ${photos.map(src => `<img class="visit-photo" src="${src}" onclick="fullSelfie('${_escapeAttr(src)}')">`).join('')}
-          </div>
-        </div>
-      `;
-    }).join('');
-
+    el.innerHTML = visits.map(v => _renderVisitCard(v, true)).join('');
     return;
   }
 
-  // Any other role
-  _toggleTLVisitUploadUI(false);
+  // OTHER ROLES
+  _hideTLUploadUI();
   if (doneEl) doneEl.textContent = '0';
   if (remEl) remEl.textContent = '0';
   if (cntEl) cntEl.textContent = '0';
@@ -633,8 +755,18 @@ function showPhotoSourceModal(inputId) {
 // ── INIT ─────────────────────────────────────────────────
 function initVisitsModule() {
   _ensureCameraAttrsOnKnownInputs();
-  _toggleEmployeeVisitUploadUI(_isEmployeeUser());
-  _toggleTLVisitUploadUI(_isTeamLeaderUser());
+
+  if (_isEmployeeUser()) {
+    _showEmployeeUploadUI();
+  } else {
+    _hideEmployeeUploadUI();
+  }
+
+  if (_isTeamLeaderUser()) {
+    _showTLUploadUI();
+  } else {
+    _hideTLUploadUI();
+  }
 }
 
 if (document.readyState === 'loading') {

@@ -2,7 +2,7 @@
 // src/modules/admin/visits.js — Branch visits
 // Employee: upload own visits
 // Team Leader: upload own visits
-// Admin/Superadmin: review all visits only (NO UPLOAD)
+// Admin/Superadmin: review all visits only
 // ═══════════════════════════════════════════════════════════
 
 let visitPhotos = [];
@@ -48,6 +48,10 @@ function _normalizeRole(role) {
   return r;
 }
 
+function _isEmployeeUser() {
+  return _normalizeRole(window.currentUser?.role) === 'employee';
+}
+
 function _isTeamLeaderUser() {
   return _normalizeRole(window.currentUser?.role) === 'team_leader';
 }
@@ -57,17 +61,8 @@ function _isAdminReviewUser() {
   return r === 'admin' || r === 'superadmin';
 }
 
-function _isEmployeeUser() {
-  return _normalizeRole(window.currentUser?.role) === 'employee';
-}
-
-function _canUploadVisits() {
-  const role = _normalizeRole(window.currentUser?.role);
-  return role === 'employee' || role === 'team_leader';
-}
-
-function _ensureArray(value) {
-  return Array.isArray(value) ? value : [];
+function _ensureArray(v) {
+  return Array.isArray(v) ? v : [];
 }
 
 function _dedupeById(rows) {
@@ -135,7 +130,7 @@ async function _ensureBranchesLoaded() {
 
   try {
     const direct = await dbGet('branches', '?select=*').catch(() => []);
-    if (Array.isArray(direct) && direct.length) {
+    if (Array.isArray(direct)) {
       window.allBranches = direct;
       return direct;
     }
@@ -177,11 +172,113 @@ function _renderPhotosCount(targetArr, zoneId) {
 
 function _safeFullImage(src) {
   if (!src) return;
+
   if (typeof window.fullSelfie === 'function') {
     window.fullSelfie(src);
     return;
   }
+
   window.open(src, '_blank');
+}
+
+function _disableEl(id, hide = false) {
+  const el = _vId(id);
+  if (!el) return;
+  if ('disabled' in el) el.disabled = true;
+  el.style.pointerEvents = 'none';
+  if (hide) el.style.display = 'none';
+}
+
+function _enableEl(id) {
+  const el = _vId(id);
+  if (!el) return;
+  if ('disabled' in el) el.disabled = false;
+  el.style.pointerEvents = '';
+  el.style.display = '';
+}
+
+function _hideEmployeeUploadUI() {
+  [
+    'visit-branch-select',
+    'visit-note-input',
+    'visit-upload-zone',
+    'visit-camera-input'
+  ].forEach(id => _disableEl(id, id !== 'visit-photo-previews'));
+
+  document.querySelectorAll(
+    '[onclick*="submitVisit"], [onclick*="openVisitCamera"], [onclick*="showPhotoSourceModal(\'visit-camera-input"], [onclick*="showPhotoSourceModal(\'visit-input"]'
+  ).forEach(btn => {
+    if ('disabled' in btn) btn.disabled = true;
+    btn.style.pointerEvents = 'none';
+    btn.style.display = 'none';
+  });
+}
+
+function _showEmployeeUploadUI() {
+  [
+    'visit-branch-select',
+    'visit-note-input',
+    'visit-upload-zone',
+    'visit-camera-input'
+  ].forEach(_enableEl);
+
+  document.querySelectorAll(
+    '[onclick*="submitVisit"], [onclick*="openVisitCamera"], [onclick*="showPhotoSourceModal(\'visit-camera-input"], [onclick*="showPhotoSourceModal(\'visit-input"]'
+  ).forEach(btn => {
+    if ('disabled' in btn) btn.disabled = false;
+    btn.style.pointerEvents = '';
+    btn.style.display = '';
+  });
+}
+
+function _hideTLUploadUI() {
+  [
+    'tl-visit-branch',
+    'tl-visit-note',
+    'tl-visit-zone',
+    'tl-visit-previews',
+    'tl-visit-input'
+  ].forEach(id => _disableEl(id, id !== 'tl-visit-previews'));
+
+  document.querySelectorAll(
+    '#admin-visits [onclick*="submitTLVisit"], #admin-visits [onclick*="openTLVisitCamera"], #admin-visits [onclick*="showPhotoSourceModal"]'
+  ).forEach(btn => {
+    if ('disabled' in btn) btn.disabled = true;
+    btn.style.pointerEvents = 'none';
+    btn.style.display = 'none';
+  });
+}
+
+function _showTLUploadUI() {
+  [
+    'tl-visit-branch',
+    'tl-visit-note',
+    'tl-visit-zone',
+    'tl-visit-previews',
+    'tl-visit-input'
+  ].forEach(_enableEl);
+
+  document.querySelectorAll(
+    '#admin-visits [onclick*="submitTLVisit"], #admin-visits [onclick*="openTLVisitCamera"], #admin-visits [onclick*="showPhotoSourceModal"]'
+  ).forEach(btn => {
+    if ('disabled' in btn) btn.disabled = false;
+    btn.style.pointerEvents = '';
+    btn.style.display = '';
+  });
+}
+
+function _applyReviewOnlyMode() {
+  _hideEmployeeUploadUI();
+  _hideTLUploadUI();
+}
+
+function _applyEmployeeMode() {
+  _showEmployeeUploadUI();
+}
+
+function _applyTeamLeaderMode() {
+  _hideEmployeeUploadUI();
+  _showTLUploadUI();
 }
 
 function _visitCard(v, showOwner = false) {
@@ -198,88 +295,15 @@ function _visitCard(v, showOwner = false) {
         <span class="badge badge-green">${photos.length} 📷</span>
       </div>
       ${v.note ? `<div class="visit-note">📝 ${_escapeHtml(v.note)}</div>` : ''}
-      ${photos.length ? `
-        <div class="visit-photos-row">
-          ${photos.map(src => `<img class="visit-photo" src="${src}" onclick="openVisitImagePreview('${String(src).replace(/'/g, "\\'")}')">`).join('')}
-        </div>
-      ` : ''}
+      ${
+        photos.length
+          ? `<div class="visit-photos-row">
+              ${photos.map(src => `<img class="visit-photo" src="${src}" onclick="openVisitImagePreview('${String(src).replace(/'/g, "\\'")}')">`).join('')}
+            </div>`
+          : ''
+      }
     </div>
   `;
-}
-
-function _findTLUploadCards() {
-  const cards = new Set();
-
-  ['tl-visit-branch', 'tl-visit-note', 'tl-visit-zone', 'tl-visit-previews'].forEach(id => {
-    const el = _vId(id);
-    if (!el) return;
-    const card = el.closest('.card');
-    if (card) cards.add(card);
-  });
-
-  document.querySelectorAll(
-    '#admin-visits [onclick*="submitTLVisit"], #admin-visits [onclick*="showPhotoSourceModal"], #admin-visits [onclick*="openTLVisitCamera"]'
-  ).forEach(btn => {
-    const card = btn.closest('.card');
-    if (card) cards.add(card);
-  });
-
-  return [...cards];
-}
-
-function _setTLUploadVisibility(show) {
-  _findTLUploadCards().forEach(card => {
-    card.style.display = show ? '' : 'none';
-    card.style.pointerEvents = show ? '' : 'none';
-  });
-
-  ['tl-visit-branch', 'tl-visit-note', 'tl-visit-zone', 'tl-visit-previews', 'tl-visit-input'].forEach(id => {
-    const el = _vId(id);
-    if (!el) return;
-
-    if (!el.closest('.card')) {
-      el.style.display = show ? '' : 'none';
-    }
-
-    if ('disabled' in el) el.disabled = !show;
-    el.style.pointerEvents = show ? '' : 'none';
-  });
-
-  document.querySelectorAll(
-    '#admin-visits [onclick*="submitTLVisit"], #admin-visits [onclick*="showPhotoSourceModal"], #admin-visits [onclick*="openTLVisitCamera"]'
-  ).forEach(btn => {
-    btn.style.display = show ? '' : 'none';
-    btn.style.pointerEvents = show ? '' : 'none';
-    if ('disabled' in btn) btn.disabled = !show;
-  });
-}
-
-function _applyAdminVisitsReviewMode() {
-  _setTLUploadVisibility(false);
-
-  const page = _vId('admin-visits');
-  if (!page) return;
-
-  const title = page.querySelector('.sh .sh-title');
-  if (title) title.textContent = _vLangAr() ? '📋 كل الزيارات هذا الشهر' : '📋 All Visits This Month';
-
-  const labels = page.querySelectorAll('.stat-card .stat-label');
-  if (labels[0]) labels[0].textContent = _vLangAr() ? 'إجمالي الزيارات' : 'Total Visits';
-  if (labels[1]) labels[1].textContent = _vLangAr() ? 'إجمالي الصور' : 'Total Photos';
-}
-
-function _applyTeamLeaderVisitsMode() {
-  _setTLUploadVisibility(true);
-
-  const page = _vId('admin-visits');
-  if (!page) return;
-
-  const title = page.querySelector('.sh .sh-title');
-  if (title) title.textContent = _vLangAr() ? '📋 زياراتي هذا الشهر' : '📋 My Visits This Month';
-
-  const labels = page.querySelectorAll('.stat-card .stat-label');
-  if (labels[0]) labels[0].textContent = _vLangAr() ? 'زيارة هذا الشهر' : 'Visits This Month';
-  if (labels[1]) labels[1].textContent = _vLangAr() ? 'متبقي' : 'Remaining';
 }
 
 // ── IMAGE COMPRESSION ─────────────────────────────────────
@@ -299,17 +323,21 @@ function compressImageFile(file) {
         img.onload = () => {
           try {
             const canvas = document.createElement('canvas');
-            const maxW = 640;
-            const maxH = 640;
+            const maxW = 560;
+            const maxH = 560;
             const ratio = Math.min(1, maxW / img.width, maxH / img.height);
 
             canvas.width = Math.max(1, Math.round(img.width * ratio));
             canvas.height = Math.max(1, Math.round(img.height * ratio));
 
             const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            if (!ctx) {
+              reject(new Error('Canvas context failed'));
+              return;
+            }
 
-            resolve(canvas.toDataURL('image/jpeg', 0.40));
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', 0.35));
           } catch (err) {
             reject(err);
           }
@@ -363,10 +391,10 @@ function _ensureTLVisitInput() {
   return input;
 }
 
-// ── CAMERA ────────────────────────────────────────────────
+// ── CAMERA ENTRY ──────────────────────────────────────────
 function openVisitCamera() {
-  if (!_canUploadVisits()) {
-    _vNotify('هذا القسم للمشاهدة فقط وليس للرفع', 'This section is view only, not upload', 'info');
+  if (!_isEmployeeUser()) {
+    _vNotify('هذا الجزء للمراجعة فقط وليس للرفع', 'This section is review only, not upload', 'info');
     return;
   }
 
@@ -383,7 +411,7 @@ function openVisitCamera() {
 
 function openTLVisitCamera() {
   if (!_isTeamLeaderUser()) {
-    _vNotify('هذا القسم للمراجعة فقط', 'This section is review only', 'info');
+    _vNotify('هذا الجزء للمراجعة فقط وليس للرفع', 'This section is review only, not upload', 'info');
     return;
   }
 
@@ -428,16 +456,15 @@ async function populateVisitBranchSelect() {
   if (!sel) return;
 
   const branches = _uniqueBranchNames(rows);
-
   sel.innerHTML =
     '<option value="">-- اختر الفرع --</option>' +
     branches.map(name => `<option value="${_escapeHtml(name)}">${_escapeHtml(name)}</option>`).join('');
 }
 
 async function addVisitPhoto(e) {
-  if (!_canUploadVisits()) {
+  if (!_isEmployeeUser()) {
     if (e?.target) e.target.value = '';
-    _vNotify('هذا القسم للمشاهدة فقط وليس للرفع', 'This section is view only, not upload', 'info');
+    _vNotify('هذا الجزء للمراجعة فقط وليس للرفع', 'This section is review only, not upload', 'info');
     return;
   }
 
@@ -467,7 +494,11 @@ async function addVisitPhoto(e) {
     renderVisitPhotoPreviews();
   } catch (e) {
     console.error('[addVisitPhoto]', e);
-    _vNotify('تعذر معالجة الصورة', 'Failed to process image', 'error');
+    _vNotify(
+      `تعذر معالجة الصورة: ${e?.message || 'خطأ غير معروف'}`,
+      `Failed to process image: ${e?.message || 'Unknown error'}`,
+      'error'
+    );
   } finally {
     if (input) input.value = '';
   }
@@ -488,18 +519,19 @@ function renderVisitPhotoPreviews() {
 }
 
 function removeVisitPhoto(i) {
-  if (!_canUploadVisits()) {
-    _vNotify('هذا القسم للمشاهدة فقط', 'This section is view only', 'info');
+  if (!_isEmployeeUser()) {
+    _vNotify('هذا الجزء للمشاهدة فقط', 'This section is view only', 'info');
     return;
   }
 
+  if (i < 0 || i >= visitPhotos.length) return;
   visitPhotos.splice(i, 1);
   renderVisitPhotoPreviews();
 }
 
 async function submitVisit() {
-  if (!_canUploadVisits()) {
-    _vNotify('هذا القسم للمشاهدة فقط وليس للرفع', 'This section is view only, not upload', 'info');
+  if (!_isEmployeeUser()) {
+    _vNotify('هذا الجزء للمراجعة فقط وليس للرفع', 'This section is review only, not upload', 'info');
     return;
   }
 
@@ -521,32 +553,60 @@ async function submitVisit() {
     return;
   }
 
-  try {
-    await dbPost('branch_visits', {
-      employee_id: currentUser.id,
-      employee_name: currentUser.name,
-      branch_name: branch,
-      note: note || null,
-      photo1: visitPhotos[0] || null,
-      photo2: visitPhotos[1] || null,
-      photo3: visitPhotos[2] || null,
-      visit_date: todayStr()
-    });
+  const basePayload = {
+    employee_name: currentUser.name || null,
+    branch_name: branch,
+    note: note || null,
+    photo1: visitPhotos[0] || null,
+    photo2: visitPhotos[1] || null,
+    photo3: visitPhotos[2] || null,
+    visit_date: typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0, 10)
+  };
 
-    _vNotify('تم حفظ الزيارة ✅', 'Visit saved ✅', 'success');
-    visitPhotos = [];
-    renderVisitPhotoPreviews();
-    _clearVisitForm();
-    await loadVisitsTab();
-  } catch (e) {
-    console.error('[submitVisit]', e);
-    _vNotify('خطأ أثناء حفظ الزيارة', 'Error while saving visit', 'error');
+  const tries = [];
+  const numericId = Number(currentUser.id);
+
+  if (!Number.isNaN(numericId) && Number.isFinite(numericId)) {
+    tries.push({ ...basePayload, employee_id: numericId });
   }
+
+  tries.push({ ...basePayload, employee_id: currentUser.id });
+  tries.push({ ...basePayload });
+
+  let lastErr = null;
+
+  for (const payload of tries) {
+    try {
+      await dbPost('branch_visits', payload);
+
+      _vNotify('تم حفظ الزيارة ✅', 'Visit saved ✅', 'success');
+      visitPhotos = [];
+      renderVisitPhotoPreviews();
+      _clearVisitForm();
+      await loadVisitsTab();
+      return;
+    } catch (e) {
+      console.error('[submitVisit try failed]', payload, e);
+      lastErr = e;
+    }
+  }
+
+  const msg = String(lastErr?.message || '');
+  _vNotify(
+    `تعذر حفظ الزيارة: ${msg || 'خطأ غير معروف'}`,
+    `Failed to save visit: ${msg || 'Unknown error'}`,
+    'error'
+  );
 }
 
 async function loadVisitsTab() {
   if (!window.currentUser) return;
+  if (!_isEmployeeUser()) {
+    _applyReviewOnlyMode();
+    return;
+  }
 
+  _applyEmployeeMode();
   await populateVisitBranchSelect();
 
   const pm = getPayrollMonth();
@@ -557,17 +617,23 @@ async function loadVisitsTab() {
 
   const done = visits.length;
   const remain = Math.max(0, 150 - done);
-  const photoCount = visits.reduce((s, v) => s + [v.photo1, v.photo2, v.photo3].filter(Boolean).length, 0);
+  const photoCount = visits.reduce((sum, v) => {
+    let c = 0;
+    if (v.photo1) c++;
+    if (v.photo2) c++;
+    if (v.photo3) c++;
+    return sum + c;
+  }, 0);
 
   const visDone = _vId('vis-done');
-  const visRemain = _vId('vis-remain');
+  const visRem = _vId('vis-remain');
   const visPhotos = _vId('vis-photos');
-  const empCount = _vId('emp-visits-count');
+  const cnt = _vId('emp-visits-count');
 
   if (visDone) visDone.textContent = done;
-  if (visRemain) visRemain.textContent = remain;
+  if (visRem) visRem.textContent = remain;
   if (visPhotos) visPhotos.textContent = photoCount;
-  if (empCount) empCount.textContent = `${done} / 150`;
+  if (cnt) cnt.textContent = `${done} / 150`;
 
   const el = _vId('visit-history-list');
   if (!el) return;
@@ -580,7 +646,7 @@ async function loadVisitsTab() {
   el.innerHTML = _sortVisitsDesc(visits).map(v => _visitCard(v, false)).join('');
 }
 
-// ── CLEAR OLD VISITS PHOTOS ───────────────────────────────
+// ── CLEAR OLD VISIT PHOTOS ────────────────────────────────
 async function clearOldVisitPhotos() {
   const cutoff = fmtDate(new Date(Date.now() - 60 * 24 * 60 * 60 * 1000));
   const old = await dbGet('branch_visits', `?visit_date=lt.${cutoff}&select=id`).catch(() => []) || [];
@@ -602,7 +668,6 @@ async function _populateTLVisitBranchSelect() {
   if (!sel) return;
 
   const branches = _uniqueBranchNames(rows);
-
   sel.innerHTML =
     '<option value="">-- اختر الفرع --</option>' +
     branches.map(name => `<option value="${_escapeHtml(name)}">${_escapeHtml(name)}</option>`).join('');
@@ -611,7 +676,7 @@ async function _populateTLVisitBranchSelect() {
 async function addTLVisitPhoto(e) {
   if (!_isTeamLeaderUser()) {
     if (e?.target) e.target.value = '';
-    _vNotify('هذا القسم للمشاهدة فقط وليس للرفع', 'This section is view only, not upload', 'info');
+    _vNotify('هذا الجزء للمراجعة فقط وليس للرفع', 'This section is review only, not upload', 'info');
     return;
   }
 
@@ -641,7 +706,11 @@ async function addTLVisitPhoto(e) {
     renderTLPreviews();
   } catch (e) {
     console.error('[addTLVisitPhoto]', e);
-    _vNotify('تعذر معالجة الصورة', 'Failed to process image', 'error');
+    _vNotify(
+      `تعذر معالجة الصورة: ${e?.message || 'خطأ غير معروف'}`,
+      `Failed to process image: ${e?.message || 'Unknown error'}`,
+      'error'
+    );
   } finally {
     if (input) input.value = '';
   }
@@ -663,17 +732,18 @@ function renderTLPreviews() {
 
 function removeTLPhoto(i) {
   if (!_isTeamLeaderUser()) {
-    _vNotify('هذا القسم للمشاهدة فقط', 'This section is view only', 'info');
+    _vNotify('هذا الجزء للمشاهدة فقط', 'This section is view only', 'info');
     return;
   }
 
+  if (i < 0 || i >= tlVisitPhotos.length) return;
   tlVisitPhotos.splice(i, 1);
   renderTLPreviews();
 }
 
 async function submitTLVisit() {
   if (!_isTeamLeaderUser()) {
-    _vNotify('هذا القسم للمشاهدة فقط وليس للرفع', 'This section is view only, not upload', 'info');
+    _vNotify('هذا الجزء للمراجعة فقط وليس للرفع', 'This section is review only, not upload', 'info');
     return;
   }
 
@@ -695,7 +765,6 @@ async function submitTLVisit() {
     return;
   }
 
-  const numericId = Number(currentUser.id);
   const basePayload = {
     employee_name: currentUser.name || null,
     branch_name: branch,
@@ -703,10 +772,11 @@ async function submitTLVisit() {
     photo1: tlVisitPhotos[0] || null,
     photo2: tlVisitPhotos[1] || null,
     photo3: tlVisitPhotos[2] || null,
-    visit_date: todayStr()
+    visit_date: typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0, 10)
   };
 
   const tries = [];
+  const numericId = Number(currentUser.id);
 
   if (!Number.isNaN(numericId) && Number.isFinite(numericId)) {
     tries.push({ ...basePayload, employee_id: numericId });
@@ -733,8 +803,12 @@ async function submitTLVisit() {
     }
   }
 
-  console.error('[submitTLVisit final error]', lastErr);
-  _vNotify('تعذر حفظ الزيارة', 'Failed to save visit', 'error');
+  const msg = String(lastErr?.message || '');
+  _vNotify(
+    `تعذر حفظ الزيارة: ${msg || 'خطأ غير معروف'}`,
+    `Failed to save visit: ${msg || 'Unknown error'}`,
+    'error'
+  );
 }
 
 async function loadTLVisitsTab() {
@@ -760,9 +834,8 @@ async function loadTLVisitsTab() {
     `?visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`
   ).catch(() => []) || [];
 
-  // Team Leader
   if (role === 'team_leader') {
-    _applyTeamLeaderVisitsMode();
+    _applyTeamLeaderMode();
     _ensureTLVisitInput();
     await _populateTLVisitBranchSelect();
 
@@ -792,9 +865,17 @@ async function loadTLVisitsTab() {
     return;
   }
 
-  // Admin / Superadmin review only
   if (_isAdminReviewUser()) {
-    _applyAdminVisitsReviewMode();
+    _applyReviewOnlyMode();
+
+    const title = page.querySelector('.sh .sh-title');
+    if (title) {
+      title.textContent = _vLangAr() ? '📋 كل الزيارات هذا الشهر' : '📋 All Visits This Month';
+    }
+
+    const labels = page.querySelectorAll('.stat-card .stat-label');
+    if (labels[0]) labels[0].textContent = _vLangAr() ? 'إجمالي الزيارات' : 'Total Visits';
+    if (labels[1]) labels[1].textContent = _vLangAr() ? 'إجمالي الصور' : 'Total Photos';
 
     const visits = _sortVisitsDesc(_dedupeById(allMonthRows));
     const totalVisits = visits.length;
@@ -821,6 +902,14 @@ async function loadTLVisitsTab() {
 function initVisitsModule() {
   _ensureEmployeeVisitInput();
   _ensureTLVisitInput();
+
+  if (_isAdminReviewUser()) {
+    _applyReviewOnlyMode();
+  } else if (_isTeamLeaderUser()) {
+    _applyTeamLeaderMode();
+  } else if (_isEmployeeUser()) {
+    _applyEmployeeMode();
+  }
 }
 
 if (document.readyState === 'loading') {

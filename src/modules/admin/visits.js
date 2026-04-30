@@ -1,10 +1,8 @@
 // ═══════════════════════════════════════════════════════════
-// modules/admin/visits.js — Branch visits (employee + team leader + admin review)
-// Provides globals:
-//   populateVisitBranchSelect, addVisitPhoto, renderVisitPhotoPreviews,
-//   removeVisitPhoto, submitVisit, loadVisitsTab, clearOldVisitPhotos,
-//   addTLVisitPhoto, renderTLPreviews, removeTLPhoto, submitTLVisit,
-//   loadTLVisitsTab, openVisitCamera, openTLVisitCamera, showPhotoSourceModal
+// modules/admin/visits.js — Branch visits
+// Employee: upload own visits
+// Team Leader: upload own visits
+// Admin/Superadmin: review all visits only
 // ═══════════════════════════════════════════════════════════
 
 let visitPhotos = [];
@@ -20,8 +18,8 @@ function _vLangAr() {
 }
 
 function _vNotify(arMsg, enMsg, type = 'info') {
-  if (typeof notify === 'function') {
-    notify(_vLangAr() ? arMsg : enMsg, type);
+  if (typeof window.notify === 'function') {
+    window.notify(_vLangAr() ? arMsg : enMsg, type);
   }
 }
 
@@ -41,7 +39,7 @@ function _normalizeRole(role) {
   if (r === 'super_admin') return 'superadmin';
   if (r === 'superadmin') return 'superadmin';
 
-  // مهم: عندك manager هو admin
+  // مهم جدًا: manager عندك = admin
   if (r === 'manager') return 'admin';
 
   if (r === 'viewer') return 'admin';
@@ -62,19 +60,14 @@ function _isAdminReviewUser() {
   return r === 'admin' || r === 'superadmin';
 }
 
-function _getBranchName(branch) {
-  if (!branch) return '';
-  return branch.name || branch.branch_name || branch.title || '';
-}
-
 function _ensureArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
 function _dedupeById(rows) {
   const map = new Map();
-  (rows || []).forEach(r => {
-    const key = r && r.id != null ? String(r.id) : JSON.stringify(r);
+  _ensureArray(rows).forEach(r => {
+    const key = r?.id != null ? String(r.id) : JSON.stringify(r);
     if (!map.has(key)) map.set(key, r);
   });
   return [...map.values()];
@@ -97,8 +90,30 @@ function _setCameraAttrs(input) {
   input.setAttribute('capture', 'environment');
 }
 
+function _extractBranchName(row) {
+  if (!row || typeof row !== 'object') return '';
+  const candidates = [
+    row.name,
+    row.branch_name,
+    row.title,
+    row.branch,
+    row.branchName,
+    row.name_ar,
+    row.name_en,
+    row.label
+  ];
+
+  for (const v of candidates) {
+    const s = String(v || '').trim();
+    if (s) return s;
+  }
+  return '';
+}
+
 async function _ensureBranchesLoaded() {
-  if (Array.isArray(window.allBranches) && window.allBranches.length > 0) return;
+  if (Array.isArray(window.allBranches) && window.allBranches.length > 0) {
+    return window.allBranches;
+  }
 
   if (typeof window.loadBranches === 'function') {
     try {
@@ -107,6 +122,33 @@ async function _ensureBranchesLoaded() {
       console.warn('[loadBranches]', e);
     }
   }
+
+  if (Array.isArray(window.allBranches) && window.allBranches.length > 0) {
+    return window.allBranches;
+  }
+
+  // fallback مباشر
+  try {
+    const direct = await dbGet('branches', '?select=*');
+    if (Array.isArray(direct)) {
+      window.allBranches = direct;
+      return direct;
+    }
+  } catch (e) {
+    console.warn('[branches direct fetch]', e);
+  }
+
+  window.allBranches = [];
+  return [];
+}
+
+function _uniqueBranchNames(rows) {
+  const set = new Set();
+  _ensureArray(rows).forEach(r => {
+    const n = _extractBranchName(r);
+    if (n) set.add(n);
+  });
+  return [...set];
 }
 
 function _clearVisitForm() {
@@ -130,58 +172,11 @@ function _renderPhotosCount(targetArr, zoneId) {
 
 function _safeFullImage(src) {
   if (!src) return;
-
-  if (typeof fullSelfie === 'function') {
-    fullSelfie(src);
+  if (typeof window.fullSelfie === 'function') {
+    window.fullSelfie(src);
     return;
   }
-
-  const fs = _vId('selfie-fullscreen');
-  const img = _vId('selfie-fs-img');
-  if (fs && img) {
-    img.src = src;
-    fs.classList.add('open');
-  } else {
-    window.open(src, '_blank');
-  }
-}
-
-function _getAdminVisitsContainerParts() {
-  const page = _vId('admin-visits');
-  if (!page) return {};
-
-  const glowCard = page.querySelector('.card.card-glow');
-  const shTitle = page.querySelector('.sh .sh-title');
-  const headerText = page.querySelector('div[style*="font-size:16px"]');
-  const statLabels = page.querySelectorAll('.stat-card .stat-label');
-
-  return { page, glowCard, shTitle, headerText, statLabels };
-}
-
-function _applyAdminVisitsReviewMode() {
-  const { glowCard, shTitle, headerText, statLabels } = _getAdminVisitsContainerParts();
-
-  if (glowCard) glowCard.style.display = 'none';
-  if (shTitle) shTitle.textContent = _vLangAr() ? '📋 كل الزيارات هذا الشهر' : '📋 All Visits This Month';
-  if (headerText) headerText.textContent = _vLangAr() ? '📸 كل الزيارات' : '📸 All Visits';
-
-  if (statLabels && statLabels.length >= 2) {
-    statLabels[0].textContent = _vLangAr() ? 'إجمالي الزيارات' : 'Total Visits';
-    statLabels[1].textContent = _vLangAr() ? 'إجمالي الصور' : 'Total Photos';
-  }
-}
-
-function _applyTeamLeaderVisitsMode() {
-  const { glowCard, shTitle, headerText, statLabels } = _getAdminVisitsContainerParts();
-
-  if (glowCard) glowCard.style.display = 'block';
-  if (shTitle) shTitle.textContent = _vLangAr() ? '📋 زياراتي هذا الشهر' : '📋 My Visits This Month';
-  if (headerText) headerText.textContent = _vLangAr() ? '📸 صور الديسبلاي' : '📸 Display Visits';
-
-  if (statLabels && statLabels.length >= 2) {
-    statLabels[0].textContent = _vLangAr() ? 'زيارة هذا الشهر' : 'Visits This Month';
-    statLabels[1].textContent = _vLangAr() ? 'متبقي' : 'Remaining';
-  }
+  window.open(src, '_blank');
 }
 
 function _visitCard(v, showOwner = false) {
@@ -198,13 +193,80 @@ function _visitCard(v, showOwner = false) {
         <span class="badge badge-green">${photos.length} 📷</span>
       </div>
       ${v.note ? `<div class="visit-note">📝 ${_escapeHtml(v.note)}</div>` : ''}
-      ${photos.length > 0 ? `
+      ${photos.length ? `
         <div class="visit-photos-row">
           ${photos.map(src => `<img class="visit-photo" src="${src}" onclick="openVisitImagePreview('${String(src).replace(/'/g, "\\'")}')">`).join('')}
         </div>
       ` : ''}
     </div>
   `;
+}
+
+function _findTLUploadCards() {
+  const cards = new Set();
+
+  [
+    'tl-visit-branch',
+    'tl-visit-note',
+    'tl-visit-zone',
+    'tl-visit-previews'
+  ].forEach(id => {
+    const el = _vId(id);
+    if (!el) return;
+    const card = el.closest('.card');
+    if (card) cards.add(card);
+  });
+
+  document.querySelectorAll(
+    '#admin-visits [onclick*="submitTLVisit"], #admin-visits [onclick*="showPhotoSourceModal"], #admin-visits [onclick*="openTLVisitCamera"]'
+  ).forEach(btn => {
+    const card = btn.closest('.card');
+    if (card) cards.add(card);
+  });
+
+  return [...cards];
+}
+
+function _setTLUploadVisibility(show) {
+  _findTLUploadCards().forEach(card => {
+    card.style.display = show ? '' : 'none';
+  });
+
+  // لو العناصر ليست داخل card واضحة
+  ['tl-visit-branch', 'tl-visit-note', 'tl-visit-zone', 'tl-visit-previews'].forEach(id => {
+    const el = _vId(id);
+    if (el && !el.closest('.card')) {
+      el.style.display = show ? '' : 'none';
+    }
+  });
+}
+
+function _applyAdminVisitsReviewMode() {
+  _setTLUploadVisibility(false);
+
+  const page = _vId('admin-visits');
+  if (!page) return;
+
+  const title = page.querySelector('.sh .sh-title');
+  if (title) title.textContent = _vLangAr() ? '📋 كل الزيارات هذا الشهر' : '📋 All Visits This Month';
+
+  const labels = page.querySelectorAll('.stat-card .stat-label');
+  if (labels[0]) labels[0].textContent = _vLangAr() ? 'إجمالي الزيارات' : 'Total Visits';
+  if (labels[1]) labels[1].textContent = _vLangAr() ? 'إجمالي الصور' : 'Total Photos';
+}
+
+function _applyTeamLeaderVisitsMode() {
+  _setTLUploadVisibility(true);
+
+  const page = _vId('admin-visits');
+  if (!page) return;
+
+  const title = page.querySelector('.sh .sh-title');
+  if (title) title.textContent = _vLangAr() ? '📋 زياراتي هذا الشهر' : '📋 My Visits This Month';
+
+  const labels = page.querySelectorAll('.stat-card .stat-label');
+  if (labels[0]) labels[0].textContent = _vLangAr() ? 'زيارة هذا الشهر' : 'Visits This Month';
+  if (labels[1]) labels[1].textContent = _vLangAr() ? 'متبقي' : 'Remaining';
 }
 
 // ── IMAGE COMPRESSION ─────────────────────────────────────
@@ -224,8 +286,6 @@ function compressImageFile(file) {
         img.onload = () => {
           try {
             const canvas = document.createElement('canvas');
-
-            // تقليل أكبر لتقليل احتمالية 400
             const maxW = 640;
             const maxH = 640;
             const ratio = Math.min(1, maxW / img.width, maxH / img.height);
@@ -274,7 +334,6 @@ function _ensureEmployeeVisitInput() {
 function _ensureTLVisitInput() {
   let input = _vId('tl-visit-input');
 
-  // لو موجود في HTML لا نضيف listener إضافي حتى لا تتكرر الصورة
   if (input) {
     _setCameraAttrs(input);
     return input;
@@ -291,7 +350,7 @@ function _ensureTLVisitInput() {
   return input;
 }
 
-// ── CAMERA ENTRYPOINTS ────────────────────────────────────
+// ── CAMERA ────────────────────────────────────────────────
 function openVisitCamera() {
   const input = _ensureEmployeeVisitInput();
 
@@ -321,7 +380,6 @@ function openTLVisitCamera() {
   input.click();
 }
 
-// توافق مع HTML الحالي
 function showPhotoSourceModal(inputId) {
   if (inputId === 'tl-visit-input') {
     openTLVisitCamera();
@@ -342,21 +400,16 @@ function showPhotoSourceModal(inputId) {
 }
 
 function isValidCameraImage(file) {
-  if (!file) return false;
-  if (!file.type || !file.type.startsWith('image/')) return false;
-  return true;
+  return !!(file && file.type && file.type.startsWith('image/'));
 }
 
 // ── EMPLOYEE VISITS ───────────────────────────────────────
 async function populateVisitBranchSelect() {
-  await _ensureBranchesLoaded();
-
+  const rows = await _ensureBranchesLoaded();
   const sel = _vId('visit-branch-select');
   if (!sel) return;
 
-  const branches = _ensureArray(window.allBranches)
-    .map(_getBranchName)
-    .filter(Boolean);
+  const branches = _uniqueBranchNames(rows);
 
   sel.innerHTML =
     '<option value="">-- اختر الفرع --</option>' +
@@ -388,8 +441,8 @@ async function addVisitPhoto(e) {
     const compressed = await compressImageFile(file);
     visitPhotos.push(compressed);
     renderVisitPhotoPreviews();
-  } catch (e1) {
-    console.error('[addVisitPhoto]', e1);
+  } catch (e) {
+    console.error('[addVisitPhoto]', e);
     _vNotify('تعذر معالجة الصورة', 'Failed to process image', 'error');
   } finally {
     if (input) input.value = '';
@@ -416,11 +469,8 @@ function removeVisitPhoto(i) {
 }
 
 async function submitVisit() {
-  const branchEl = _vId('visit-branch-select');
-  const noteEl = _vId('visit-note-input');
-
-  const branch = (branchEl?.value || '').trim();
-  const note = (noteEl?.value || '').trim();
+  const branch = (_vId('visit-branch-select')?.value || '').trim();
+  const note = (_vId('visit-note-input')?.value || '').trim();
 
   if (!window.currentUser) {
     _vNotify('يجب تسجيل الدخول أولاً', 'You must login first', 'error');
@@ -432,7 +482,7 @@ async function submitVisit() {
     return;
   }
 
-  if (visitPhotos.length === 0) {
+  if (!visitPhotos.length) {
     _vNotify('أضف صورة واحدة على الأقل', 'Add at least one photo', 'error');
     return;
   }
@@ -450,15 +500,13 @@ async function submitVisit() {
     });
 
     _vNotify('تم حفظ الزيارة ✅', 'Visit saved ✅', 'success');
-
     visitPhotos = [];
     renderVisitPhotoPreviews();
     _clearVisitForm();
-
     await loadVisitsTab();
   } catch (e) {
     console.error('[submitVisit]', e);
-    _vNotify(`خطأ: ${e.message || ''}`, `Error: ${e.message || ''}`, 'error');
+    _vNotify('خطأ أثناء حفظ الزيارة', 'Error while saving visit', 'error');
   }
 }
 
@@ -468,34 +516,24 @@ async function loadVisitsTab() {
   await populateVisitBranchSelect();
 
   const pm = getPayrollMonth();
-
   const visits = await dbGet(
     'branch_visits',
     `?employee_id=eq.${currentUser.id}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`
   ).catch(() => []) || [];
 
-  const photoCount = visits.reduce((sum, v) => {
-    let c = 0;
-    if (v.photo1) c++;
-    if (v.photo2) c++;
-    if (v.photo3) c++;
-    return sum + c;
-  }, 0);
-
   const done = visits.length;
   const remain = Math.max(0, 150 - done);
+  const photoCount = visits.reduce((s, v) => s + [v.photo1, v.photo2, v.photo3].filter(Boolean).length, 0);
 
   const visDone = _vId('vis-done');
-  if (visDone) visDone.textContent = done;
-
-  const visRem = _vId('vis-remain');
-  if (visRem) visRem.textContent = remain;
-
+  const visRemain = _vId('vis-remain');
   const visPhotos = _vId('vis-photos');
-  if (visPhotos) visPhotos.textContent = photoCount;
+  const empCount = _vId('emp-visits-count');
 
-  const cnt = _vId('emp-visits-count');
-  if (cnt) cnt.textContent = done + ' / 150';
+  if (visDone) visDone.textContent = done;
+  if (visRemain) visRemain.textContent = remain;
+  if (visPhotos) visPhotos.textContent = photoCount;
+  if (empCount) empCount.textContent = `${done} / 150`;
 
   const el = _vId('visit-history-list');
   if (!el) return;
@@ -508,33 +546,28 @@ async function loadVisitsTab() {
   el.innerHTML = _sortVisitsDesc(visits).map(v => _visitCard(v, false)).join('');
 }
 
-// ── CLEAR OLD VISIT PHOTOS ────────────────────────────────
+// ── CLEAR OLD VISITS PHOTOS ───────────────────────────────
 async function clearOldVisitPhotos() {
   const cutoff = fmtDate(new Date(Date.now() - 60 * 24 * 60 * 60 * 1000));
   const old = await dbGet('branch_visits', `?visit_date=lt.${cutoff}&select=id`).catch(() => []) || [];
-  if (old.length === 0) return;
+  if (!old.length) return;
 
   for (const r of old) {
-    await dbPatch(
-      'branch_visits',
-      { photo1: null, photo2: null, photo3: null },
-      `?id=eq.${r.id}`
-    ).catch(() => null);
+    await dbPatch('branch_visits', {
+      photo1: null,
+      photo2: null,
+      photo3: null
+    }, `?id=eq.${r.id}`).catch(() => null);
   }
-
-  console.log(`Cleared photos from ${old.length} old visits`);
 }
 
-// ── TEAM LEADER / ADMIN VISITS TAB ────────────────────────
+// ── TEAM LEADER / ADMIN TAB ───────────────────────────────
 async function _populateTLVisitBranchSelect() {
-  await _ensureBranchesLoaded();
-
+  const rows = await _ensureBranchesLoaded();
   const sel = _vId('tl-visit-branch');
   if (!sel) return;
 
-  const branches = _ensureArray(window.allBranches)
-    .map(_getBranchName)
-    .filter(Boolean);
+  const branches = _uniqueBranchNames(rows);
 
   sel.innerHTML =
     '<option value="">-- اختر الفرع --</option>' +
@@ -543,8 +576,8 @@ async function _populateTLVisitBranchSelect() {
 
 async function addTLVisitPhoto(e) {
   if (!_isTeamLeaderUser()) {
-    _vNotify('فقط التيم ليدر يمكنه رفع الزيارات', 'Only team leader can upload visits', 'error');
     if (e?.target) e.target.value = '';
+    _vNotify('فقط التيم ليدر يمكنه رفع الزيارات', 'Only team leader can upload visits', 'error');
     return;
   }
 
@@ -572,8 +605,8 @@ async function addTLVisitPhoto(e) {
     const compressed = await compressImageFile(file);
     tlVisitPhotos.push(compressed);
     renderTLPreviews();
-  } catch (e1) {
-    console.error('[addTLVisitPhoto]', e1);
+  } catch (e) {
+    console.error('[addTLVisitPhoto]', e);
     _vNotify('تعذر معالجة الصورة', 'Failed to process image', 'error');
   } finally {
     if (input) input.value = '';
@@ -605,11 +638,8 @@ async function submitTLVisit() {
     return;
   }
 
-  const branchEl = _vId('tl-visit-branch');
-  const noteEl = _vId('tl-visit-note');
-
-  const branch = (branchEl?.value || '').trim();
-  const note = (noteEl?.value || '').trim();
+  const branch = (_vId('tl-visit-branch')?.value || '').trim();
+  const note = (_vId('tl-visit-note')?.value || '').trim();
 
   if (!window.currentUser) {
     _vNotify('يجب تسجيل الدخول أولاً', 'You must login first', 'error');
@@ -621,7 +651,7 @@ async function submitTLVisit() {
     return;
   }
 
-  if (tlVisitPhotos.length === 0) {
+  if (!tlVisitPhotos.length) {
     _vNotify('أضف صورة واحدة على الأقل', 'Add at least one photo', 'error');
     return;
   }
@@ -639,24 +669,12 @@ async function submitTLVisit() {
 
   const tries = [];
 
-  // المحاولة 1
   if (!Number.isNaN(numericId) && Number.isFinite(numericId)) {
-    tries.push({
-      ...basePayload,
-      employee_id: numericId
-    });
+    tries.push({ ...basePayload, employee_id: numericId });
   }
 
-  // المحاولة 2
-  tries.push({
-    ...basePayload,
-    employee_id: currentUser.id
-  });
-
-  // المحاولة 3
-  tries.push({
-    ...basePayload
-  });
+  tries.push({ ...basePayload, employee_id: currentUser.id });
+  tries.push({ ...basePayload });
 
   let lastErr = null;
 
@@ -665,11 +683,9 @@ async function submitTLVisit() {
       await dbPost('branch_visits', payload);
 
       _vNotify('تم حفظ الزيارة ✅', 'Visit saved ✅', 'success');
-
       tlVisitPhotos = [];
       renderTLPreviews();
       _clearTLVisitForm();
-
       await loadTLVisitsTab();
       return;
     } catch (e) {
@@ -678,13 +694,8 @@ async function submitTLVisit() {
     }
   }
 
-  _vNotify(
-    'خطأ 400 في حفظ الزيارة — غالبًا نوع حقل employee_id أو حجم الصورة',
-    'Save failed 400 — likely employee_id type or image size',
-    'error'
-  );
-
   console.error('[submitTLVisit final error]', lastErr);
+  _vNotify('تعذر حفظ الزيارة', 'Failed to save visit', 'error');
 }
 
 async function loadTLVisitsTab() {
@@ -701,7 +712,6 @@ async function loadTLVisitsTab() {
 
   const role = _normalizeRole(currentUser.role);
 
-  // يظهر التاب للتيم ليدر والأدمن والسوبر أدمن
   if (nav) nav.style.display = 'flex';
   page.style.display = 'block';
 
@@ -711,30 +721,28 @@ async function loadTLVisitsTab() {
     `?visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`
   ).catch(() => []) || [];
 
-  // ── TEAM LEADER MODE ──
+  // Team Leader
   if (role === 'team_leader') {
     _applyTeamLeaderVisitsMode();
-    await _populateTLVisitBranchSelect();
     _ensureTLVisitInput();
+    await _populateTLVisitBranchSelect();
 
     const myName = String(currentUser.name || '').trim();
     const myId = String(currentUser.id || '').trim();
 
-    const visits = _sortVisitsDesc(
-      _dedupeById(
-        allMonthRows.filter(v =>
-          String(v.employee_id || '') === myId ||
-          String(v.employee_name || '').trim() === myName
-        )
+    const visits = _sortVisitsDesc(_dedupeById(
+      allMonthRows.filter(v =>
+        String(v.employee_id || '') === myId ||
+        String(v.employee_name || '').trim() === myName
       )
-    );
+    ));
 
     const done = visits.length;
     const remain = Math.max(0, 150 - done);
 
     if (doneEl) doneEl.textContent = done;
     if (remEl) remEl.textContent = remain;
-    if (cntEl) cntEl.textContent = done + ' / 150';
+    if (cntEl) cntEl.textContent = `${done} / 150`;
 
     if (!visits.length) {
       el.innerHTML = `<div class="empty"><div class="empty-icon">📸</div>${_vLangAr() ? 'لا توجد زيارات هذا الشهر' : 'No visits this month'}</div>`;
@@ -745,24 +753,17 @@ async function loadTLVisitsTab() {
     return;
   }
 
-  // ── ADMIN / SUPERADMIN REVIEW MODE ──
+  // Admin / Superadmin review only
   if (role === 'admin' || role === 'superadmin') {
     _applyAdminVisitsReviewMode();
 
     const visits = _sortVisitsDesc(_dedupeById(allMonthRows));
-    const done = visits.length;
+    const totalVisits = visits.length;
+    const totalPhotos = visits.reduce((s, v) => s + [v.photo1, v.photo2, v.photo3].filter(Boolean).length, 0);
 
-    const photoCount = visits.reduce((sum, v) => {
-      let c = 0;
-      if (v.photo1) c++;
-      if (v.photo2) c++;
-      if (v.photo3) c++;
-      return sum + c;
-    }, 0);
-
-    if (doneEl) doneEl.textContent = done;
-    if (remEl) remEl.textContent = photoCount;
-    if (cntEl) cntEl.textContent = String(done);
+    if (doneEl) doneEl.textContent = totalVisits;
+    if (remEl) remEl.textContent = totalPhotos;
+    if (cntEl) cntEl.textContent = String(totalVisits);
 
     if (!visits.length) {
       el.innerHTML = `<div class="empty"><div class="empty-icon">📸</div>${_vLangAr() ? 'لا توجد زيارات هذا الشهر' : 'No visits this month'}</div>`;
@@ -783,4 +784,28 @@ function initVisitsModule() {
   _ensureTLVisitInput();
 }
 
-if (document.readyState === 'loading')
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initVisitsModule);
+} else {
+  initVisitsModule();
+}
+
+// ── GLOBALS ───────────────────────────────────────────────
+window.populateVisitBranchSelect = populateVisitBranchSelect;
+window.addVisitPhoto = addVisitPhoto;
+window.renderVisitPhotoPreviews = renderVisitPhotoPreviews;
+window.removeVisitPhoto = removeVisitPhoto;
+window.submitVisit = submitVisit;
+window.loadVisitsTab = loadVisitsTab;
+window.clearOldVisitPhotos = clearOldVisitPhotos;
+
+window.addTLVisitPhoto = addTLVisitPhoto;
+window.renderTLPreviews = renderTLPreviews;
+window.removeTLPhoto = removeTLPhoto;
+window.submitTLVisit = submitTLVisit;
+window.loadTLVisitsTab = loadTLVisitsTab;
+
+window.openVisitCamera = openVisitCamera;
+window.openTLVisitCamera = openTLVisitCamera;
+window.showPhotoSourceModal = showPhotoSourceModal;
+window.openVisitImagePreview = _safeFullImage;

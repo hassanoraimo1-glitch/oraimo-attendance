@@ -492,42 +492,57 @@ navigator.serviceWorker.register('/sw.js')
       <div class="visit-stat-label">صورة مرفوعة</div>
     </div>
   </div>
-<!-- New Visit Form -->
-<div class="card card-glow">
-  <div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ تسجيل زيارة جديدة</div>
 
-  <div class="inp-grp">
-    <label>الفرع</label>
-    <select id="visit-branch-select">
-      <option value="">-- اختر الفرع --</option>
-    </select>
+  <!-- New Visit Form -->
+  <div class="card card-glow">
+    <div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ تسجيل زيارة جديدة</div>
+
+    <div class="inp-grp">
+      <label>الفرع</label>
+      <select id="visit-branch-select">
+        <option value="">-- اختر الفرع --</option>
+      </select>
+    </div>
+
+    <div class="inp-grp">
+      <label>ملاحظة (اختياري)</label>
+      <textarea
+        id="visit-note-input"
+        placeholder="حالة الديسبلاي، ملاحظات الفرع..."
+        rows="2"
+        style="width:100%;padding:11px 14px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl;transition:.2s"
+      ></textarea>
+    </div>
+
+    <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">
+      صور الديسبلاي (max 3)
+    </label>
+
+    <div class="photo-previews" id="visit-photo-previews"></div>
+
+    <!-- hidden camera input -->
+    <input
+      type="file"
+      id="visit-camera-input"
+      accept="image/*"
+      capture="environment"
+      style="display:none"
+      onchange="addVisitPhoto(event)"
+    >
+
+    <div
+      class="photo-upload-zone"
+      id="visit-upload-zone"
+      onclick="openVisitCamera()"
+      style="cursor:pointer"
+    >
+      <div style="font-size:28px">📷</div>
+      <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لفتح الكاميرا</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور للزيارة - بالكاميرا فقط</div>
+    </div>
+
+    <button class="btn btn-green" onclick="submitVisit()">✅ حفظ الزيارة</button>
   </div>
-
-  <div class="inp-grp">
-    <label>ملاحظة (اختياري)</label>
-    <textarea
-      id="visit-note-input"
-      placeholder="حالة الديسبلاي، ملاحظات الفرع..."
-      rows="2"
-      style="width:100%;padding:11px 14px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl;transition:.2s"
-    ></textarea>
-  </div>
-
-  <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">
-    صور الديسبلاي (max 3)
-  </label>
-
-  <div class="photo-previews" id="visit-photo-previews"></div>
-
-  <div class="photo-upload-zone" id="visit-upload-zone" onclick="openVisitCamera()">
-    <div style="font-size:28px">📷</div>
-    <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لفتح الكاميرا</div>
-    <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور للزيارة - بالكاميرا فقط</div>
-  </div>
-
-  <button class="btn btn-green" onclick="submitVisit()">✅ حفظ الزيارة</button>
-</div>
-
 
   <!-- Visit History -->
   <div class="sh" style="margin-top:4px">
@@ -535,7 +550,6 @@ navigator.serviceWorker.register('/sw.js')
   </div>
   <div id="visit-history-list"></div>
 </div>
-
 
 
 <!-- SPECS TAB (Employee) -->

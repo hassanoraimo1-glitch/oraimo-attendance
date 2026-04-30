@@ -1,10 +1,10 @@
 // ═══════════════════════════════════════════════════════════
 // modules/admin/visits.js — Branch visits (employee + team leader + admin review)
-// Fixed:
-// 1) TL save 400 by using existing table schema only
-// 2) admin can open visits tab and review all visits
-// 3) team leader still can upload via camera only
-// 4) no duplicate photo issue
+// Provides globals:
+//   populateVisitBranchSelect, addVisitPhoto, renderVisitPhotoPreviews,
+//   removeVisitPhoto, submitVisit, loadVisitsTab, clearOldVisitPhotos,
+//   addTLVisitPhoto, renderTLPreviews, removeTLPhoto, submitTLVisit,
+//   loadTLVisitsTab, openVisitCamera, openTLVisitCamera, showPhotoSourceModal
 // ═══════════════════════════════════════════════════════════
 
 let visitPhotos = [];
@@ -36,13 +36,21 @@ function _escapeHtml(str) {
 
 function _normalizeRole(role) {
   const r = String(role || '').trim().toLowerCase();
-  if (r === 'manager') return 'team_leader';
-  if (r === 'team_leader') return 'team_leader';
+
+  if (!r) return 'employee';
   if (r === 'super_admin') return 'superadmin';
   if (r === 'superadmin') return 'superadmin';
+
+  // مهم: عندك manager هو admin
+  if (r === 'manager') return 'admin';
+
+  if (r === 'viewer') return 'admin';
   if (r === 'admin') return 'admin';
+  if (r === 'teamleader') return 'team_leader';
+  if (r === 'team_leader') return 'team_leader';
   if (r === 'employee') return 'employee';
-  return r || 'employee';
+
+  return r;
 }
 
 function _isTeamLeaderUser() {
@@ -185,7 +193,7 @@ function _visitCard(v, showOwner = false) {
         <div>
           <div class="visit-branch-name">🏪 ${_escapeHtml(v.branch_name || '-')}</div>
           <div class="visit-meta">${_escapeHtml(v.visit_date || '-')}</div>
-          ${showOwner ? `<div class="visit-meta" style="margin-top:4px;color:var(--green)">👤 ${_escapeHtml(v.employee_name || v.manager_name || '-')}</div>` : ''}
+          ${showOwner ? `<div class="visit-meta" style="margin-top:4px;color:var(--green)">👤 ${_escapeHtml(v.employee_name || '-')}</div>` : ''}
         </div>
         <span class="badge badge-green">${photos.length} 📷</span>
       </div>
@@ -216,8 +224,10 @@ function compressImageFile(file) {
         img.onload = () => {
           try {
             const canvas = document.createElement('canvas');
-            const maxW = 1080;
-            const maxH = 1080;
+
+            // تقليل أكبر لتقليل احتمالية 400
+            const maxW = 640;
+            const maxH = 640;
             const ratio = Math.min(1, maxW / img.width, maxH / img.height);
 
             canvas.width = Math.max(1, Math.round(img.width * ratio));
@@ -226,7 +236,7 @@ function compressImageFile(file) {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-            resolve(canvas.toDataURL('image/jpeg', 0.72));
+            resolve(canvas.toDataURL('image/jpeg', 0.40));
           } catch (err) {
             reject(err);
           }
@@ -264,7 +274,7 @@ function _ensureEmployeeVisitInput() {
 function _ensureTLVisitInput() {
   let input = _vId('tl-visit-input');
 
-  // لو موجود في HTML، ما نضيفش listener ثاني
+  // لو موجود في HTML لا نضيف listener إضافي حتى لا تتكرر الصورة
   if (input) {
     _setCameraAttrs(input);
     return input;
@@ -616,30 +626,65 @@ async function submitTLVisit() {
     return;
   }
 
-  try {
-    // ✅ مهم: نفس schema الموجودة في branch_visits
-    await dbPost('branch_visits', {
-      employee_id: currentUser.id,
-      employee_name: currentUser.name,
-      branch_name: branch,
-      note: note || null,
-      photo1: tlVisitPhotos[0] || null,
-      photo2: tlVisitPhotos[1] || null,
-      photo3: tlVisitPhotos[2] || null,
-      visit_date: todayStr()
+  const numericId = Number(currentUser.id);
+  const basePayload = {
+    employee_name: currentUser.name || null,
+    branch_name: branch,
+    note: note || null,
+    photo1: tlVisitPhotos[0] || null,
+    photo2: tlVisitPhotos[1] || null,
+    photo3: tlVisitPhotos[2] || null,
+    visit_date: todayStr()
+  };
+
+  const tries = [];
+
+  // المحاولة 1
+  if (!Number.isNaN(numericId) && Number.isFinite(numericId)) {
+    tries.push({
+      ...basePayload,
+      employee_id: numericId
     });
-
-    _vNotify('تم حفظ الزيارة ✅', 'Visit saved ✅', 'success');
-
-    tlVisitPhotos = [];
-    renderTLPreviews();
-    _clearTLVisitForm();
-
-    await loadTLVisitsTab();
-  } catch (e) {
-    console.error('[submitTLVisit]', e);
-    _vNotify(`خطأ: ${e.message || ''}`, `Error: ${e.message || ''}`, 'error');
   }
+
+  // المحاولة 2
+  tries.push({
+    ...basePayload,
+    employee_id: currentUser.id
+  });
+
+  // المحاولة 3
+  tries.push({
+    ...basePayload
+  });
+
+  let lastErr = null;
+
+  for (const payload of tries) {
+    try {
+      await dbPost('branch_visits', payload);
+
+      _vNotify('تم حفظ الزيارة ✅', 'Visit saved ✅', 'success');
+
+      tlVisitPhotos = [];
+      renderTLPreviews();
+      _clearTLVisitForm();
+
+      await loadTLVisitsTab();
+      return;
+    } catch (e) {
+      console.error('[submitTLVisit try failed]', payload, e);
+      lastErr = e;
+    }
+  }
+
+  _vNotify(
+    'خطأ 400 في حفظ الزيارة — غالبًا نوع حقل employee_id أو حجم الصورة',
+    'Save failed 400 — likely employee_id type or image size',
+    'error'
+  );
+
+  console.error('[submitTLVisit final error]', lastErr);
 }
 
 async function loadTLVisitsTab() {
@@ -654,6 +699,9 @@ async function loadTLVisitsTab() {
 
   if (!page || !el) return;
 
+  const role = _normalizeRole(currentUser.role);
+
+  // يظهر التاب للتيم ليدر والأدمن والسوبر أدمن
   if (nav) nav.style.display = 'flex';
   page.style.display = 'block';
 
@@ -664,16 +712,19 @@ async function loadTLVisitsTab() {
   ).catch(() => []) || [];
 
   // ── TEAM LEADER MODE ──
-  if (_isTeamLeaderUser()) {
+  if (role === 'team_leader') {
     _applyTeamLeaderVisitsMode();
     await _populateTLVisitBranchSelect();
     _ensureTLVisitInput();
 
+    const myName = String(currentUser.name || '').trim();
+    const myId = String(currentUser.id || '').trim();
+
     const visits = _sortVisitsDesc(
       _dedupeById(
         allMonthRows.filter(v =>
-          String(v.employee_id || '') === String(currentUser.id) ||
-          String(v.manager_id || '') === String(currentUser.id)
+          String(v.employee_id || '') === myId ||
+          String(v.employee_name || '').trim() === myName
         )
       )
     );
@@ -695,12 +746,12 @@ async function loadTLVisitsTab() {
   }
 
   // ── ADMIN / SUPERADMIN REVIEW MODE ──
-  if (_isAdminReviewUser()) {
+  if (role === 'admin' || role === 'superadmin') {
     _applyAdminVisitsReviewMode();
 
     const visits = _sortVisitsDesc(_dedupeById(allMonthRows));
-
     const done = visits.length;
+
     const photoCount = visits.reduce((sum, v) => {
       let c = 0;
       if (v.photo1) c++;
@@ -722,7 +773,6 @@ async function loadTLVisitsTab() {
     return;
   }
 
-  // أي دور آخر: أخفِ الصفحة
   if (nav) nav.style.display = 'none';
   page.style.display = 'none';
 }
@@ -733,28 +783,4 @@ function initVisitsModule() {
   _ensureTLVisitInput();
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initVisitsModule);
-} else {
-  initVisitsModule();
-}
-
-// ── GLOBALS ───────────────────────────────────────────────
-window.populateVisitBranchSelect = populateVisitBranchSelect;
-window.addVisitPhoto = addVisitPhoto;
-window.renderVisitPhotoPreviews = renderVisitPhotoPreviews;
-window.removeVisitPhoto = removeVisitPhoto;
-window.submitVisit = submitVisit;
-window.loadVisitsTab = loadVisitsTab;
-window.clearOldVisitPhotos = clearOldVisitPhotos;
-
-window.addTLVisitPhoto = addTLVisitPhoto;
-window.renderTLPreviews = renderTLPreviews;
-window.removeTLPhoto = removeTLPhoto;
-window.submitTLVisit = submitTLVisit;
-window.loadTLVisitsTab = loadTLVisitsTab;
-
-window.openVisitCamera = openVisitCamera;
-window.openTLVisitCamera = openTLVisitCamera;
-window.showPhotoSourceModal = showPhotoSourceModal;
-window.openVisitImagePreview = _safeFullImage;
+if (document.readyState === 'loading')

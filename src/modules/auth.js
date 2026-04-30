@@ -77,18 +77,21 @@ function _getSavedUser() {
 function _normalizeRole(role) {
   const r = String(role || '').trim().toLowerCase();
 
-  if (!r) return 'employee';
   if (r === 'super_admin') return 'superadmin';
   if (r === 'superadmin') return 'superadmin';
-  if (r === 'manager') return 'team_leader';
-  if (r === 'teamleader') return 'team_leader';
-  if (r === 'team_leader') return 'team_leader';
+
+  // ✅ manager = admin
+  if (r === 'manager') return 'admin';
+
   if (r === 'viewer') return 'admin';
   if (r === 'admin') return 'admin';
+  if (r === 'team_leader') return 'team_leader';
+  if (r === 'teamleader') return 'team_leader';
   if (r === 'employee') return 'employee';
 
-  return r;
+  return r || 'employee';
 }
+
 
 function _sanitizeUser(userObj) {
   if (!userObj || typeof userObj !== 'object') return null;

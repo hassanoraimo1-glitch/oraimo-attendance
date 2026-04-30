@@ -14,9 +14,11 @@ let tlVisitPhotos = [];
 // ── HELPERS ──────────────────────────────────────────────
 function _vRole() {
   const r = String(currentUser?.role || '').trim().toLowerCase();
-  if (r === 'super_admin') return 'superadmin';
-  if (r === 'teamleader') return 'team_leader';
+
+  if (r === 'superadmin' || r === 'super_admin') return 'super_admin';
+  if (r === 'teamleader' || r === 'team_leader') return 'team_leader';
   if (r === 'manager') return 'admin';
+
   return r;
 }
 
@@ -30,7 +32,7 @@ function _isTeamLeaderUser() {
 
 function _isAdminReviewUser() {
   const r = _vRole();
-  return r === 'admin' || r === 'superadmin';
+  return r === 'admin' || r === 'super_admin';
 }
 
 function _isVisitUploader() {
@@ -61,6 +63,7 @@ function _ensureCameraAttrsOnKnownInputs() {
 
 function _getBranchName(branch) {
   if (!branch) return '';
+
   return String(
     branch.name ||
     branch.branch_name ||
@@ -69,16 +72,42 @@ function _getBranchName(branch) {
     branch.branch ||
     branch.name_ar ||
     branch.name_en ||
+    branch.branchName ||
     ''
   ).trim();
 }
 
-function _getAllBranchNames() {
-  const rows = Array.isArray(window.allBranches) ? window.allBranches : [];
-  const names = rows
-    .map(_getBranchName)
-    .filter(Boolean);
+function _getBranchesSource() {
+  try {
+    if (Array.isArray(window.allBranches) && window.allBranches.length) {
+      return window.allBranches;
+    }
+  } catch (_) {}
 
+  try {
+    if (typeof allBranches !== 'undefined' && Array.isArray(allBranches) && allBranches.length) {
+      return allBranches;
+    }
+  } catch (_) {}
+
+  try {
+    if (window.state && Array.isArray(window.state.branches) && window.state.branches.length) {
+      return window.state.branches;
+    }
+  } catch (_) {}
+
+  try {
+    if (typeof state !== 'undefined' && Array.isArray(state.branches) && state.branches.length) {
+      return state.branches;
+    }
+  } catch (_) {}
+
+  return [];
+}
+
+function _getAllBranchNames() {
+  const rows = _getBranchesSource();
+  const names = rows.map(_getBranchName).filter(Boolean);
   return [...new Set(names)];
 }
 
@@ -87,24 +116,35 @@ function _setText(id, value) {
   if (el) el.textContent = value;
 }
 
-function _hideElement(el) {
+function _setClosestWrapDisplay(el, show) {
   if (!el) return;
-  el.style.display = 'none';
-}
-
-function _showElement(el, displayValue = '') {
-  if (!el) return;
-  el.style.display = displayValue;
+  const wrap = el.closest('.form-group, .field, .input-group, .row, .col, .card, .section');
+  if (wrap) {
+    wrap.style.display = show ? '' : 'none';
+  } else {
+    el.style.display = show ? '' : 'none';
+  }
 }
 
 function _hideEmployeeUploadUI() {
-  const ids = ['visit-branch-select', 'visit-note-input', 'visit-upload-zone', 'visit-camera-input'];
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if ('disabled' in el) el.disabled = true;
-    el.style.pointerEvents = 'none';
-  });
+  const branch = document.getElementById('visit-branch-select');
+  const note = document.getElementById('visit-note-input');
+  const zone = document.getElementById('visit-upload-zone');
+  const input = document.getElementById('visit-camera-input') || document.getElementById('visit-input');
+
+  if (branch) {
+    branch.disabled = true;
+    branch.style.pointerEvents = 'none';
+  }
+  if (note) {
+    note.disabled = true;
+    note.style.pointerEvents = 'none';
+  }
+  if (input) {
+    input.disabled = true;
+    input.style.pointerEvents = 'none';
+  }
+  if (zone) zone.style.display = 'none';
 
   document.querySelectorAll(
     '[onclick*="submitVisit"], [onclick*="openVisitCamera"], [onclick*="showPhotoSourceModal(\'visit"], [onclick*="showPhotoSourceModal(&quot;visit"]'
@@ -114,18 +154,28 @@ function _hideEmployeeUploadUI() {
     btn.style.display = 'none';
   });
 
-  const zone = document.getElementById('visit-upload-zone');
-  if (zone) zone.style.display = 'none';
+  _setClosestWrapDisplay(branch, false);
+  _setClosestWrapDisplay(note, false);
 }
 
 function _showEmployeeUploadUI() {
-  const ids = ['visit-branch-select', 'visit-note-input', 'visit-upload-zone', 'visit-camera-input'];
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if ('disabled' in el) el.disabled = false;
-    el.style.pointerEvents = '';
-  });
+  const branch = document.getElementById('visit-branch-select');
+  const note = document.getElementById('visit-note-input');
+  const zone = document.getElementById('visit-upload-zone');
+  const input = document.getElementById('visit-camera-input') || document.getElementById('visit-input');
+
+  if (branch) {
+    branch.disabled = false;
+    branch.style.pointerEvents = '';
+  }
+  if (note) {
+    note.disabled = false;
+    note.style.pointerEvents = '';
+  }
+  if (input) {
+    input.disabled = false;
+    input.style.pointerEvents = '';
+  }
 
   document.querySelectorAll(
     '[onclick*="submitVisit"], [onclick*="openVisitCamera"], [onclick*="showPhotoSourceModal(\'visit"], [onclick*="showPhotoSourceModal(&quot;visit"]'
@@ -135,18 +185,31 @@ function _showEmployeeUploadUI() {
     btn.style.display = '';
   });
 
-  const zone = document.getElementById('visit-upload-zone');
   if (zone) zone.style.display = visitPhotos.length >= 3 ? 'none' : 'block';
+
+  _setClosestWrapDisplay(branch, true);
+  _setClosestWrapDisplay(note, true);
 }
 
 function _hideTLUploadUI() {
-  const ids = ['tl-visit-branch', 'tl-visit-note', 'tl-visit-zone', 'tl-visit-input'];
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if ('disabled' in el) el.disabled = true;
-    el.style.pointerEvents = 'none';
-  });
+  const branch = document.getElementById('tl-visit-branch');
+  const note = document.getElementById('tl-visit-note');
+  const zone = document.getElementById('tl-visit-zone');
+  const input = document.getElementById('tl-visit-input');
+
+  if (branch) {
+    branch.disabled = true;
+    branch.style.pointerEvents = 'none';
+  }
+  if (note) {
+    note.disabled = true;
+    note.style.pointerEvents = 'none';
+  }
+  if (input) {
+    input.disabled = true;
+    input.style.pointerEvents = 'none';
+  }
+  if (zone) zone.style.display = 'none';
 
   document.querySelectorAll(
     '[onclick*="submitTLVisit"], [onclick*="openTLVisitCamera"], [onclick*="showPhotoSourceModal(\'tl-visit-input"], [onclick*="showPhotoSourceModal(&quot;tl-visit-input"]'
@@ -156,32 +219,30 @@ function _hideTLUploadUI() {
     btn.style.display = 'none';
   });
 
-  const zone = document.getElementById('tl-visit-zone');
-  if (zone) zone.style.display = 'none';
-
-  const branch = document.getElementById('tl-visit-branch');
-  const note = document.getElementById('tl-visit-note');
-  if (branch) {
-    const wrap = branch.closest('.form-group, .field, .input-group, .row, .col, .card, .section');
-    if (wrap && !wrap.querySelector('#tl-visit-history')) wrap.style.display = 'none';
-    else branch.style.display = 'none';
-  }
-  if (note) {
-    const wrap = note.closest('.form-group, .field, .input-group, .row, .col, .card, .section');
-    if (wrap && !wrap.querySelector('#tl-visit-history')) wrap.style.display = 'none';
-    else note.style.display = 'none';
-  }
+  _setClosestWrapDisplay(branch, false);
+  _setClosestWrapDisplay(note, false);
 }
 
 function _showTLUploadUI() {
-  const ids = ['tl-visit-branch', 'tl-visit-note', 'tl-visit-zone', 'tl-visit-input'];
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if ('disabled' in el) el.disabled = false;
-    el.style.pointerEvents = '';
-    if (id !== 'tl-visit-input') el.style.display = '';
-  });
+  const branch = document.getElementById('tl-visit-branch');
+  const note = document.getElementById('tl-visit-note');
+  const zone = document.getElementById('tl-visit-zone');
+  const input = document.getElementById('tl-visit-input');
+
+  if (branch) {
+    branch.disabled = false;
+    branch.style.pointerEvents = '';
+    branch.style.display = '';
+  }
+  if (note) {
+    note.disabled = false;
+    note.style.pointerEvents = '';
+    note.style.display = '';
+  }
+  if (input) {
+    input.disabled = false;
+    input.style.pointerEvents = '';
+  }
 
   document.querySelectorAll(
     '[onclick*="submitTLVisit"], [onclick*="openTLVisitCamera"], [onclick*="showPhotoSourceModal(\'tl-visit-input"], [onclick*="showPhotoSourceModal(&quot;tl-visit-input"]'
@@ -191,21 +252,10 @@ function _showTLUploadUI() {
     btn.style.display = '';
   });
 
-  const zone = document.getElementById('tl-visit-zone');
   if (zone) zone.style.display = tlVisitPhotos.length >= 3 ? 'none' : 'block';
 
-  const branch = document.getElementById('tl-visit-branch');
-  const note = document.getElementById('tl-visit-note');
-  if (branch) {
-    const wrap = branch.closest('.form-group, .field, .input-group, .row, .col, .card, .section');
-    if (wrap && !wrap.querySelector('#tl-visit-history')) wrap.style.display = '';
-    branch.style.display = '';
-  }
-  if (note) {
-    const wrap = note.closest('.form-group, .field, .input-group, .row, .col, .card, .section');
-    if (wrap && !wrap.querySelector('#tl-visit-history')) wrap.style.display = '';
-    note.style.display = '';
-  }
+  _setClosestWrapDisplay(branch, true);
+  _setClosestWrapDisplay(note, true);
 }
 
 function _setAdminVisitsHeader() {
@@ -307,7 +357,7 @@ function compressImageFile(file, callback) {
   reader.readAsDataURL(file);
 }
 
-// ── EMPLOYEE VISITS ──────────────────────────────────────
+// ── BRANCH SELECTS ───────────────────────────────────────
 function populateVisitBranchSelect() {
   const sel = document.getElementById('visit-branch-select');
   if (!sel) return;
@@ -318,6 +368,29 @@ function populateVisitBranchSelect() {
     names.map(name => `<option value="${name}">${name}</option>`).join('');
 }
 
+function populateTLVisitBranchSelect() {
+  const sel = document.getElementById('tl-visit-branch');
+  if (!sel) return;
+
+  const names = _getAllBranchNames();
+  sel.innerHTML =
+    '<option value="">-- اختر الفرع --</option>' +
+    names.map(name => `<option value="${name}">${name}</option>`).join('');
+
+  if (names.length === 0) {
+    setTimeout(() => {
+      const retrySel = document.getElementById('tl-visit-branch');
+      if (!retrySel) return;
+
+      const retryNames = _getAllBranchNames();
+      retrySel.innerHTML =
+        '<option value="">-- اختر الفرع --</option>' +
+        retryNames.map(name => `<option value="${name}">${name}</option>`).join('');
+    }, 700);
+  }
+}
+
+// ── EMPLOYEE VISITS ──────────────────────────────────────
 function addVisitPhoto(e) {
   const ar = currentLang === 'ar';
 
@@ -475,6 +548,7 @@ async function loadVisitsTab() {
 async function clearOldVisitPhotos() {
   const cutoff = fmtDate(new Date(Date.now() - 60 * 24 * 60 * 60 * 1000));
   const old = await dbGet('branch_visits', `?visit_date=lt.${cutoff}&select=id`).catch(() => []) || [];
+
   if (old.length === 0) return;
 
   for (const r of old) {
@@ -589,19 +663,13 @@ async function submitTLVisit() {
 }
 
 async function loadTLVisitsTab() {
-  const sel = document.getElementById('tl-visit-branch');
-  const names = _getAllBranchNames();
-
-  if (sel) {
-    sel.innerHTML =
-      '<option value="">-- اختر الفرع --</option>' +
-      names.map(name => `<option value="${name}">${name}</option>`).join('');
-  }
+  populateTLVisitBranchSelect();
 
   const doneEl = document.getElementById('tl-vis-done');
   const remEl = document.getElementById('tl-vis-remain');
   const cntEl = document.getElementById('tl-visit-count');
   const el = document.getElementById('tl-visit-history');
+
   if (!el) return;
 
   // TEAM LEADER
@@ -610,6 +678,7 @@ async function loadTLVisitsTab() {
     _setTLVisitsHeader();
 
     const pm = getPayrollMonth();
+
     const byManager = await dbGet(
       'branch_visits',
       `?manager_id=eq.${currentUser.id}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`
@@ -620,7 +689,9 @@ async function loadTLVisitsTab() {
       `?employee_id=eq.${currentUser.id}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`
     ).catch(() => []);
 
-    const visits = (Array.isArray(byManager) && byManager.length) ? byManager : (Array.isArray(byEmployee) ? byEmployee : []);
+    const visits = (Array.isArray(byManager) && byManager.length)
+      ? byManager
+      : (Array.isArray(byEmployee) ? byEmployee : []);
 
     const done = visits.length;
     const remain = Math.max(0, 150 - done);
@@ -638,7 +709,7 @@ async function loadTLVisitsTab() {
     return;
   }
 
-  // ADMIN / SUPERADMIN
+  // ADMIN / SUPER ADMIN
   if (_isAdminReviewUser()) {
     _hideTLUploadUI();
     _setAdminVisitsHeader();
@@ -711,6 +782,7 @@ function openTLVisitCamera() {
   if (!_isTeamLeaderUser()) return _notifyViewOnly();
 
   const input = document.getElementById('tl-visit-input');
+
   if (!input) {
     return notify(
       currentLang === 'ar' ? 'مدخل الكاميرا غير موجود' : 'Camera input not found',
@@ -756,17 +828,14 @@ function showPhotoSourceModal(inputId) {
 function initVisitsModule() {
   _ensureCameraAttrsOnKnownInputs();
 
-  if (_isEmployeeUser()) {
-    _showEmployeeUploadUI();
-  } else {
-    _hideEmployeeUploadUI();
-  }
+  if (_isEmployeeUser()) _showEmployeeUploadUI();
+  else _hideEmployeeUploadUI();
 
-  if (_isTeamLeaderUser()) {
-    _showTLUploadUI();
-  } else {
-    _hideTLUploadUI();
-  }
+  if (_isTeamLeaderUser()) _showTLUploadUI();
+  else _hideTLUploadUI();
+
+  populateVisitBranchSelect();
+  populateTLVisitBranchSelect();
 }
 
 if (document.readyState === 'loading') {

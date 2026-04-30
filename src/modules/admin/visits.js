@@ -2,7 +2,7 @@
 // src/modules/admin/visits.js — Branch visits
 // Employee: upload own visits
 // Team Leader: upload own visits
-// Admin/Superadmin: review all visits only
+// Admin/Superadmin: review all visits only (NO UPLOAD)
 // ═══════════════════════════════════════════════════════════
 
 let visitPhotos = [];
@@ -55,6 +55,15 @@ function _isTeamLeaderUser() {
 function _isAdminReviewUser() {
   const r = _normalizeRole(window.currentUser?.role);
   return r === 'admin' || r === 'superadmin';
+}
+
+function _isEmployeeUser() {
+  return _normalizeRole(window.currentUser?.role) === 'employee';
+}
+
+function _canUploadVisits() {
+  const role = _normalizeRole(window.currentUser?.role);
+  return role === 'employee' || role === 'team_leader';
 }
 
 function _ensureArray(value) {
@@ -201,12 +210,7 @@ function _visitCard(v, showOwner = false) {
 function _findTLUploadCards() {
   const cards = new Set();
 
-  [
-    'tl-visit-branch',
-    'tl-visit-note',
-    'tl-visit-zone',
-    'tl-visit-previews'
-  ].forEach(id => {
+  ['tl-visit-branch', 'tl-visit-note', 'tl-visit-zone', 'tl-visit-previews'].forEach(id => {
     const el = _vId(id);
     if (!el) return;
     const card = el.closest('.card');
@@ -361,6 +365,11 @@ function _ensureTLVisitInput() {
 
 // ── CAMERA ────────────────────────────────────────────────
 function openVisitCamera() {
+  if (!_canUploadVisits()) {
+    _vNotify('هذا القسم للمشاهدة فقط وليس للرفع', 'This section is view only, not upload', 'info');
+    return;
+  }
+
   const input = _ensureEmployeeVisitInput();
 
   if (visitPhotos.length >= 3) {
@@ -374,7 +383,7 @@ function openVisitCamera() {
 
 function openTLVisitCamera() {
   if (!_isTeamLeaderUser()) {
-    _vNotify('هذا الجزء للمراجعة فقط', 'This section is review only', 'info');
+    _vNotify('هذا القسم للمراجعة فقط', 'This section is review only', 'info');
     return;
   }
 
@@ -426,6 +435,12 @@ async function populateVisitBranchSelect() {
 }
 
 async function addVisitPhoto(e) {
+  if (!_canUploadVisits()) {
+    if (e?.target) e.target.value = '';
+    _vNotify('هذا القسم للمشاهدة فقط وليس للرفع', 'This section is view only, not upload', 'info');
+    return;
+  }
+
   const input = e?.target;
   const file = input?.files && input.files[0];
 
@@ -473,11 +488,21 @@ function renderVisitPhotoPreviews() {
 }
 
 function removeVisitPhoto(i) {
+  if (!_canUploadVisits()) {
+    _vNotify('هذا القسم للمشاهدة فقط', 'This section is view only', 'info');
+    return;
+  }
+
   visitPhotos.splice(i, 1);
   renderVisitPhotoPreviews();
 }
 
 async function submitVisit() {
+  if (!_canUploadVisits()) {
+    _vNotify('هذا القسم للمشاهدة فقط وليس للرفع', 'This section is view only, not upload', 'info');
+    return;
+  }
+
   const branch = (_vId('visit-branch-select')?.value || '').trim();
   const note = (_vId('visit-note-input')?.value || '').trim();
 
@@ -586,7 +611,7 @@ async function _populateTLVisitBranchSelect() {
 async function addTLVisitPhoto(e) {
   if (!_isTeamLeaderUser()) {
     if (e?.target) e.target.value = '';
-    _vNotify('هذا الجزء للمراجعة فقط', 'This section is review only', 'info');
+    _vNotify('هذا القسم للمشاهدة فقط وليس للرفع', 'This section is view only, not upload', 'info');
     return;
   }
 
@@ -637,13 +662,18 @@ function renderTLPreviews() {
 }
 
 function removeTLPhoto(i) {
+  if (!_isTeamLeaderUser()) {
+    _vNotify('هذا القسم للمشاهدة فقط', 'This section is view only', 'info');
+    return;
+  }
+
   tlVisitPhotos.splice(i, 1);
   renderTLPreviews();
 }
 
 async function submitTLVisit() {
   if (!_isTeamLeaderUser()) {
-    _vNotify('هذا الجزء للمراجعة فقط وليس للرفع', 'This section is review only, not upload', 'info');
+    _vNotify('هذا القسم للمشاهدة فقط وليس للرفع', 'This section is view only, not upload', 'info');
     return;
   }
 

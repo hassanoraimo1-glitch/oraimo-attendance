@@ -918,36 +918,220 @@ navigator.serviceWorker.register('/sw.js')
 
 <!-- TEAM LEADER VISITS TAB -->
 <div id="admin-visits" class="content" style="display:none">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-<div style="font-size:16px;font-weight:800">📸 صور الديسبلاي</div>
-<div style="font-size:12px;color:var(--green);font-weight:700" id="tl-visit-count">0 / 150</div>
-</div>
-<div class="stats-grid" style="margin-bottom:12px">
-<div class="stat-card"><div class="stat-label">زيارة هذا الشهر</div><div class="stat-val" style="color:var(--green)" id="tl-vis-done">0</div></div>
-<div class="stat-card"><div class="stat-label">متبقي</div><div class="stat-val" style="color:var(--yellow)" id="tl-vis-remain">150</div></div>
-</div>
-<div class="card card-glow">
-<div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ تسجيل زيارة جديدة</div>
-<div class="inp-grp">
-<label>الفرع</label>
-<select id="tl-visit-branch" style="width:100%;padding:13px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none"></select>
-</div>
-<div class="inp-grp">
-<label>ملاحظة (اختياري)</label>
-<textarea id="tl-visit-note" rows="2" style="width:100%;padding:11px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl"></textarea>
-</div>
-<label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">صور الديسبلاي (max 3)</label>
-<div class="photo-previews" id="tl-visit-previews"></div>
-<div class="photo-upload-zone" id="tl-visit-zone" onclick="showPhotoSourceModal('tl-visit-input')">
-<input type="file" id="tl-visit-input" accept="image/*" style="display:none" onchange="addTLVisitPhoto(event)">
-<div style="font-size:28px">📷</div>
-<div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
-<div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور للزيارة</div>
-</div>
-<button class="btn btn-green" onclick="submitTLVisit()" style="margin-top:10px">✅ حفظ الزيارة</button>
-</div>
-<div class="sh" style="margin-top:8px"><div class="sh-title">📋 زياراتي هذا الشهر</div></div>
-<div id="tl-visit-history"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div class="sh">
+      <div class="sh-title">📸 زيارات الفروع / صور الديسبلاي</div>
+    </div>
+    <div style="font-size:12px;color:var(--green);font-weight:800" id="tl-visit-count">0 / 150</div>
+  </div>
+
+  <div class="stats-grid" style="margin-bottom:12px">
+    <div class="stat-card">
+      <div class="stat-label">زيارة هذا الشهر</div>
+      <div class="stat-val" style="color:var(--green)" id="tl-vis-done">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">متبقي</div>
+      <div class="stat-val" style="color:var(--yellow)" id="tl-vis-remain">150</div>
+    </div>
+  </div>
+
+  <div class="card card-glow">
+    <div style="font-size:14px;font-weight:800;margin-bottom:12px">➕ تسجيل زيارة جديدة</div>
+
+    <!-- fallback select -->
+    <div class="inp-grp" style="display:none">
+      <label>الفرع</label>
+      <select
+        id="tl-visit-branch"
+        style="width:100%;padding:13px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none"
+      >
+        <option value="">-- اختر الفرع --</option>
+      </select>
+    </div>
+
+    <!-- branches list -->
+    <div style="font-size:12px;font-weight:700;margin-bottom:8px">الفروع المخصصة لك</div>
+    <div
+      id="tl-coverage-branches-list"
+      style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"
+    ></div>
+
+    <!-- selected branch info -->
+    <div
+      class="card"
+      style="background:rgba(0,200,83,.05);border-color:rgba(0,200,83,.22);margin-bottom:12px"
+    >
+      <div style="font-size:13px;font-weight:800;margin-bottom:10px">بيانات الفرع المختار</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--card2)">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px">Account</div>
+          <div id="tl-account-display" style="font-size:13px;font-weight:700">-</div>
+        </div>
+
+        <div style="padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--card2)">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px">Branch</div>
+          <div id="tl-branch-display" style="font-size:13px;font-weight:700">-</div>
+        </div>
+
+        <div style="padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--card2)">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px">Segment</div>
+          <div id="tl-segment-display" style="font-size:13px;font-weight:700">-</div>
+        </div>
+
+        <div style="padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--card2)">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px">March Sales</div>
+          <div id="tl-march-sales-display" style="font-size:13px;font-weight:700">-</div>
+        </div>
+
+        <div style="padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--card2);grid-column:1/-1">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px">April Sales</div>
+          <div id="tl-april-sales-display" style="font-size:13px;font-weight:700">-</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- form -->
+    <div id="tl-visit-form-wrap" style="display:none">
+      <div class="inp-grp">
+        <label>Key Model Sales</label>
+        <input
+          type="text"
+          id="tl-key-model"
+          placeholder="مثال: Oraimo FreePods 4"
+          style="width:100%;padding:13px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none"
+        >
+      </div>
+
+      <div class="inp-grp">
+        <label>Total Stock Qty</label>
+        <input
+          type="number"
+          min="0"
+          id="tl-stock-qty"
+          placeholder="عدد القطع"
+          style="width:100%;padding:13px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none"
+        >
+      </div>
+
+      <div class="inp-grp">
+        <label>Best Seller Earbuds</label>
+        <input
+          type="text"
+          id="tl-bestseller-earbuds"
+          placeholder="أفضل سماعة مبيعًا"
+          style="width:100%;padding:13px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none"
+        >
+      </div>
+
+      <div class="inp-grp">
+        <label>Best Seller Smart Watch</label>
+        <input
+          type="text"
+          id="tl-bestseller-watch"
+          placeholder="أفضل ساعة مبيعًا"
+          style="width:100%;padding:13px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;outline:none"
+        >
+      </div>
+
+      <div class="inp-grp">
+        <label>ملاحظات</label>
+        <textarea
+          id="tl-notes"
+          rows="3"
+          placeholder="اكتب ملاحظات الزيارة..."
+          style="width:100%;padding:11px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl"
+        ></textarea>
+      </div>
+
+      <!-- hidden file inputs -->
+      <input
+        type="file"
+        id="tl-before-input"
+        accept="image/*"
+        capture="environment"
+        style="display:none"
+        onchange="addTLVisitPhoto(event)"
+      >
+
+      <input
+        type="file"
+        id="tl-after-input"
+        accept="image/*"
+        capture="environment"
+        style="display:none"
+        onchange="addTLVisitPhoto(event)"
+      >
+
+      <!-- old compatibility input -->
+      <input
+        type="file"
+        id="tl-visit-input"
+        accept="image/*"
+        capture="environment"
+        style="display:none"
+        onchange="addTLVisitPhoto(event)"
+      >
+
+      <div style="margin-top:8px;margin-bottom:8px">
+        <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">
+          Before Photo (اختياري)
+        </label>
+        <div id="tl-before-preview" class="photo-previews" style="margin-bottom:8px"></div>
+        <button
+          type="button"
+          class="photo-upload-zone"
+          id="tl-before-photo"
+          onclick="showPhotoSourceModal('tl-before-input')"
+          style="width:100%;border:none;cursor:pointer;background:transparent"
+        >
+          <div style="font-size:26px">📷</div>
+          <div style="font-size:12px;font-weight:700;margin-top:4px">تصوير Before</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">اختياري - بالكاميرا فقط</div>
+        </button>
+      </div>
+
+      <div style="margin-top:12px;margin-bottom:8px">
+        <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">
+          After Photo (إجباري)
+        </label>
+        <div id="tl-after-preview" class="photo-previews" style="margin-bottom:8px"></div>
+        <button
+          type="button"
+          class="photo-upload-zone"
+          id="tl-after-photo"
+          onclick="showPhotoSourceModal('tl-after-input')"
+          style="width:100%;border:none;cursor:pointer;background:transparent"
+        >
+          <div style="font-size:26px">📷</div>
+          <div style="font-size:12px;font-weight:700;margin-top:4px">تصوير After</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">إجباري - بالكاميرا فقط</div>
+        </button>
+      </div>
+
+      <!-- generic preview + zone for compatibility -->
+      <div id="tl-visit-previews" class="photo-previews" style="display:none"></div>
+      <div id="tl-visit-zone" style="display:none"></div>
+
+      <!-- optional old note id for compatibility -->
+      <textarea id="tl-visit-note" style="display:none"></textarea>
+
+      <button
+        class="btn btn-green"
+        id="tl-save-visit-btn"
+        onclick="submitTLVisit()"
+        style="margin-top:10px"
+      >
+        ✅ حفظ الزيارة
+      </button>
+    </div>
+  </div>
+
+  <div class="sh" style="margin-top:8px">
+    <div class="sh-title">📋 زياراتي هذا الشهر</div>
+  </div>
+  <div id="tl-visit-history"></div>
 </div>
 
 <!-- ADMIN CHAT TAB -->

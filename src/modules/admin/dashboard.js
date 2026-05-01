@@ -78,6 +78,11 @@
     return Number(v || 0).toLocaleString('en-US');
   }
 
+  function _dashDayOffOf(emp) {
+    const v = Number(emp?.day_off);
+    return Number.isFinite(v) ? v : -1;
+  }
+
   async function _dashGetCurrentTeamIds() {
     if (!window.currentUser?.id || !_dashIsTL()) return null;
 
@@ -114,6 +119,7 @@
     ['adm-sales-today', 'adm-sales-month'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
+
       const card = el.closest('.stat-card, .card, .dash-card') || el.parentElement;
       if (card) card.style.display = show ? '' : 'none';
       else el.style.display = show ? '' : 'none';
@@ -131,9 +137,9 @@
     return Array.isArray(window.allEmployees) ? window.allEmployees : [];
   }
 
-  function _dashDayOffOf(emp) {
-    const v = Number(emp?.day_off);
-    return Number.isFinite(v) ? v : -1;
+  function _dashGetEmpName(empId) {
+    const emp = _dashGetEmployeesRef().find(e => Number(e.id) === Number(empId));
+    return emp?.name || `#${empId}`;
   }
 
   function _dashBindSalesCards() {
@@ -142,20 +148,41 @@
 
     if (todayEl && !todayEl.dataset.boundSalesDetails) {
       todayEl.style.cursor = 'pointer';
-      todayEl.addEventListener('click', () => showSalesDetails('today'));
+      todayEl.onclick = () => showSalesDetails('today');
       todayEl.dataset.boundSalesDetails = '1';
     }
 
     if (monthEl && !monthEl.dataset.boundSalesDetails) {
       monthEl.style.cursor = 'pointer';
-      monthEl.addEventListener('click', () => showSalesDetails('month'));
+      monthEl.onclick = () => showSalesDetails('month');
       monthEl.dataset.boundSalesDetails = '1';
     }
   }
 
-  function _dashGetEmpName(empId) {
-    const emp = _dashGetEmployeesRef().find(e => Number(e.id) === Number(empId));
-    return emp?.name || `#${empId}`;
+  function _dashBindAttendanceRefresh() {
+    if (window.__dashAttendanceRefreshBound) return;
+    window.__dashAttendanceRefreshBound = true;
+
+    document.addEventListener('click', e => {
+      const target = e.target?.closest?.('.nav-item,[onclick*="attendance"]');
+      if (!target) return;
+
+      const txt = (target.textContent || '').trim();
+      const onclickText = String(target.getAttribute?.('onclick') || '');
+
+      if (
+        txt.includes('الحضور') ||
+        txt.toLowerCase().includes('attendance') ||
+        onclickText.includes("adminTab('attendance'") ||
+        onclickText.includes('adminTab("attendance"')
+      ) {
+        setTimeout(() => {
+          if (typeof window.loadAdminAttendance === 'function') {
+            window.loadAdminAttendance();
+          }
+        }, 120);
+      }
+    });
   }
 
   function _dashRenderEmpTodayList(employees, todayAtt, ar) {
@@ -236,20 +263,20 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <div style="font-size:13px;font-weight:700">${_dashEscapeHtml(l.employee_name || '-')}</div>
           <span class="badge ${l.leave_type === 'vacation' ? 'badge-blue' : 'badge-yellow'}">
-            ${l.leave_type === 'vacation' ? (ar ? 'إجازة' : 'Vacation') : (ar ? 'إذن' : 'Permission')}
+            ${l.leave_type === 'vacation' ? (window.currentLang === 'ar' ? 'إجازة' : 'Vacation') : (window.currentLang === 'ar' ? 'إذن' : 'Permission')}
           </span>
         </div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${_dashEscapeHtml(l.reason || '-')}</div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
           ${
             l.leave_type === 'vacation'
-              ? (ar ? 'تاريخ: ' : 'Date: ') + _dashEscapeHtml(l.leave_date || '')
-              : (ar ? 'المدة: ' : 'Duration: ') + _dashN(l.duration_minutes) + (ar ? ' د' : ' min')
+              ? ((window.currentLang === 'ar' ? 'تاريخ: ' : 'Date: ') + _dashEscapeHtml(l.leave_date || ''))
+              : ((window.currentLang === 'ar' ? 'المدة: ' : 'Duration: ') + _dashN(l.duration_minutes) + (window.currentLang === 'ar' ? ' د' : ' min'))
           }
         </div>
         <div style="display:flex;gap:8px">
-          <button class="perm-btn approve" onclick="respondLeave && respondLeave(${Number(l.id)},'approved')">✅ ${ar ? 'موافقة' : 'Approve'}</button>
-          <button class="perm-btn reject" onclick="respondLeave && respondLeave(${Number(l.id)},'rejected')">❌ ${ar ? 'رفض' : 'Reject'}</button>
+          <button class="perm-btn approve" onclick="respondLeave && respondLeave(${Number(l.id)},'approved')">✅ ${window.currentLang === 'ar' ? 'موافقة' : 'Approve'}</button>
+          <button class="perm-btn reject" onclick="respondLeave && respondLeave(${Number(l.id)},'rejected')">❌ ${window.currentLang === 'ar' ? 'رفض' : 'Reject'}</button>
         </div>
       </div>
     `).join('');
@@ -313,13 +340,19 @@
       window._dashboardTodaySales = todaySales;
       window._dashboardMonthSales = monthSales;
 
+      const todayWeekDay = new Date().getDay();
+      const yestWeekDay = new Date(yestDate).getDay();
+
+      const activeTodayEmployees = employees.filter(e => _dashDayOffOf(e) !== todayWeekDay);
+      const activeYestEmployees = employees.filter(e => _dashDayOffOf(e) !== yestWeekDay);
+
       const present = todayAtt.length;
-      const absent = Math.max(0, employees.filter(e => _dashDayOffOf(e) !== new Date().getDay()).length - present);
+      const absent = Math.max(0, activeTodayEmployees.length - present);
       const yPresent = yestAtt.length;
-      const yAbsent = Math.max(0, employees.filter(e => _dashDayOffOf(e) !== new Date(yestDate).getDay()).length - yPresent);
+      const yAbsent = Math.max(0, activeYestEmployees.length - yPresent);
 
       _dashSetText('adm-present', String(present));
-      _dashSetText('adm-absent', String(yAbsent < 0 ? 0 : absent));
+      _dashSetText('adm-absent', String(absent));
       _dashSetText('adm-present-yest', String(yPresent));
       _dashSetText('adm-absent-yest', String(yAbsent));
 
@@ -346,8 +379,15 @@
       }
 
       _dashBindSalesCards();
+      _dashBindAttendanceRefresh();
       _dashRenderEmpTodayList(employees, todayAtt, ar);
       _dashRenderPendingLeaves(leaves, ar);
+
+      _dashSetText('att-tab-present', String(present));
+      _dashSetText('att-tab-left', String(todayAtt.filter(a => !!a.check_out).length));
+      _dashSetText('att-tab-inside', String(todayAtt.filter(a => !!a.check_in && !a.check_out).length));
+      _dashSetText('att-tab-absent', String(absent));
+
       await loadAdminAttendance();
 
       if (typeof window.applyLang === 'function') {
@@ -361,21 +401,33 @@
   async function loadAdminAttendance() {
     const ar = window.currentLang === 'ar';
     const today = _dashTodayStr();
-    const employees = _dashGetEmployeesRef();
     const listEl = document.getElementById('admin-attendance-list');
 
     try {
-      let attendance = Array.isArray(window._todayAtt) ? window._todayAtt : [];
+      let employees = _dashGetEmployeesRef();
 
-      if (!attendance.length) {
-        attendance = await dbGet('attendance', `?date=eq.${today}&select=*&order=check_in.asc`).catch(() => []) || [];
-
+      if (!employees.length) {
+        employees = await dbGet('employees', '?select=*').catch(() => []) || [];
         if (_dashIsTL()) {
           const teamIds = await _dashGetCurrentTeamIds();
           const ids = Array.isArray(teamIds) ? teamIds : [];
-          attendance = attendance.filter(a => ids.includes(Number(a.employee_id)));
+          employees = employees.filter(e => ids.includes(Number(e.id)));
         }
+        window.allEmployees = employees;
       }
+
+      let attendance = await dbGet(
+        'attendance',
+        `?date=eq.${today}&select=*&order=check_in.asc`
+      ).catch(() => []) || [];
+
+      if (_dashIsTL()) {
+        const teamIds = await _dashGetCurrentTeamIds();
+        const ids = Array.isArray(teamIds) ? teamIds : [];
+        attendance = attendance.filter(a => ids.includes(Number(a.employee_id)));
+      }
+
+      window._todayAtt = attendance;
 
       const empMap = {};
       employees.forEach(e => { empMap[Number(e.id)] = e; });
@@ -515,6 +567,7 @@
 
     const total = sales.reduce((sum, s) => sum + _dashN(s.total_amount), 0);
     const byEmp = {};
+
     sales.forEach(s => {
       const empId = Number(s.employee_id);
       if (!byEmp[empId]) {
@@ -611,12 +664,8 @@
 
     const color = isPresent ? 'var(--green)' : 'var(--red)';
     const icon = isPresent ? '✅' : '😴';
-    const titleAr = isPresent
-      ? (isToday ? 'الحاضرون اليوم' : 'حاضرون أمس')
-      : (isToday ? 'الغائبون اليوم' : 'غائبون أمس');
-    const titleEn = isPresent
-      ? (isToday ? 'Present Today' : 'Present Yesterday')
-      : (isToday ? 'Absent Today' : 'Absent Yesterday');
+    const titleAr = isPresent ? (isToday ? 'الحاضرون اليوم' : 'حاضرون أمس') : (isToday ? 'الغائبون اليوم' : 'غائبون أمس');
+    const titleEn = isPresent ? (isToday ? 'Present Today' : 'Present Yesterday') : (isToday ? 'Absent Today' : 'Absent Yesterday');
 
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';

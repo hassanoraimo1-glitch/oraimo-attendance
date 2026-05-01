@@ -27,10 +27,13 @@ function _vRole() {
     ''
   ).trim().toLowerCase();
 
+  if (typeof window.normalizeRole === 'function') {
+    return window.normalizeRole(raw);
+  }
+
   if (['superadmin', 'super_admin', 'super admin'].includes(raw)) return 'super_admin';
   if (['teamleader', 'team_leader', 'team leader', 'tl'].includes(raw)) return 'team_leader';
-  if (raw === 'manager') return 'admin';
-
+  if (raw === 'manager') return 'team_leader';
   return raw;
 }
 
@@ -52,11 +55,8 @@ function _isVisitUploader() {
 }
 
 function _notify(msg, type = 'error') {
-  if (typeof notify === 'function') {
-    notify(msg, type);
-  } else {
-    console[type === 'error' ? 'error' : 'log'](msg);
-  }
+  if (typeof notify === 'function') notify(msg, type);
+  else console[type === 'error' ? 'error' : 'log'](msg);
 }
 
 function _notifyViewOnly() {
@@ -82,15 +82,25 @@ function _escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+function _escapeJsStr(str) {
+  return String(str ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, ' ')
+    .replace(/\r/g, ' ');
+}
+
 function _safeImg(url, cls = 'visit-photo', alt = '') {
   if (!url) return '';
-  return `<img class="${cls}" src="${_escapeAttr(url)}" alt="${_escapeAttr(alt)}" onclick="fullSelfie('${_escapeAttr(url)}')" onerror="this.style.display='none'">`;
+  return `<img class="${cls}" src="${_escapeAttr(url)}" alt="${_escapeAttr(alt)}" onclick="fullSelfie('${_escapeJsStr(url)}')" onerror="this.style.display='none'">`;
 }
 
 function _setCameraAttrs(inputEl) {
   if (!inputEl) return;
   inputEl.setAttribute('accept', 'image/*');
   inputEl.setAttribute('capture', 'environment');
+  inputEl.setAttribute('data-camera-only', '1');
+  inputEl.classList.add('force-hidden-file');
 }
 
 function _ensureCameraAttrsOnKnownInputs() {
@@ -157,6 +167,10 @@ function _getBranchesSource() {
     if (typeof state !== 'undefined' && Array.isArray(state.branches) && state.branches.length) return state.branches;
   } catch (_) {}
 
+  try {
+    if (Array.isArray(window.branches) && window.branches.length) return window.branches;
+  } catch (_) {}
+
   return [];
 }
 
@@ -179,9 +193,7 @@ function _setClosestWrapDisplay(el, show) {
 }
 
 function _getPayrollMonthSafe() {
-  if (typeof getPayrollMonth === 'function') {
-    return getPayrollMonth();
-  }
+  if (typeof getPayrollMonth === 'function') return getPayrollMonth();
 
   const now = new Date();
   const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -190,10 +202,7 @@ function _getPayrollMonthSafe() {
   const pad = n => String(n).padStart(2, '0');
   const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-  return {
-    start: fmt(startDate),
-    end: fmt(endDate)
-  };
+  return { start: fmt(startDate), end: fmt(endDate) };
 }
 
 function _getPayrollTimestampRange() {
@@ -286,9 +295,7 @@ function _injectVisitsStyles() {
       box-shadow:0 6px 18px rgba(0,0,0,.15);
     }
 
-    .coverage-card{
-      overflow:hidden;
-    }
+    .coverage-card{ overflow:hidden; }
 
     .visit-header{
       display:flex;
@@ -320,6 +327,7 @@ function _injectVisitsStyles() {
       font-size:12px;
       margin-top:8px;
       word-break:break-word;
+      line-height:1.6;
     }
 
     .visit-photos-row{
@@ -441,6 +449,48 @@ function _injectVisitsStyles() {
       color:var(--text);
     }
 
+    .coverage-branch-item{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:12px;
+      margin-bottom:10px;
+      cursor:pointer;
+      transition:.15s ease;
+    }
+
+    .coverage-branch-item.selected{
+      border-color:var(--green);
+      box-shadow:0 0 0 3px rgba(0,200,83,.10);
+      background:rgba(0,200,83,.05);
+    }
+
+    .coverage-branch-account{
+      font-size:11px;
+      color:var(--muted);
+      margin-bottom:4px;
+    }
+
+    .coverage-branch-name{
+      font-size:13px;
+      font-weight:800;
+      margin-bottom:6px;
+    }
+
+    .coverage-branch-segment{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:26px;
+      height:22px;
+      padding:0 8px;
+      border-radius:999px;
+      font-size:10px;
+      font-weight:800;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.04);
+    }
+
     .empty{
       text-align:center;
       padding:18px 12px;
@@ -479,9 +529,7 @@ function _hideEmployeeUploadUI() {
     note.disabled = true;
     note.style.pointerEvents = 'none';
   }
-  if (input) {
-    input.disabled = true;
-  }
+  if (input) input.disabled = true;
   if (zone) zone.style.display = 'none';
 
   document.querySelectorAll(
@@ -510,9 +558,7 @@ function _showEmployeeUploadUI() {
     note.disabled = false;
     note.style.pointerEvents = '';
   }
-  if (input) {
-    input.disabled = false;
-  }
+  if (input) input.disabled = false;
 
   document.querySelectorAll(
     '[onclick*="submitVisit"], [onclick*="openVisitCamera"], [onclick*="showPhotoSourceModal(\'visit"], [onclick*="showPhotoSourceModal(&quot;visit"]'
@@ -545,9 +591,7 @@ function _setTLCreateVisitSectionVisible(show) {
     page.querySelector('.tlv-card') ||
     document.getElementById('tl-visit-form-wrap')?.closest('.card');
 
-  if (createCard) {
-    createCard.style.display = show ? '' : 'none';
-  }
+  if (createCard) createCard.style.display = show ? '' : 'none';
 
   const select = document.getElementById('tl-visit-branch');
   const branchInfo = page.querySelector('.tlv-branch-info');
@@ -706,12 +750,16 @@ function _setEmployeeVisitsHeader() {
 function _renderVisitCard(v, showOwner = false) {
   const photos = [v.photo1, v.photo2, v.photo3].filter(Boolean);
   const owner = v.manager_name || v.employee_name || '';
+  const seg = String(v.segmentation || v.segment || '').trim().toUpperCase();
 
   return `
     <div class="visit-card">
       <div class="visit-header">
         <div>
-          <div class="visit-branch-name">🏪 ${_escapeHtml(v.branch_name || '')}</div>
+          <div class="visit-branch-name">
+            🏪 ${_escapeHtml(v.branch_name || '')}
+            ${seg ? `<span class="badge ${seg.toLowerCase()}">${_escapeHtml(seg)}</span>` : ''}
+          </div>
           <div class="visit-meta">${_escapeHtml(v.visit_date || '')}</div>
           ${showOwner && owner ? `<div class="visit-meta">👤 ${_escapeHtml(owner)}</div>` : ''}
         </div>
@@ -728,41 +776,65 @@ function _renderVisitCard(v, showOwner = false) {
 }
 
 // ── CAMERA VALIDATION ────────────────────────────────────
+// لا يوجد في الويب تحقق 100% أن الصورة من الكاميرا، لذلك
+// نعتمد على camera-only UI ولا نرفض صورة سليمة من input الكاميرا.
 function isValidCameraImage(file, inputEl) {
   if (!file) return false;
   if (!file.type || !file.type.startsWith('image/')) return false;
+  if (!inputEl) return true;
 
-  const capture = inputEl?.getAttribute('capture');
-  if (capture !== 'environment' && capture !== 'user') return false;
+  const knownCameraInputs = [
+    'visit-input',
+    'visit-camera-input',
+    'tl-visit-input',
+    'tl-before-input',
+    'tl-after-input',
+    'tl-before-photo-input',
+    'tl-after-photo-input'
+  ];
 
+  if (knownCameraInputs.includes(inputEl.id)) return true;
+  if (inputEl.getAttribute('data-camera-only') === '1') return true;
+  if (inputEl.getAttribute('capture')) return true;
   return true;
 }
 
 // ── IMAGE COMPRESSION ────────────────────────────────────
 function compressImageFile(file, callback) {
+  if (!file) {
+    callback?.(null);
+    return;
+  }
+
   const reader = new FileReader();
 
   reader.onload = ev => {
     const img = new Image();
 
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const maxW = 1000;
-      const scale = Math.min(1, maxW / img.width);
+      try {
+        const canvas = document.createElement('canvas');
+        const maxW = 1000;
+        const scale = Math.min(1, maxW / img.width);
 
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
 
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      const compressed = canvas.toDataURL('image/jpeg', 0.6);
-      callback(compressed);
+        const compressed = canvas.toDataURL('image/jpeg', 0.7);
+        callback?.(compressed);
+      } catch (e) {
+        callback?.(null, e);
+      }
     };
 
+    img.onerror = () => callback?.(null, new Error('Invalid image'));
     img.src = ev.target.result;
   };
 
+  reader.onerror = () => callback?.(null, new Error('Failed to read file'));
   reader.readAsDataURL(file);
 }
 
@@ -771,17 +843,21 @@ function populateVisitBranchSelect() {
   const sel = document.getElementById('visit-branch-select');
   if (!sel) return;
 
+  const ar = currentLang === 'ar';
   const names = _getAllBranchNames();
+
   sel.innerHTML =
-    '<option value="">-- اختر الفرع --</option>' +
-    names.map(name => `<option value="${_escapeHtml(name)}">${_escapeHtml(name)}</option>`).join('');
+    `<option value="">${ar ? '-- اختر الفرع --' : '-- Select branch --'}</option>` +
+    names.map(name => `<option value="${_escapeAttr(name)}">${_escapeHtml(name)}</option>`).join('');
 }
 
 function _renderTLCoverageBranchList(container, rows) {
   if (!container) return;
 
+  const ar = currentLang === 'ar';
+
   if (!rows.length) {
-    container.innerHTML = '<div class="empty"><div class="empty-icon">📍</div>لا توجد فروع مخصصة لك</div>';
+    container.innerHTML = `<div class="empty"><div class="empty-icon">📍</div>${ar ? 'لا توجد فروع مخصصة لك' : 'No branches assigned to you'}</div>`;
     return;
   }
 
@@ -791,7 +867,7 @@ function _renderTLCoverageBranchList(container, rows) {
          onclick="selectTLCoverageBranch(${idx})">
       <div class="coverage-branch-account">${_escapeHtml(row.account_name || '')}</div>
       <div class="coverage-branch-name">${_escapeHtml(row.branch_name || '')}</div>
-      <div class="coverage-branch-segment ${String(row.segment || 'c').toLowerCase()}">${_escapeHtml(row.segment || 'C')}</div>
+      <div class="coverage-branch-segment ${String(row.segment || 'c').toLowerCase()}">${_escapeHtml(String(row.segment || 'C').toUpperCase())}</div>
     </div>
   `).join('');
 }
@@ -799,11 +875,12 @@ function _renderTLCoverageBranchList(container, rows) {
 function _renderTLCoverageBranchSelect(selectEl, rows) {
   if (!selectEl) return;
 
+  const ar = currentLang === 'ar';
   selectEl.innerHTML =
-    '<option value="">-- اختر الفرع --</option>' +
+    `<option value="">${ar ? '-- اختر الفرع --' : '-- Select branch --'}</option>` +
     rows.map(row => `
       <option value="${row.id}" ${Number(row.id) === Number(tlCoverageBranchId) ? 'selected' : ''}>
-        ${_escapeHtml(row.account_name || '')} - ${_escapeHtml(row.branch_name || '')}${row.segment ? ` (${_escapeHtml(row.segment)})` : ''}
+        ${_escapeHtml(row.account_name || '')} - ${_escapeHtml(row.branch_name || '')}${row.segment ? ` (${_escapeHtml(String(row.segment).toUpperCase())})` : ''}
       </option>
     `).join('');
 
@@ -815,9 +892,7 @@ function _renderTLCoverageBranchSelect(selectEl, rows) {
 
 function _toggleTLFormDetails(show) {
   const wrap = document.getElementById('tl-visit-form-wrap');
-  if (wrap) {
-    wrap.style.display = show ? '' : 'none';
-  }
+  if (wrap) wrap.style.display = show ? '' : 'none';
 
   [
     'tl-key-model',
@@ -857,7 +932,7 @@ function _fillTLStaticDisplays(row) {
 
   setText('tl-account-display', row.account_name || '-');
   setText('tl-branch-display', row.branch_name || '-');
-  setText('tl-segment-display', row.segment || '-');
+  setText('tl-segment-display', row.segment ? String(row.segment).toUpperCase() : '-');
   setText('tl-march-sales-display', row.march_sales ?? '-');
   setText('tl-april-sales-display', row.april_sales ?? '-');
 }
@@ -873,8 +948,7 @@ function _selectTLCoverageRow(row) {
   _fillTLStaticDisplays(row);
   _toggleTLFormDetails(true);
 
-  const listItems = document.querySelectorAll('.coverage-branch-item');
-  listItems.forEach(item => {
+  document.querySelectorAll('.coverage-branch-item').forEach(item => {
     const active = Number(item.getAttribute('data-branch-id')) === Number(tlCoverageBranchId);
     item.classList.toggle('selected', active);
   });
@@ -886,8 +960,9 @@ function _selectTLCoverageRow(row) {
 function _resetTLSelection() {
   tlCoverageBranchId = null;
 
-  const listItems = document.querySelectorAll('.coverage-branch-item');
-  listItems.forEach(item => item.classList.remove('selected'));
+  document.querySelectorAll('.coverage-branch-item').forEach(item => {
+    item.classList.remove('selected');
+  });
 
   const selectEl = document.getElementById('tl-visit-branch');
   if (selectEl) selectEl.value = '';
@@ -899,27 +974,26 @@ function _resetTLSelection() {
 async function populateTLCoverageBranches() {
   const container = document.getElementById('tl-coverage-branches-list');
   const selectEl = document.getElementById('tl-visit-branch');
+  const ar = currentLang === 'ar';
 
   if (container) container.style.display = 'none';
 
   if (!_isTeamLeaderUser()) {
     if (container) container.innerHTML = '';
-    if (selectEl) selectEl.innerHTML = '<option value="">-- اختر الفرع --</option>';
+    if (selectEl) selectEl.innerHTML = `<option value="">${ar ? '-- اختر الفرع --' : '-- Select branch --'}</option>`;
     tlCoverageBranches = [];
     _resetTLSelection();
     return;
   }
 
   const employeeId = _getCurrentEmployeeId();
-
   if (!employeeId) {
     if (container) {
-      container.innerHTML = '<div class="empty"><div class="empty-icon">❌</div>تعذر تحديد ID التيم ليدر</div>';
+      container.innerHTML = `<div class="empty"><div class="empty-icon">❌</div>${ar ? 'تعذر تحديد ID التيم ليدر' : 'Unable to detect team leader id'}</div>`;
     }
     if (selectEl) {
-      selectEl.innerHTML = '<option value="">-- اختر الفرع --</option>';
+      selectEl.innerHTML = `<option value="">${ar ? '-- اختر الفرع --' : '-- Select branch --'}</option>`;
     }
-    console.warn('No employee id found in currentUser:', currentUser);
     tlCoverageBranches = [];
     _resetTLSelection();
     return;
@@ -932,11 +1006,7 @@ async function populateTLCoverageBranches() {
       `&order=account_name.asc,branch_name.asc` +
       `&select=id,team_leader_id,account_name,branch_name,segment,march_sales,april_sales`;
 
-    const data = await dbGet('coverage_branches', query).catch(err => {
-      console.error('dbGet coverage_branches error:', err);
-      return [];
-    });
-
+    const data = await dbGet('coverage_branches', query).catch(() => []);
     tlCoverageBranches = Array.isArray(data) ? data : [];
 
     if (container) _renderTLCoverageBranchList(container, tlCoverageBranches);
@@ -963,10 +1033,10 @@ async function populateTLCoverageBranches() {
     console.error('Failed to load coverage branches:', e);
     tlCoverageBranches = [];
     if (container) {
-      container.innerHTML = '<div class="empty"><div class="empty-icon">❌</div>خطأ في تحميل الفروع</div>';
+      container.innerHTML = `<div class="empty"><div class="empty-icon">❌</div>${ar ? 'خطأ في تحميل الفروع' : 'Failed to load branches'}</div>`;
     }
     if (selectEl) {
-      selectEl.innerHTML = '<option value="">-- اختر الفرع --</option>';
+      selectEl.innerHTML = `<option value="">${ar ? '-- اختر الفرع --' : '-- Select branch --'}</option>`;
     }
     _resetTLSelection();
   }
@@ -978,8 +1048,7 @@ function populateTLVisitBranchSelect() {
 
 function selectTLCoverageBranch(idx) {
   const row = tlCoverageBranches[idx];
-  if (!row) return;
-  _selectTLCoverageRow(row);
+  if (row) _selectTLCoverageRow(row);
 }
 
 function handleTLBranchSelectChange() {
@@ -1021,13 +1090,11 @@ function addVisitPhoto(e) {
 
   if (!isValidCameraImage(file, input)) {
     input.value = '';
-    return _notify(
-      ar ? 'يجب رفع صورة الزيارة بالكاميرا فقط' : 'Visit photo must be captured using camera only',
-      'error'
-    );
+    return _notify(ar ? 'يجب رفع صورة الزيارة بالكاميرا فقط' : 'Visit photo must be captured using camera only', 'error');
   }
 
   compressImageFile(file, compressed => {
+    if (!compressed) return _notify(ar ? 'تعذر معالجة الصورة' : 'Failed to process image', 'error');
     visitPhotos.push(compressed);
     renderVisitPhotoPreviews();
   });
@@ -1064,18 +1131,20 @@ async function submitVisit() {
   const branch = branchEl ? branchEl.value : '';
   const note = noteEl ? noteEl.value.trim() : '';
   const ar = currentLang === 'ar';
+  const employeeId = _getCurrentEmployeeId();
 
   if (!_isEmployeeUser()) return _notifyViewOnly();
-
+  if (!employeeId) return _notify(ar ? 'تعذر تحديد المستخدم' : 'Unable to detect employee', 'error');
   if (!branch) return _notify(ar ? 'اختر الفرع' : 'Select branch', 'error');
-  if (visitPhotos.length === 0) {
-    return _notify(ar ? 'أضف صورة واحدة على الأقل' : 'Add at least one photo', 'error');
-  }
+  if (!visitPhotos.length) return _notify(ar ? 'أضف صورة واحدة على الأقل' : 'Add at least one photo', 'error');
+
+  if (submitVisit._busy) return;
+  submitVisit._busy = true;
 
   try {
     await dbPost('branch_visits', {
-      employee_id: currentUser.id,
-      employee_name: currentUser.name,
+      employee_id: Number(employeeId),
+      employee_name: currentUser?.name || null,
       branch_name: branch,
       note: note || null,
       photo1: visitPhotos[0] || null,
@@ -1088,13 +1157,14 @@ async function submitVisit() {
 
     visitPhotos = [];
     renderVisitPhotoPreviews();
-
     if (branchEl) branchEl.value = '';
     if (noteEl) noteEl.value = '';
 
-    loadVisitsTab();
+    await loadVisitsTab();
   } catch (e) {
     _notify((ar ? 'خطأ: ' : 'Error: ') + (e.message || ''), 'error');
+  } finally {
+    submitVisit._busy = false;
   }
 }
 
@@ -1103,6 +1173,7 @@ async function loadVisitsTab() {
   _setEmployeeVisitsHeader();
 
   const el = document.getElementById('visit-history-list');
+  const ar = currentLang === 'ar';
 
   if (!_isEmployeeUser()) {
     _hideEmployeeUploadUI();
@@ -1117,9 +1188,10 @@ async function loadVisitsTab() {
   _showEmployeeUploadUI();
 
   const pm = _getPayrollMonthSafe();
+  const employeeId = _getCurrentEmployeeId();
   const visits = await dbGet(
     'branch_visits',
-    `?employee_id=eq.${currentUser.id}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`
+    `?employee_id=eq.${employeeId}&visit_date=gte.${pm.start}&visit_date=lte.${pm.end}&order=visit_date.desc&select=*`
   ).catch(() => []) || [];
 
   const photoCount = visits.reduce((s, v) => {
@@ -1136,12 +1208,12 @@ async function loadVisitsTab() {
   _setText('vis-done', String(done));
   _setText('vis-remain', String(remain));
   _setText('vis-photos', String(photoCount));
-  _setText('emp-visits-count', done + ' / 150');
+  _setText('emp-visits-count', `${done} / 150`);
 
   if (!el) return;
 
-  if (visits.length === 0) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">📸</div>لا توجد زيارات هذا الشهر</div>';
+  if (!visits.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📸</div>${ar ? 'لا توجد زيارات هذا الشهر' : 'No visits this month'}</div>`;
     return;
   }
 
@@ -1151,19 +1223,14 @@ async function loadVisitsTab() {
 // ── CLEAR OLD VISIT PHOTOS ───────────────────────────────
 async function clearOldVisitPhotos() {
   const cutoffDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
-  const cutoff =
-    typeof fmtDate === 'function'
-      ? fmtDate(cutoffDate)
-      : cutoffDate.toISOString().slice(0, 10);
+  const cutoff = typeof fmtDate === 'function' ? fmtDate(cutoffDate) : cutoffDate.toISOString().slice(0, 10);
 
   const old = await dbGet('branch_visits', `?visit_date=lt.${cutoff}&select=id`).catch(() => []) || [];
-  if (old.length === 0) return;
+  if (!old.length) return;
 
   for (const r of old) {
-    await dbPatch('branch_visits', { photo1: null, photo2: null, photo3: null }, `?id=eq.${r.id}`);
+    await dbPatch('branch_visits', { photo1: null, photo2: null, photo3: null }, `?id=eq.${r.id}`).catch(() => {});
   }
-
-  console.log(`Cleared photos from ${old.length} old visits`);
 }
 
 // ── TEAM LEADER COVERAGE VISITS ──────────────────────────
@@ -1176,7 +1243,6 @@ function _inferTLPhotoKind(inputEl) {
   if (explicitKind === 'before' || explicitKind === 'after') return explicitKind;
 
   const id = String(inputEl?.id || '').toLowerCase();
-
   if (id.includes('before')) return 'before';
   if (id.includes('after')) return 'after';
 
@@ -1202,15 +1268,14 @@ function addTLVisitPhoto(e) {
 
   if (!isValidCameraImage(file, input)) {
     input.value = '';
-    return _notify(
-      ar ? 'يجب رفع صورة الزيارة بالكاميرا فقط' : 'Visit photo must be captured using camera only',
-      'error'
-    );
+    return _notify(ar ? 'يجب رفع صورة الزيارة بالكاميرا فقط' : 'Visit photo must be captured using camera only', 'error');
   }
 
   const kind = _inferTLPhotoKind(input);
 
   compressImageFile(file, compressed => {
+    if (!compressed) return _notify(ar ? 'تعذر معالجة الصورة' : 'Failed to process image', 'error');
+
     if (kind === 'before') tlBeforePhoto = compressed;
     else tlAfterPhoto = compressed;
 
@@ -1222,56 +1287,50 @@ function addTLVisitPhoto(e) {
 }
 
 function renderTLPreviews() {
+  const ar = currentLang === 'ar';
   const genericEl = document.getElementById('tl-visit-previews');
   const beforeBox = document.getElementById('tl-before-preview');
   const afterBox = document.getElementById('tl-after-preview');
   const canDelete = _isTeamLeaderUser();
 
   if (beforeBox) {
-    beforeBox.innerHTML = tlBeforePhoto
-      ? `
-        <div class="photo-preview-wrap">
-          <img src="${_escapeAttr(tlBeforePhoto)}" alt="before">
-          ${canDelete ? `<button class="photo-preview-del" onclick="removeTLPhoto('before')">✕</button>` : ''}
-        </div>
-      `
-      : '';
+    beforeBox.innerHTML = tlBeforePhoto ? `
+      <div class="photo-preview-wrap">
+        <img src="${_escapeAttr(tlBeforePhoto)}" alt="before">
+        ${canDelete ? `<button class="photo-preview-del" onclick="removeTLPhoto('before')">✕</button>` : ''}
+      </div>
+    ` : '';
   }
 
   if (afterBox) {
-    afterBox.innerHTML = tlAfterPhoto
-      ? `
-        <div class="photo-preview-wrap">
-          <img src="${_escapeAttr(tlAfterPhoto)}" alt="after">
-          ${canDelete ? `<button class="photo-preview-del" onclick="removeTLPhoto('after')">✕</button>` : ''}
-        </div>
-      `
-      : '';
+    afterBox.innerHTML = tlAfterPhoto ? `
+      <div class="photo-preview-wrap">
+        <img src="${_escapeAttr(tlAfterPhoto)}" alt="after">
+        ${canDelete ? `<button class="photo-preview-del" onclick="removeTLPhoto('after')">✕</button>` : ''}
+      </div>
+    ` : '';
   }
 
   if (genericEl) {
     const cards = [];
-
     if (tlBeforePhoto) {
       cards.push(`
         <div class="photo-preview-wrap">
           <img src="${_escapeAttr(tlBeforePhoto)}" alt="before">
-          <div class="photo-preview-label">Before</div>
+          <div class="photo-preview-label">${ar ? 'قبل' : 'Before'}</div>
           ${canDelete ? `<button class="photo-preview-del" onclick="removeTLPhoto('before')">✕</button>` : ''}
         </div>
       `);
     }
-
     if (tlAfterPhoto) {
       cards.push(`
         <div class="photo-preview-wrap">
           <img src="${_escapeAttr(tlAfterPhoto)}" alt="after">
-          <div class="photo-preview-label">After</div>
+          <div class="photo-preview-label">${ar ? 'بعد' : 'After'}</div>
           ${canDelete ? `<button class="photo-preview-del" onclick="removeTLPhoto('after')">✕</button>` : ''}
         </div>
       `);
     }
-
     genericEl.innerHTML = cards.join('');
   }
 
@@ -1282,11 +1341,9 @@ function renderTLPreviews() {
 function removeTLPhoto(which) {
   if (!_isTeamLeaderUser()) return _notifyViewOnly();
 
-  if (which === 'before') {
-    tlBeforePhoto = null;
-  } else if (which === 'after') {
-    tlAfterPhoto = null;
-  } else if (Number.isInteger(which)) {
+  if (which === 'before') tlBeforePhoto = null;
+  else if (which === 'after') tlAfterPhoto = null;
+  else if (Number.isInteger(which)) {
     const ordered = [];
     if (tlBeforePhoto) ordered.push('before');
     if (tlAfterPhoto) ordered.push('after');
@@ -1329,7 +1386,10 @@ async function submitTLVisit() {
   if (!_isTeamLeaderUser()) return _notifyViewOnly();
   if (!employeeId) return _notify(ar ? 'تعذر تحديد ID التيم ليدر' : 'Unable to detect team leader id', 'error');
   if (!selectedBranchId) return _notify(ar ? 'اختر فرع للزيارة' : 'Select a branch to visit', 'error');
-  if (!tlAfterPhoto) return _notify(ar ? 'أضف صورة بعد التعديل (After Photo)' : 'Add After Photo', 'error');
+  if (!tlAfterPhoto) return _notify(ar ? 'أضف صورة بعد التعديل' : 'Add after photo', 'error');
+
+  if (submitTLVisit._busy) return;
+  submitTLVisit._busy = true;
 
   const keyModel = _getTLInputValue('tl-key-model');
   const stockRaw = _getTLInputValue('tl-stock-qty');
@@ -1382,54 +1442,87 @@ async function submitTLVisit() {
   } catch (e) {
     console.error('submitTLVisit error:', e);
     _notify((ar ? 'خطأ: ' : 'Error: ') + (e.message || ''), 'error');
+  } finally {
+    submitTLVisit._busy = false;
   }
 }
 
 function _renderTLVisitCard(v, showOwner = false) {
+  const ar = currentLang === 'ar';
   const branch = v.coverage_branch || {};
   const accountName = branch.account_name || '';
   const branchName = branch.branch_name || '';
   const segment = branch.segment || '';
   const marchSales = branch.march_sales ?? '-';
   const aprilSales = branch.april_sales ?? '-';
+
   const ownerLine = showOwner
-    ? `<div class="visit-meta">👤 TL ID: ${_escapeHtml(v.team_leader_id ?? '')}</div>`
+    ? `<div class="visit-meta">👤 ${ar ? 'تيم ليدر' : 'Team Leader'} ID: ${_escapeHtml(v.team_leader_id ?? '')}</div>`
     : '';
+
+  const visitedAt = v.visited_at
+    ? new Date(v.visited_at).toLocaleString(ar ? 'ar-EG' : 'en-US')
+    : '';
+
+  const photos = [v.before_photo_url, v.after_photo_url].filter(Boolean).length;
 
   return `
     <div class="visit-card coverage-card">
       <div class="visit-header">
         <div>
-          <div class="visit-branch-name">🏪 ${_escapeHtml(branchName)}</div>
+          <div class="visit-branch-name">
+            🏪 ${_escapeHtml(branchName)}
+            ${segment ? `<span class="badge ${String(segment).toLowerCase()}">${_escapeHtml(String(segment).toUpperCase())}</span>` : ''}
+          </div>
           <div class="visit-meta">${_escapeHtml(accountName)}</div>
-          ${segment ? `<div class="visit-meta"><span class="badge ${String(segment).toLowerCase()}">${_escapeHtml(segment)}</span></div>` : ''}
-          <div class="visit-meta">${_escapeHtml(v.visited_at ? new Date(v.visited_at).toLocaleString('ar-EG') : '')}</div>
+          <div class="visit-meta">${_escapeHtml(visitedAt)}</div>
           ${ownerLine}
         </div>
-        <span class="badge badge-green">${v.after_photo_url ? '📷' : '❌'}</span>
+        <span class="badge badge-green">${photos} 📷</span>
       </div>
 
       <div class="visit-stats">
         <div class="stat-box">
-          <span class="label">March Sales</span>
+          <span class="label">${ar ? 'مبيعات مارس' : 'March Sales'}</span>
           <span class="value">${_escapeHtml(marchSales)}</span>
         </div>
         <div class="stat-box">
-          <span class="label">April Sales</span>
+          <span class="label">${ar ? 'مبيعات أبريل' : 'April Sales'}</span>
           <span class="value">${_escapeHtml(aprilSales)}</span>
+        </div>
+        <div class="stat-box">
+          <span class="label">Key Model Sales</span>
+          <span class="value">${_escapeHtml(v.key_model_sales || '-')}</span>
+        </div>
+        <div class="stat-box">
+          <span class="label">${ar ? 'إجمالي الاستوك' : 'Total Stock'}</span>
+          <span class="value">${_escapeHtml(v.total_stock_qty ?? '-')}</span>
         </div>
       </div>
 
-      ${v.key_model_sales ? `<div class="visit-note">📦 Key Model: ${_escapeHtml(v.key_model_sales)}</div>` : ''}
-      ${v.total_stock_qty !== null && v.total_stock_qty !== undefined ? `<div class="visit-note">📊 Stock Qty: ${_escapeHtml(v.total_stock_qty)}</div>` : ''}
-      ${v.best_seller_earbuds ? `<div class="visit-note">🎧 Best Seller Earbuds: ${_escapeHtml(v.best_seller_earbuds)}</div>` : ''}
-      ${v.best_seller_smart_watch ? `<div class="visit-note">⌚ Best Seller Smart Watch: ${_escapeHtml(v.best_seller_smart_watch)}</div>` : ''}
+      ${(v.best_seller_earbuds || v.best_seller_smart_watch) ? `
+        <div class="visit-note">
+          ${v.best_seller_earbuds ? `🎧 ${ar ? 'أفضل إيربودز' : 'Best Earbuds'}: ${_escapeHtml(v.best_seller_earbuds)}<br>` : ''}
+          ${v.best_seller_smart_watch ? `⌚ ${ar ? 'أفضل سمارت ووتش' : 'Best Smart Watch'}: ${_escapeHtml(v.best_seller_smart_watch)}` : ''}
+        </div>
+      ` : ''}
+
       ${v.notes ? `<div class="visit-note">📝 ${_escapeHtml(v.notes)}</div>` : ''}
 
       ${(v.before_photo_url || v.after_photo_url) ? `
         <div class="visit-photos-row">
-          ${v.before_photo_url ? _safeImg(v.before_photo_url, 'visit-photo', 'before') : ''}
-          ${v.after_photo_url ? _safeImg(v.after_photo_url, 'visit-photo', 'after') : ''}
+          ${v.before_photo_url ? `
+            <div>
+              <div class="visit-meta">${ar ? 'قبل' : 'Before'}</div>
+              ${_safeImg(v.before_photo_url, 'visit-photo', 'before')}
+            </div>
+          ` : ''}
+          ${v.after_photo_url ? `
+            <div>
+              <div class="visit-meta">${ar ? 'بعد' : 'After'}</div>
+              ${_safeImg(v.after_photo_url, 'visit-photo', 'after')}
+            </div>
+          ` : ''}
         </div>
       ` : ''}
     </div>
@@ -1439,6 +1532,7 @@ function _renderTLVisitCard(v, showOwner = false) {
 async function loadTLVisitsTab() {
   await populateTLCoverageBranches();
 
+  const ar = currentLang === 'ar';
   const doneEl = document.getElementById('tl-vis-done');
   const remEl = document.getElementById('tl-vis-remain');
   const cntEl = document.getElementById('tl-visit-count');
@@ -1457,7 +1551,7 @@ async function loadTLVisitsTab() {
       if (doneEl) doneEl.textContent = '0';
       if (remEl) remEl.textContent = '0';
       if (cntEl) cntEl.textContent = '0 / 150';
-      el.innerHTML = '<div class="empty"><div class="empty-icon">❌</div>تعذر تحديد ID التيم ليدر</div>';
+      el.innerHTML = `<div class="empty"><div class="empty-icon">❌</div>${ar ? 'تعذر تحديد ID التيم ليدر' : 'Unable to detect team leader id'}</div>`;
       return;
     }
 
@@ -1478,10 +1572,10 @@ async function loadTLVisitsTab() {
 
     if (doneEl) doneEl.textContent = String(done);
     if (remEl) remEl.textContent = String(remain);
-    if (cntEl) cntEl.textContent = done + ' / 150';
+    if (cntEl) cntEl.textContent = `${done} / 150`;
 
     if (!visits.length) {
-      el.innerHTML = '<div class="empty"><div class="empty-icon">📸</div>لا توجد زيارات هذا الشهر</div>';
+      el.innerHTML = `<div class="empty"><div class="empty-icon">📸</div>${ar ? 'لا توجد زيارات هذا الشهر' : 'No visits this month'}</div>`;
       return;
     }
 
@@ -1489,7 +1583,7 @@ async function loadTLVisitsTab() {
     return;
   }
 
-  // ADMIN / SUPER ADMIN
+  // ADMIN / SUPER ADMIN => review only
   if (_isAdminReviewUser()) {
     _hideTLUploadUI();
     _setTLCreateVisitSectionVisible(false);
@@ -1520,7 +1614,7 @@ async function loadTLVisitsTab() {
     if (cntEl) cntEl.textContent = String(totalVisits);
 
     if (!visits.length) {
-      el.innerHTML = '<div class="empty"><div class="empty-icon">📸</div>لا توجد زيارات هذا الشهر</div>';
+      el.innerHTML = `<div class="empty"><div class="empty-icon">📸</div>${ar ? 'لا توجد زيارات هذا الشهر' : 'No visits this month'}</div>`;
       return;
     }
 
@@ -1648,41 +1742,62 @@ function initVisitsModule() {
     tlSelect.dataset.boundChange = '1';
   }
 
+  [
+    ['visit-camera-input', addVisitPhoto],
+    ['visit-input', addVisitPhoto],
+    ['tl-before-input', addTLVisitPhoto],
+    ['tl-after-input', addTLVisitPhoto],
+    ['tl-before-photo-input', addTLVisitPhoto],
+    ['tl-after-photo-input', addTLVisitPhoto],
+    ['tl-visit-input', addTLVisitPhoto]
+  ].forEach(([id, handler]) => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.boundChangeHandler) return;
+    el.addEventListener('change', handler);
+    el.dataset.boundChangeHandler = '1';
+  });
+
   _toggleTLFormDetails(false);
 }
 
 // ── GLOBALS ──────────────────────────────────────────────
-window.populateVisitBranchSelect = populateVisitBranchSelect;
-window.addVisitPhoto = addVisitPhoto;
-window.renderVisitPhotoPreviews = renderVisitPhotoPreviews;
-window.removeVisitPhoto = removeVisitPhoto;
-window.submitVisit = submitVisit;
-window.loadVisitsTab = loadVisitsTab;
-window.clearOldVisitPhotos = clearOldVisitPhotos;
+Object.assign(window, {
+  populateVisitBranchSelect,
+  addVisitPhoto,
+  renderVisitPhotoPreviews,
+  removeVisitPhoto,
+  submitVisit,
+  loadVisitsTab,
+  clearOldVisitPhotos,
 
-window.addTLVisitPhoto = addTLVisitPhoto;
-window.renderTLPreviews = renderTLPreviews;
-window.removeTLPhoto = removeTLPhoto;
-window.submitTLVisit = submitTLVisit;
-window.loadTLVisitsTab = loadTLVisitsTab;
+  addTLVisitPhoto,
+  renderTLPreviews,
+  removeTLPhoto,
+  submitTLVisit,
+  loadTLVisitsTab,
 
-window.openVisitCamera = openVisitCamera;
-window.openTLVisitCamera = openTLVisitCamera;
-window.showPhotoSourceModal = showPhotoSourceModal;
+  openVisitCamera,
+  openTLVisitCamera,
+  showPhotoSourceModal,
 
-window.populateTLCoverageBranches = populateTLCoverageBranches;
-window.populateTLVisitBranchSelect = populateTLVisitBranchSelect;
-window.selectTLCoverageBranch = selectTLCoverageBranch;
-window.handleTLBranchSelectChange = handleTLBranchSelectChange;
-window.initVisitsModule = initVisitsModule;
+  populateTLCoverageBranches,
+  populateTLVisitBranchSelect,
+  selectTLCoverageBranch,
+  handleTLBranchSelectChange,
+  initVisitsModule
+});
 
 // auto init
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    try { initVisitsModule(); } catch (e) { console.error('initVisitsModule error:', e); }
-  }, { once: true });
-} else {
-  setTimeout(() => {
-    try { initVisitsModule(); } catch (e) { console.error('initVisitsModule error:', e); }
-  }, 0);
+if (!window.__visitsModuleAutoInitDone) {
+  window.__visitsModuleAutoInitDone = true;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      try { initVisitsModule(); } catch (e) { console.error('initVisitsModule error:', e); }
+    }, { once: true });
+  } else {
+    setTimeout(() => {
+      try { initVisitsModule(); } catch (e) { console.error('initVisitsModule error:', e); }
+    }, 0);
+  }
 }

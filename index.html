@@ -1112,5 +1112,221 @@ if ('serviceWorker' in navigator) {
 <script src="./src/modules/admin/reports.js"></script>
 <script src="./src/modules/admin/visits.js"></script>
 <script src="./src/modules/admin/display.js"></script>
+          <script>
+(function () {
+  const ADMIN_TABS = ['dashboard', 'attendance', 'employees', 'branches', 'reports', 'settings', 'visits', 'chat'];
+  const EMP_TABS = ['home', 'sales', 'visits', 'display', 'profile', 'chat', 'specs'];
+
+  function q(sel, root = document) { return root.querySelector(sel); }
+  function qa(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
+
+  function safeCall(fn, ...args) {
+    try {
+      if (typeof window[fn] === 'function') return window[fn](...args);
+    } catch (e) {
+      console.error('safeCall error in', fn, e);
+    }
+  }
+
+  function show(el, display = 'block') {
+    if (el) el.style.display = display;
+  }
+
+  function hide(el) {
+    if (el) el.style.display = 'none';
+  }
+
+  function restoreTopArea() {
+    qa('.sh, .topbar, .page-header, .screen-header, .admin-top, .emp-top, header').forEach(el => {
+      if (el) el.style.display = '';
+    });
+  }
+
+  function closeBlockingLayers() {
+    [
+      'sale-form-wrap',
+      'selfie-fullscreen',
+      'selfie-view-modal'
+    ].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.remove('open');
+      if (!el.classList.contains('modal-overlay')) {
+        if (id === 'sale-form-wrap') el.style.display = 'none';
+      }
+    });
+
+    qa('.modal-overlay').forEach(el => {
+      if (!el.classList.contains('open')) {
+        el.style.display = '';
+      }
+    });
+  }
+
+  function hideAdminSections() {
+    ADMIN_TABS.forEach(t => hide(document.getElementById('admin-' + t)));
+  }
+
+  function hideEmpSections() {
+    EMP_TABS.forEach(t => hide(document.getElementById('emp-' + t)));
+  }
+
+  function deactivateNav(scope) {
+    qa(scope + ' .nav-item').forEach(n => n.classList.remove('active'));
+  }
+
+  function cleanupSettingsState() {
+    const settings = document.getElementById('admin-settings');
+    if (!settings) return;
+
+    qa('.acc-body', settings).forEach(el => el.style.display = 'none');
+    qa('.acc-arrow', settings).forEach(el => el.classList.remove('open'));
+  }
+
+  function adminTabFixed(tab, el) {
+    hideAdminSections();
+    deactivateNav('#admin-app');
+
+    const target = document.getElementById('admin-' + tab);
+    show(target, 'block');
+    if (el) el.classList.add('active');
+
+    if (tab !== 'settings') cleanupSettingsState();
+
+    restoreTopArea();
+    closeBlockingLayers();
+
+    if (tab === 'dashboard') safeCall('loadAdminDashboard');
+    if (tab === 'attendance') safeCall('loadAdminAttendanceTab');
+    if (tab === 'employees') safeCall('loadAllEmployees');
+    if (tab === 'branches') safeCall('initBranchDashboard');
+    if (tab === 'reports') safeCall('loadAllEmployees');
+    if (tab === 'visits') safeCall('loadTLVisitsTab');
+    if (tab === 'chat') safeCall('loadAdminChatList');
+
+    if (typeof window.applyLang === 'function') safeCall('applyLang');
+  }
+
+  function empTabFixed(tab, el) {
+    hideEmpSections();
+    deactivateNav('#emp-app');
+
+    const target = document.getElementById('emp-' + tab);
+    show(target, 'block');
+    if (el) el.classList.add('active');
+
+    restoreTopArea();
+    closeBlockingLayers();
+
+    if (tab === 'sales') {
+      safeCall('renderProducts');
+      safeCall('loadTodaySales');
+    }
+    if (tab === 'profile') {
+      const nameEl = document.getElementById('profile-name');
+      const branchEl = document.getElementById('profile-branch');
+      if (nameEl) nameEl.textContent = window.currentUser?.name || '-';
+      if (branchEl) branchEl.textContent = window.currentUser?.branch || '-';
+      safeCall('loadEmpMonthlyReport');
+      safeCall('loadEmpDailyLog');
+      safeCall('loadProfilePhoto');
+    }
+    if (tab === 'home') safeCall('loadModelTargetAlert');
+    if (tab === 'visits') safeCall('loadVisitsTab');
+    if (tab === 'display') safeCall('loadDisplayTab');
+    if (tab === 'chat') safeCall('loadChatUI');
+    if (tab === 'specs') safeCall('renderSpecsList');
+
+    if (typeof window.applyLang === 'function') safeCall('applyLang');
+  }
+
+  function toggleAccFixed(id) {
+    const body = document.getElementById(id);
+    const arrow = document.getElementById(id + '-arrow');
+    if (!body) return;
+
+    const isHidden = getComputedStyle(body).display === 'none';
+    const settings = document.getElementById('admin-settings');
+
+    if (settings && isHidden) {
+      qa('.acc-body', settings).forEach(el => {
+        if (el.id !== id) el.style.display = 'none';
+      });
+      qa('.acc-arrow', settings).forEach(el => {
+        if (el.id !== id + '-arrow') el.classList.remove('open');
+      });
+    }
+
+    body.style.display = isHidden ? 'block' : 'none';
+    if (arrow) arrow.classList.toggle('open', isHidden);
+
+    if (!isHidden) return;
+
+    if (id === 'acc-branches') safeCall('loadBranches');
+    if (id === 'acc-products') safeCall('loadProductsSettings');
+    if (id === 'acc-targets') safeCall('loadTargetsList');
+    if (id === 'acc-admins') safeCall('loadAdminsList');
+    if (id === 'acc-team') safeCall('loadSettingsEmpList');
+    if (id === 'acc-shifts') safeCall('loadShiftSettings');
+    if (id === 'acc-tl-myteam') safeCall('loadTLMyTeamSettings');
+  }
+
+  // override old globals
+  window.adminTab = adminTabFixed;
+  window.empTab = empTabFixed;
+  window.toggleAcc = toggleAccFixed;
+
+  // rebind nav items based on old inline onclick
+  qa('#admin-app .nav-item').forEach(item => {
+    const oc = item.getAttribute('onclick') || '';
+    const m = oc.match(/adminTab\('([^']+)'/);
+    if (m) {
+      item.onclick = function () { window.adminTab(m[1], item); };
+    }
+  });
+
+  qa('#emp-app .nav-item').forEach(item => {
+    const oc = item.getAttribute('onclick') || '';
+    const m = oc.match(/empTab\('([^']+)'/);
+    if (m) {
+      item.onclick = function () { window.empTab(m[1], item); };
+    }
+  });
+
+  // force first visible tab if all hidden
+  function boot() {
+    restoreTopArea();
+    closeBlockingLayers();
+
+    const adminApp = document.getElementById('admin-app');
+    const empApp = document.getElementById('emp-app');
+
+    const adminVisible = ADMIN_TABS.some(t => {
+      const el = document.getElementById('admin-' + t);
+      return el && getComputedStyle(el).display !== 'none';
+    });
+
+    const empVisible = EMP_TABS.some(t => {
+      const el = document.getElementById('emp-' + t);
+      return el && getComputedStyle(el).display !== 'none';
+    });
+
+    if (adminApp && getComputedStyle(adminApp).display !== 'none' && !adminVisible) {
+      window.adminTab('dashboard');
+    }
+
+    if (empApp && getComputedStyle(empApp).display !== 'none' && !empVisible) {
+      window.empTab('home');
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot, { once: true });
+  } else {
+    setTimeout(boot, 50);
+  }
+})();
+</script>
+
 </body>
 </html>

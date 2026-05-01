@@ -334,6 +334,67 @@
     }
   }
 
+  function showEmpSalesDetails(period = 'today') {
+    const ar = window.currentLang === 'ar';
+    const sales = period === 'month'
+      ? (Array.isArray(window._empMonthSales) ? window._empMonthSales : [])
+      : (Array.isArray(window._empTodaySales) ? window._empTodaySales
+          : Array.isArray(window._todaySales) ? window._todaySales : []);
+
+    if (!sales.length) {
+      if (typeof window.notify === 'function') {
+        window.notify(ar ? 'لا توجد مبيعات' : 'No sales', 'info');
+      }
+      return;
+    }
+
+    const total = sales.reduce((sum, s) => sum + safeNum(s.total_amount), 0);
+    const title = period === 'month'
+      ? (ar ? '📊 مبيعات الشهر' : '📊 Month Sales')
+      : (ar ? '📊 مبيعات اليوم' : '📊 Today Sales');
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.classList.add('open');
+    overlay.innerHTML = `
+      <div style="background:var(--card);border-radius:22px 22px 0 0;padding:20px 16px;width:100%;max-height:80vh;overflow-y:auto;border-top:2px solid var(--green)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div style="font-size:16px;font-weight:800;color:var(--green)">${title}</div>
+          <button id="emp-sales-close-btn" style="width:38px;height:38px;border:none;border-radius:50%;background:var(--card2);color:var(--text);font-size:18px;cursor:pointer">✕</button>
+        </div>
+        <div class="card" style="margin-bottom:12px;background:rgba(0,200,83,.06);border-color:rgba(0,200,83,.2)">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:12px;color:var(--muted)">${ar ? 'الإجمالي' : 'Total'}</div>
+            <div style="font-size:18px;font-weight:800;color:var(--green)">EGP ${total.toLocaleString()}</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${sales.map(s => `
+            <div style="padding:12px;border:1px solid var(--border);border-radius:14px;background:var(--card2)">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                <div style="flex:1">
+                  <div style="font-size:13px;font-weight:700">${s.product_name || (ar ? 'منتج غير محدد' : 'Unknown product')}</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:3px">
+                    ${ar ? 'الكمية' : 'Qty'}: ${safeNum(s.quantity || 1)}
+                    ${s.unit_price ? ` · ${ar ? 'سعر الوحدة' : 'Unit'}: EGP ${safeNum(s.unit_price).toLocaleString()}` : ''}
+                    ${s.date ? ` · ${s.date}` : ''}
+                  </div>
+                </div>
+                <div style="font-size:13px;font-weight:800;color:var(--green)">EGP ${safeNum(s.total_amount).toLocaleString()}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+
+    const closeBtn = document.getElementById('emp-sales-close-btn');
+    if (closeBtn) closeBtn.addEventListener('click', () => overlay.remove(), { once: true });
+  }
+
   Object.assign(window, {
     renderProducts,
     filterProducts,
@@ -344,6 +405,7 @@
     submitSale,
     loadTodaySales,
     renderDailySalesGrid,
-    renderEmpPerfChart
+    renderEmpPerfChart,
+    showEmpSalesDetails
   });
 })();

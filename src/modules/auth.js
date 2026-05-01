@@ -445,14 +445,11 @@ async function doLogin() {
 
     const uname = encodeURIComponent(username);
 
-    // Admins
-    let admRes = [];
-    try {
-      admRes = await dbGet('admins', `?username=eq.${uname}&select=*`);
-    } catch (e) {
-      console.warn('[admins login query]', e);
-      admRes = [];
-    }
+    // Query admins and employees in parallel to reduce login time
+    const [admRes, empRes] = await Promise.all([
+      dbGet('admins', `?username=eq.${uname}&select=*`).catch(e => { console.warn('[admins login query]', e); return []; }),
+      dbGet('employees', `?username=eq.${uname}&select=*`).catch(e => { console.warn('[employees login query]', e); return []; })
+    ]);
 
     const admMatch = (admRes || []).find(r => String(r.password || '') === pass);
     if (admMatch) {
@@ -463,15 +460,6 @@ async function doLogin() {
 
       _finalizeLogin(adminUser);
       return;
-    }
-
-    // Employees
-    let empRes = [];
-    try {
-      empRes = await dbGet('employees', `?username=eq.${uname}&select=*`);
-    } catch (e) {
-      console.warn('[employees login query]', e);
-      empRes = [];
     }
 
     const empMatch = (empRes || []).find(r => String(r.password || '') === pass);

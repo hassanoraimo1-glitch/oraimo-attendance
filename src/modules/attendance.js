@@ -218,57 +218,41 @@ async function loadEmpData() {
   try {
     const today = todayStr();
     const pm = getPayrollMonth();
+    const mon = pm.start.substring(0, 7);
 
-    // ── Today's attendance ──
-    const todayAtt = await dbGet(
-      'attendance',
-      `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`
-    ).catch(() => []);
+    // ── All queries in parallel ──
+    const [todayAtt, monthAtt, monthSales, todaySales, targetRes, recent] = await Promise.all([
+      dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`).catch(() => []),
+      dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`).catch(() => []),
+      dbGet('sales', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`).catch(() => []),
+      dbGet('sales', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`).catch(() => []),
+      dbGet('targets', `?employee_id=eq.${currentUser.id}&month=eq.${mon}&select=*`).catch(() => []),
+      dbGet('attendance', `?employee_id=eq.${currentUser.id}&order=date.desc&limit=7&select=*`).catch(() => [])
+    ]);
 
+    // ── Attendance button ──
     updateAttendBtn(todayAtt && todayAtt.length > 0 ? todayAtt[0] : null);
-
-    // ── Month's attendance & stats ──
-    const monthAtt = await dbGet(
-      'attendance',
-      `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`
-    ).catch(() => []);
 
     const attCountEl = document.getElementById('emp-attend-count');
     if (attCountEl) attCountEl.textContent = (monthAtt || []).length;
 
-    // ── Month's sales + Today's sales ──
-    const [monthSales, todaySales] = await Promise.all([
-      dbGet(
-        'sales',
-        `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`
-      ).catch(() => []),
-      dbGet(
-        'sales',
-        `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`
-      ).catch(() => [])
-    ]);
-
+    // ── Sales totals ──
     const salesTotal = _sumSalesRows(monthSales);
     const todaySalesTotal = _sumSalesRows(todaySales);
+
+    window._empMonthSales = monthSales || [];
+    window._empTodaySales = todaySales || [];
 
     const salesEl = document.getElementById('emp-sales-total');
     if (salesEl) salesEl.textContent = 'EGP ' + fmtEGP(salesTotal);
 
-    // IMPORTANT: old late card now shows today's sales
     const todaySalesEl = document.getElementById('emp-late-total');
     if (todaySalesEl) todaySalesEl.textContent = 'EGP ' + fmtEGP(todaySalesTotal);
 
-    // rename labels without touching HTML
     _setCardLabelByValueId('emp-sales-total', 'إجمالي المبيعات', 'Total Sales');
     _setCardLabelByValueId('emp-late-total', 'مبيعات اليوم', 'Today Sales');
 
     // ── Target & K Model ──
-    const mon = pm.start.substring(0, 7);
-    const targetRes = await dbGet(
-      'targets',
-      `?employee_id=eq.${currentUser.id}&month=eq.${mon}&select=*`
-    ).catch(() => []);
-
     const target = targetRes && targetRes.length > 0 ? (targetRes[0].amount || 0) : 0;
     const kmodel = targetRes && targetRes.length > 0 ? (targetRes[0].kmodel_amount || 0) : 0;
 
@@ -307,17 +291,12 @@ async function loadEmpData() {
     if (typeof renderEmpPerfChart === 'function') renderEmpPerfChart(monthSales, pm);
 
     // ── Recent attendance + warnings + today sales ──
-    const recent = await dbGet(
-      'attendance',
-      `?employee_id=eq.${currentUser.id}&order=date.desc&limit=7&select=*`
-    ).catch(() => []);
-
     renderAttendHistory(recent);
     loadEmpWarnings();
 
     if (typeof loadTodaySales === 'function') loadTodaySales();
 
-    // ── SHIFT LABEL ON HOME ──
+    // ── Shift label on home ──
     const shiftInfoEl = _ensureShiftInfoEl();
     if (shiftInfoEl) {
       const ar = currentLang === 'ar';

@@ -80,6 +80,43 @@ function _resetAttendanceCaptureState() {
   }
 }
 
+function _setStatCardLabelByValueEl(valueElId, labelAr, labelEn) {
+  const valueEl = document.getElementById(valueElId);
+  if (!valueEl) return;
+
+  const card = valueEl.closest('.stat-card, .mini-stat, .kpi-card, .dash-stat');
+  if (!card) return;
+
+  const labelEl = card.querySelector('.stat-label, .mini-stat-label, .kpi-label');
+  if (!labelEl) return;
+
+  labelEl.textContent = currentLang === 'ar' ? labelAr : labelEn;
+}
+
+function _sumSalesRows(rows) {
+  let total = 0;
+  (rows || []).forEach(r => {
+    total += Number(r?.total_amount || 0);
+  });
+  return total;
+}
+
+function _calcAbsentDays(monthAtt, pm) {
+  const startD = new Date(pm.start);
+  const endD = new Date(Math.min(new Date(pm.end), new Date()));
+  let absent = 0;
+
+  for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
+    const currentLoopDate = new Date(d);
+    if (currentLoopDate.getDay() === currentUser.day_off) continue;
+
+    const ds = fmtDate(currentLoopDate);
+    if (!(monthAtt || []).find(a => a.date === ds)) absent++;
+  }
+
+  return absent;
+}
+
 async function _hasTodayDisplayPhotos(employeeId, dateStr) {
   if (!employeeId || !dateStr) return false;
 
@@ -189,27 +226,32 @@ async function loadEmpData() {
     const attCountEl = document.getElementById('emp-attend-count');
     if (attCountEl) attCountEl.textContent = (monthAtt || []).length;
 
-    let lateTotal = 0;
-    (monthAtt || []).forEach(a => {
-      lateTotal += (a.late_minutes || 0);
-    });
+    // ── Sales: month + today ──
+    const [monthSales, todaySales] = await Promise.all([
+      dbGet(
+        'sales',
+        `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`
+      ).catch(() => []),
+      dbGet(
+        'sales',
+        `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`
+      ).catch(() => [])
+    ]);
 
-    const lateEl = document.getElementById('emp-late-total');
-    if (lateEl) lateEl.textContent = lateTotal + (currentLang === 'ar' ? ' د' : 'm');
-
-    // ── Month's sales ──
-    const monthSales = await dbGet(
-      'sales',
-      `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`
-    ).catch(() => []);
-
-    let salesTotal = 0;
-    (monthSales || []).forEach(s => {
-      salesTotal += (s.total_amount || 0);
-    });
+    const salesTotal = _sumSalesRows(monthSales);
+    const todaySalesTotal = _sumSalesRows(todaySales);
 
     const salesEl = document.getElementById('emp-sales-total');
     if (salesEl) salesEl.textContent = 'EGP ' + fmtEGP(salesTotal);
+
+    // IMPORTANT:
+    // emp-late-total is reused now as "today sales" instead of "late minutes"
+    const todaySalesEl = document.getElementById('emp-late-total');
+    if (todaySalesEl) todaySalesEl.textContent = 'EGP ' + fmtEGP(todaySalesTotal);
+
+    // Force labels to correct titles
+    _setStatCardLabelByValueEl('emp-sales-total', 'مبيعات الشهر', 'Month Sales');
+    _setStatCardLabelByValueEl('emp-late-total', 'مبيعات اليوم', 'Today Sales');
 
     // ── Target & K Model ──
     const mon = pm.start.substring(0, 7);
@@ -247,18 +289,7 @@ async function loadEmpData() {
     }
 
     // ── Absent days ──
-    const startD = new Date(pm.start);
-    const endD = new Date(Math.min(new Date(pm.end), new Date()));
-    let absent = 0;
-
-    for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
-      const currentLoopDate = new Date(d);
-      if (currentLoopDate.getDay() === currentUser.day_off) continue;
-
-      const ds = fmtDate(currentLoopDate);
-      if (!(monthAtt || []).find(a => a.date === ds)) absent++;
-    }
-
+    const absent = _calcAbsentDays(monthAtt, pm);
     const absEl = document.getElementById('emp-absent-count');
     if (absEl) absEl.textContent = absent;
 
@@ -548,17 +579,17 @@ async function loadEmpMonthlyReport() {
 
   const pm = getPayrollMonth();
   const ar = currentLang === 'ar';
+  const today = todayStr();
 
-  const [att, sales] = await Promise.all([
+  const [att, sales, todaySales] = await Promise.all([
     dbGet('attendance', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`).catch(() => []),
-    dbGet('sales', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`).catch(() => [])
+    dbGet('sales', `?employee_id=eq.${currentUser.id}&date=gte.${pm.start}&date=lte.${pm.end}&select=*`).catch(() => []),
+    dbGet('sales', `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`).catch(() => [])
   ]);
 
-  let salesTotal = 0;
-  (sales || []).forEach(s => salesTotal += (s.total_amount || 0));
-
-  let lateTotal = 0;
-  (att || []).forEach(a => lateTotal += (a.late_minutes || 0));
+  const salesTotal = _sumSalesRows(sales);
+  const todaySalesTotal = _sumSalesRows(todaySales);
+  const absentTotal = _calcAbsentDays(att || [], pm);
 
   const el = document.getElementById('monthly-report-emp');
   if (!el) return;
@@ -566,14 +597,16 @@ async function loadEmpMonthlyReport() {
   const rows = ar
     ? [
         ['أيام الحضور', (att || []).length + ' أيام', 'var(--green)'],
-        ['دقائق التأخير', lateTotal + ' د', 'var(--yellow)'],
-        ['إجمالي المبيعات', 'EGP ' + salesTotal.toLocaleString(), 'var(--green)'],
+        ['أيام الغياب', absentTotal + ' يوم', 'var(--red)'],
+        ['إجمالي مبيعات الشهر', 'EGP ' + salesTotal.toLocaleString(), 'var(--green)'],
+        ['مبيعات اليوم', 'EGP ' + todaySalesTotal.toLocaleString(), 'var(--blue)'],
         ['عدد المعاملات', (sales || []).length, 'var(--text)']
       ]
     : [
         ['Attendance', (att || []).length + ' days', 'var(--green)'],
-        ['Late', lateTotal + 'm', 'var(--yellow)'],
-        ['Total Sales', 'EGP ' + salesTotal.toLocaleString(), 'var(--green)'],
+        ['Absent Days', absentTotal + ' days', 'var(--red)'],
+        ['Month Sales', 'EGP ' + salesTotal.toLocaleString(), 'var(--green)'],
+        ['Today Sales', 'EGP ' + todaySalesTotal.toLocaleString(), 'var(--blue)'],
         ['Transactions', (sales || []).length, 'var(--text)']
       ];
 
@@ -639,6 +672,7 @@ async function openCamera() {
 
       video.srcObject = videoStream;
       video.setAttribute('playsinline', '');
+      video.setAttribute('autoplay', '');
       video.muted = true;
 
       await video.play().catch(() => {});

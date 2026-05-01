@@ -321,6 +321,16 @@ if ('serviceWorker' in navigator) {
       <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور يومياً</div>
     </button>
 
+    <button
+      type="button"
+      id="display-save-btn"
+      class="btn btn-green"
+      onclick="submitDisplayPhotos()"
+      style="display:none;margin-top:10px"
+    >
+      💾 حفظ الصور
+    </button>
+
     <div class="sh" style="margin-top:8px">
       <div class="sh-title">📋 سجل الديسبلاي</div>
     </div>
@@ -1267,7 +1277,7 @@ if ('serviceWorker' in navigator) {
     closeBlockingLayers();
 
     if (tab === 'dashboard') safeCall('loadAdminDashboard');
-    if (tab === 'attendance') safeCall('loadAdminAttendanceTab');
+    if (tab === 'attendance') safeCall('loadAdminAttendance');
     if (tab === 'employees') safeCall('loadAllEmployees');
     if (tab === 'branches') safeCall('initBranchDashboard');
     if (tab === 'reports') safeCall('loadAllEmployees');

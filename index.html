@@ -298,112 +298,163 @@ if ('serviceWorker' in navigator) {
     <button type="button" class="btn btn-outline" onclick="doLogout()" style="margin-top:8px" data-ar="🚪 تسجيل الخروج" data-en="🚪 Sign Out">🚪 تسجيل الخروج</button>
   </div>
 
-  <div id="emp-display" class="content" style="display:none">
-    <div class="card card-glow">
-      <div style="font-size:14px;font-weight:800;margin-bottom:12px">🖼️ رفع صور الديسبلاي اليومي</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="display-date-label"></div>
+<div id="emp-display" class="content" style="display:none">
+  <div class="card card-glow">
+    <div style="font-size:14px;font-weight:800;margin-bottom:12px">🖼️ رفع صور الديسبلاي اليومي</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="display-date-label"></div>
 
-      <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">
-        صور الديسبلاي (max 3)
-      </label>
+    <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">
+      صور الديسبلاي (max 3)
+    </label>
 
-      <div class="photo-previews" id="display-photo-previews"></div>
+    <div class="photo-previews" id="display-photo-previews"></div>
 
-      <button type="button" class="photo-upload-zone" id="display-upload-zone" onclick="openDisplayCamera()" style="width:100%;border:none;cursor:pointer;background:transparent">
-        <div style="font-size:28px">📷</div>
-        <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور يومياً</div>
-      </button>
+    <button
+      type="button"
+      class="photo-upload-zone"
+      id="display-upload-zone"
+      onclick="openDisplayCamera()"
+      style="width:100%;border:none;cursor:pointer;background:transparent"
+    >
+      <div style="font-size:28px">📷</div>
+      <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لإضافة صورة</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور يومياً</div>
+    </button>
 
-      <div class="inp-grp" style="margin-top:10div class="sh" style="margin-top:8px">
+    <div class="sh" style="margin-top:8px">
       <div class="sh-title">📋 سجل الديسبلاي</div>
     </div>
 
     <div id="display-history-list"></div>
   </div>
 
-  <div id="display-camera-modal" style="display:none;position:fixed;inset:0;width:100vw;height:100vh;background:#000;z-index:99999;overflow:hidden">
-    <video id="display-camera-video" autoplay playsinline muted webkit-playsinline x-webkit-airplay="allow" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;display:block;z-index:1;pointer-events:none"></video>
+  <div
+    id="display-camera-modal"
+    style="display:none;position:fixed;inset:0;width:100vw;height:100vh;background:#000;z-index:99999;overflow:hidden"
+  >
+    <video
+      id="display-camera-video"
+      autoplay
+      playsinline
+      muted
+      webkit-playsinline
+      x-webkit-airplay="allow"
+      style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;display:block;z-index:1"
+    ></video>
+
     <canvas id="display-camera-canvas" style="display:none"></canvas>
 
-    <div style="position:absolute;top:0;left:0;right:0;z-index:3;padding:calc(18px + env(safe-area-inset-top)) 16px 12px;text-align:center;background:linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,.12), transparent);color:#fff;font-size:14px;font-weight:800;pointer-events:none">
+    <div
+      style="position:absolute;top:0;left:0;right:0;z-index:3;padding:calc(18px + env(safe-area-inset-top)) 16px 12px;text-align:center;background:linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,.12), transparent);color:#fff;font-size:14px;font-weight:800"
+    >
       📸 التقط صورة الديسبلاي
     </div>
 
-    <div style="position:absolute;left:0;right:0;bottom:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:20px 20px calc(28px + env(safe-area-inset-bottom));background:linear-gradient(to top, rgba(0,0,0,.58), rgba(0,0,0,.18), transparent)">
-      <button id="display-capture-btn" type="button" onclick="captureDisplayPhoto()" aria-label="التقاط الصورة" style="width:92px;height:92px;border-radius:50%;border:6px solid #fff;background:rgba(255,255,255,.18);box-shadow:0 0 0 6px rgba    <div class="sh">
-      <div class="sh-title">📸 زيارات الفروع</div>
-      <div id="emp-visits-count" style="color:var(--green);font-weight:800;font-size:12px">0 / 150</div>
+    <button
+      type="button"
+      onclick="closeDisplayCamera()"
+      style="position:absolute;top:calc(16px + env(safe-area-inset-top));left:16px;z-index:5;width:42px;height:42px;border:none;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;font-size:20px;cursor:pointer"
+    >
+      ✕
+    </button>
+
+    <div
+      style="position:absolute;left:0;right:0;bottom:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:20px 20px calc(28px + env(safe-area-inset-bottom));background:linear-gradient(to top, rgba(0,0,0,.58), rgba(0,0,0,.18), transparent)"
+    >
+      <button
+        id="display-capture-btn"
+        type="button"
+        onclick="captureDisplayPhoto()"
+        aria-label="التقاط الصورة"
+        style="width:92px;height:92px;border-radius:50%;border:6px solid #fff;background:rgba(255,255,255,.18);box-shadow:0 0 0 6px rgba(255,255,255,.15);cursor:pointer"
+      ></button>
+
+      <button
+        type="button"
+        onclick="closeDisplayCamera()"
+        style="margin-top:14px;padding:10px 18px;border:none;border-radius:12px;background:rgba(255,255,255,.12);color:#fff;font-family:Cairo,sans-serif;font-size:13px;cursor:pointer"
+      >
+        إلغاء
+      </button>
+    </div>
+  </div>
+
+  <div class="sh" style="display:flex;justify-content:space-between;align-items:center">
+    <div class="sh-title">📸 زيارات الفروع</div>
+    <div id="emp-visits-count" style="color:var(--green);font-weight:800;font-size:12px">0 / 150</div>
+  </div>
+
+  <div class="visit-stats-row">
+    <div class="visit-stat">
+      <div class="visit-stat-val" id="vis-done">0</div>
+      <div class="visit-stat-label">زيارة هذا الشهر</div>
     </div>
 
-    <div class="visit-stats-row">
-      <div class="visit-stat">
-        <div class="visit-stat-val" id="vis-done">0</div>
-        <div class="visit-stat-label">زيارة هذا الشهر</div>
-      </div>
-      <div class="visit-stat">
-        <div class="visit-stat-val" style="color:var(--yellow)" id="vis-remain">150</div>
-        <div class="visit-stat-label">متبقي</div>
-      </div>
-      <div class="visit-stat">
-        <div class="visit-stat-val" style="color:var(--blue)" id="vis-photos">0</div>
-        <div class="visit-stat-label">صورة مرفوعة</div>
-      </div>
+    <div class="visit-stat">
+      <div class="visit-stat-val" style="color:var(--yellow)" id="vis-remain">150</div>
+      <div class="visit-stat-label">متبقي</div>
     </div>
 
-    <div class="card card-glow">
-      <div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ تسجيل زيارة جديدة</div>
+    <div class="visit-stat">
+      <div class="visit-stat-val" style="color:var(--blue)" id="vis-photos">0</div>
+      <div class="visit-stat-label">صورة مرفوعة</div>
+    </div>
+  </div>
 
-      <div class="inp-grp">
-        <label>الفرع</label>
-        <select id="visit-branch-select">
-          <option value="">-- اختر الفرع --</option>
-        </select>
-      </div>
+  <div class="card card-glow">
+    <div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ تسجيل زيارة جديدة</div>
 
-     <div class="inp-grp">
-  <label>ملاحظة (اختياري)</label>
-  <textarea
-    id="visit-note-input"
-    placeholder="حالة الديسبلاي، ملاحظات الفرع..."
-    rows="2"
-    style="width:100%;padding:11px 14px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl;transition:.2s"
-  ></textarea>
-</div>
+    <div class="inp-grp">
+      <label>الفرع</label>
+      <select id="visit-branch-select">
+        <option value="">-- اختر الفرع --</option>
+      </select>
+    </div>
 
-<label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">
-  صور الديسبلاي (max 3)
-</label>
+    <div class="inp-grp">
+      <label>ملاحظة (اختياري)</label>
+      <textarea
+        id="visit-note-input"
+        placeholder="حالة الديسبلاي، ملاحظات الفرع..."
+        rows="2"
+        style="width:100%;padding:11px 14px;background:var(--card2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:none;direction:rtl;transition:.2s"
+      ></textarea>
+    </div>
 
-<div class="photo-previews" id="visit-photo-previews"></div>
+    <label style="font-size:11px;color:var(--muted);font-weight:700;display:block;margin-bottom:8px">
+      صور الديسبلاي (max 3)
+    </label>
 
-<input
-  type="file"
-  id="visit-camera-input"
-  accept="image/*"
-  capture="environment"
-  style="display:none"
-  onchange="addVisitPhoto(event)"
->
+    <div class="photo-previews" id="visit-photo-previews"></div>
 
-<div
-  class="photo-upload-zone"
-  id="visit-upload-zone"
-  onclick="openVisitCamera()"
-  style="cursor:pointer"
->
-  <div style="font-size:28px">📷</div>
-  <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لفتح الكاميرا</div>
-  <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور للزيارة - بالكاميرا فقط</div>
-</div>
+    <input
+      type="file"
+      id="visit-camera-input"
+      accept="image/*"
+      capture="environment"
+      style="display:none"
+      onchange="addVisitPhoto(event)"
+    >
 
-<button class="btn btn-green" onclick="submitVisit()">✅ حفظ الزيارة</button>
-</div>
+    <div
+      class="photo-upload-zone"
+      id="visit-upload-zone"
+      onclick="openVisitCamera()"
+      style="cursor:pointer"
+    >
+      <div style="font-size:28px">📷</div>
+      <div style="font-size:12px;font-weight:700;margin-top:4px">اضغط لفتح الكاميرا</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">حتى 3 صور للزيارة - بالكاميرا فقط</div>
+    </div>
 
-<div class="sh" style="margin-top:4px">
-  <div class="sh-title">📋 زياراتي هذا الشهر</div>
-</div>
-<div id="visit-history-list"></div>
+    <button class="btn btn-green" onclick="submitVisit()">✅ حفظ الزيارة</button>
+  </div>
+
+  <div class="sh" style="margin-top:4px">
+    <div class="sh-title">📋 زياراتي هذا الشهر</div>
+  </div>
+
+  <div id="visit-history-list"></div>
 </div>
 
 <!-- SPECS TAB (Employee) -->
@@ -537,247 +588,326 @@ if ('serviceWorker' in navigator) {
   </div>
 
   <!-- BRANCHES DASHBOARD -->
-  <div id="admin-branches" class="content" style="display:none">
-    <div class="tabs" id="branch-dash-tabs">
-      <button class="tab active" onclick="branchDashTab('overview',this)" data-ar="عام" data-en="Overview">عام</button>
-      <button class="tab" onclick="branchDashTab('s-tier',this)">🥇 S</button>
-      <button class="tab" onclick="branchDashTab('a-tier',this)">🥈 A</button>
-      <button class="tab" onclick="branchDashTab('b-tier',this)">🥉 B</button>
-      <button class="tab" onclick="branchDashTab('no-sales',this)" data-ar="بدون مبيعات" data-en="No Sales">بدون مبيعات</button>
-      <button class="tab" onclick="branchDashTab('upload',this)">📤</button>
+<div id="admin-branches" class="content" style="display:none">
+  <div class="tabs" id="branch-dash-tabs">
+    <button class="tab active" onclick="branchDashTab('overview',this)" data-ar="عام" data-en="Overview">عام</button>
+    <button class="tab" onclick="branchDashTab('s-tier',this)">🥇 S</button>
+    <button class="tab" onclick="branchDashTab('a-tier',this)">🥈 A</button>
+    <button class="tab" onclick="branchDashTab('b-tier',this)">🥉 B</button>
+    <button class="tab" onclick="branchDashTab('no-sales',this)" data-ar="بدون مبيعات" data-en="No Sales">بدون مبيعات</button>
+    <button class="tab" onclick="branchDashTab('upload',this)">📤</button>
+  </div>
+
+  <div id="branch-overview">
+    <div class="kpi-row">
+      <div class="kpi-card" style="border-color:rgba(255,215,0,.2)">
+        <div class="kpi-val" style="color:var(--gold)" id="kpi-s-count">-</div>
+        <div class="kpi-label">S 🥇</div>
+      </div>
+
+      <div class="kpi-card" style="border-color:rgba(184,196,204,.2)">
+        <div class="kpi-val" style="color:var(--silver)" id="kpi-a-count">-</div>
+        <div class="kpi-label">A 🥈</div>
+      </div>
+
+      <div class="kpi-card" style="border-color:rgba(205,127,50,.2)">
+        <div class="kpi-val" style="color:var(--bronze)" id="kpi-b-count">-</div>
+        <div class="kpi-label">B 🥉</div>
+      </div>
     </div>
 
-    <div id="branch-overview">
-      <div class="kpi-row">
-        <div class="kpi-card" style="border-color:rgba(255,215,0,.2)">
-          <div class="kpi-val" style="color:var(--gold)" id="kpi-s-count">-</div>
-          <div class="kpi-label">S 🥇</div>
-        </div>
-        <div class="kpi-card" style="border-color:rgba(184,196,204,.2)">
-          <div class="kpi-val" style="color:var(--silver)" id="kpi-a-count">-</div>
-          <div class="kpi-label">A 🥈</div>
-        </div>
-        <div class="kpi-card" style="border-color:rgba(205,127,50,.2)">
-          <div class="kpi-val" style="color:var(--bronze)" id="kpi-b-count">-</div>
-          <div class="kpi-label">B 🥉</div>
-        </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label" data-ar="مبيعات أبريل (EGP)" data-en="April Sales (EGP)">مبيعات أبريل (EGP)</div>
+        <div class="stat-val" style="color:var(--green);font-size:16px" id="kpi-curr-rev">-</div>
       </div>
 
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label" data-ar="مبيعات أبريل (EGP)" data-en="April Sales (EGP)">مبيعات أبريل (EGP)</div>
-          <div class="stat-val" style="color:var(--green);font-size:16px" id="kpi-curr-rev">-</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label" data-ar="مبيعات الشهر السابق" data-en="Prev Month Sales">مبيعات الشهر السابق</div>
-          <div class="stat-val" style="font-size:16px" id="kpi-prev-rev">-</div>
-        </div>
+      <div class="stat-card">
+        <div class="stat-label" data-ar="مبيعات الشهر السابق" data-en="Prev Month Sales">مبيعات الشهر السابق</div>
+        <div class="stat-val" style="font-size:16px" id="kpi-prev-rev">-</div>
       </div>
-
-      <div class="card" style="border-color:rgba(255,59,59,.2);background:rgba(255,59,59,.04);margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <div style="font-size:12px;font-weight:700" data-ar="التغيير مقارنة بالشهر السابق" data-en="Change vs Last Month">التغيير مقارنة بالشهر السابق</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px" data-ar="إجمالي كل الفروع" data-en="All branches total">إجمالي كل الفروع</div>
-          </div>
-          <div id="kpi-change" style="font-size:22px;font-weight:800">-</div>
-        </div>
-      </div>
-
-      <div class="sh"><div class="sh-title" data-ar="🏪 أفضل الفروع" data-en="🏪 Top Branches">🏪 أفضل الفروع</div></div>
-      <div id="branch-top-list"></div>
     </div>
 
-    <div id="branch-s-tier" style="display:none">
-      <div class="card" style="border-color:rgba(255,215,0,.3);background:rgba(255,215,0,.04)">
-        <div style="font-size:13px;font-weight:800;color:var(--gold)" data-ar="🥇 S تير — الأعلى أداءً" data-en="🥇 S Tier — Top Performers">🥇 S تير — الأعلى أداءً</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px" id="s-tier-subtitle"></div>
-      </div>
-      <div id="s-tier-list"></div>
-    </div>
-
-    <div id="branch-a-tier" style="display:none">
-      <div class="card" style="border-color:rgba(184,196,204,.3);background:rgba(184,196,204,.04)">
-        <div styledisplay:none">
-      <div class="card" style="border-color:rgba(205,127,50,.3);background:rgba(205,127,50,.04)">
-        <div style="font-size:13px;font-weight:800;color:var(--bronze)" data-ar="🥉 B تير — يحتاج تطوير" data-en="🥉 B Tier — Needs Improvement">🥉 B تير — يحتاج تطوير</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px" id="b-tier-subtitle"></div>
-      </div>
-      <div id="b-tier-list"></div>
-    </div>
-
-    <div id="branch-no-sales" style="display:none">
-      <div class="card">
-        <div style="font-size:13px;font-weight:800;color:var(--muted)" data-ar="🏪 فروع بدون مبيعات — أبريل حتى الآن" data-en="🏪 No Sales — April so far">🏪 فروع بدون مبيعات — أبريل حتى الآن</div>
-      </div>
-      <div id="ns-tier-list"></div>
-    </div>
-
-    <div id="branch-upload" style="display:none">
-      <div class="card">
-        <div style="font-size:14px;font-weight:800;margin-bottom:8px="Upload CSV: branch name, sales">ارفع CSV: اسم الفرع، المبيعات</div>
-        <div class="upload-zone" onclick="document.getElementById('upload-file').click()">
-          <input type="file" id="upload-file" accept=".csv,.xlsx,.xls" onchange="handleBranchUpload(event)">
-          <div style="font-size:32px;margin-bottom:8px">📊</div>
-          <div style="font-size:13px;font-weight:700;margin-bottom:4px" data-ar="اضغط لرفع ملف" data-en="Tap to upload">اضغط لرفع ملف</div>
-          <div style="font-size:11px;color:var(--muted)">.csv</div>
+    <div class="card" style="border-color:rgba(255,59,59,.2);background:rgba(255,59,59,.04);margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:12px;font-weight:700" data-ar="التغيير مقارنة بالشهر السابق" data-en="Change vs Last Month">التغيير مقارنة بالشهر السابق</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px" data-ar="إجمالي كل الفروع" data-en="All branches total">إجمالي كل الفروع</div>
         </div>
-        <div id="upload-result"></div>
+        <div id="kpi-change" style="font-size:22px;font-weight:800">-</div>
+      </div>
+    </div>
+
+    <div class="sh">
+      <div class="sh-title" data-ar="🏪 أفضل الفروع" data-en="🏪 Top Branches">🏪 أفضل الفروع</div>
+    </div>
+    <div id="branch-top-list"></div>
+  </div>
+
+  <div id="branch-s-tier" style="display:none">
+    <div class="card" style="border-color:rgba(255,215,0,.3);background:rgba(255,215,0,.04)">
+      <div style="font-size:13px;font-weight:800;color:var(--gold)" data-ar="🥇 S تير — الأعلى أداءً" data-en="🥇 S Tier — Top Performers">🥇 S تير — الأعلى أداءً</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px" id="s-tier-subtitle"></div>
+    </div>
+    <div id="s-tier-list"></div>
+  </div>
+
+  <div id="branch-a-tier" style="display:none">
+    <div class="card" style="border-color:rgba(184,196,204,.3);background:rgba(184,196,204,.04)">
+      <div style="font-size:13px;font-weight:800;color:var(--silver)" data-ar="🥈 A تير — أداء جيد" data-en="🥈 A Tier — Good Performance">🥈 A تير — أداء جيد</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px" id="a-tier-subtitle"></div>
+    </div>
+    <div id="a-tier-list"></div>
+  </div>
+
+  <div id="branch-b-tier" style="display:none">
+    <div class="card" style="border-color:rgba(205,127,50,.3);background:rgba(205,127,50,.04)">
+      <div style="font-size:13px;font-weight:800;color:var(--bronze)" data-ar="🥉 B تير — يحتاج تطوير" data-en="🥉 B Tier — Needs Improvement">🥉 B تير — يحتاج تطوير</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px" id="b-tier-subtitle"></div>
+    </div>
+    <div id="b-tier-list"></div>
+  </div>
+
+  <div id="branch-no-sales" style="display:none">
+    <div class="card">
+      <div style="font-size:13px;font-weight:800;color:var(--muted)" data-ar="🏪 فروع بدون مبيعات — أبريل حتى الآن" data-en="🏪 No Sales — April so far">🏪 فروع بدون مبيعات — أبريل حتى الآن</div>
+    </div>
+    <div id="ns-tier-list"></div>
+  </div>
+
+  <div id="branch-upload" style="display:none">
+    <div class="card">
+      <div style="font-size:14px;font-weight:800;margin-bottom:8px" data-ar="ارفع CSV: اسم الفرع، المبيعات" data-en="Upload CSV: branch name, sales">
+        ارفع CSV: اسم الفرع، المبيعات
       </div>
 
-      <div class="card">
-        <div style="font-size:13px;font-weight:700;margin-bottom:10px" data-ar="📋 سجل الرفع" data-en="📋 Upload History">📋 سجل الرفع</div>
-        <div id="upload-history-list"><div style="color:var(--muted);font-size:12px" data-ar="لا يوجد سجل بعد" data-en="No history yet">لا يوجد سجل بعد</div></div>
+      <div class="upload-zone" onclick="document.getElementById('upload-file').click()">
+        <input
+          type="file"
+          id="upload-file"
+          accept=".csv,.xlsx,.xls"
+          onchange="handleBranchUpload(event)"
+          style="display:none"
+        >
+        <div style="font-size:32px;margin-bottom:8px">📊</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px" data-ar="اضغط لرفع ملف" data-en="Tap to upload">اضغط لرفع ملف</div>
+        <div style="font-size:11px;color:var(--muted)">.csv</div>
+      </div>
+
+      <div id="upload-result"></div>
+    </div>
+
+    <div class="card">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px" data-ar="📋 سجل الرفع" data-en="📋 Upload History">📋 سجل الرفع</div>
+      <div id="upload-history-list">
+        <div style="color:var(--muted);font-size:12px" data-ar="لا يوجد سجل بعد" data-en="No history yet">لا يوجد سجل بعد</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+  <!-- REPORTS -->
+ <div id="admin-reports" class="content" style="display:none">
+  <div class="tabs" id="report-tabs">
+    <button class="tab active" onclick="reportTab('employee',this)" data-ar="موظف" data-en="Employee">موظف</button>
+    <button class="tab" onclick="reportTab('products',this)" data-ar="منتجات" data-en="Products">منتجات</button>
+    <button class="tab" onclick="reportTab('branch',this)" data-ar="الفروع" data-en="Branches">الفروع</button>
+    <button class="tab" onclick="reportTab('display',this)" data-ar="🖼️ ديسبلاي" data-en="🖼️ Display">🖼️ ديسبلاي</button>
+    <button class="tab" onclick="reportTab('visits',this)" data-ar="📸 زيارات" data-en="📸 Visits">📸 زيارات</button>
+  </div>
+
+  <div id="report-employee">
+    <div id="employee-report-content"></div>
+  </div>
+
+  <div id="report-products" style="display:none">
+    <div id="products-report-content"></div>
+
+    <div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
+      <div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button
+          onclick="exportToExcel('attendance')"
+          style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer"
+        >
+          📊 حضور وانصراف
+        </button>
+
+        <button
+          onclick="exportToExcel('sales')"
+          style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer"
+        >
+          🛒 المبيعات
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- REPORTS -->
-  <div id="admin-reports" class="content" style="display:none">
-    <div class="tabs" id="report-tabs">
-      <button class="tab active" onclick="reportTab('employee',this)" data-ar="موظف" data-en="Employee">موظف</button>
-      <button class="tab" onclick="reportTab('products',this)" data-ar="منتجات" data-en="Products">منتجات</button>
-      <button class="tab" onclick="reportTab('branch',this)" data-ar="الفروع" data-en="Branches">الفروع</button>
-      <button class="tab" onclick="reportTab('display',this)" data-ar="🖼️ ديسبلاي" data-en="🖼️ Display">🖼️ ديسبلاي</button>
-      <button class="tab" onclick="reportTab('visits',this)" data-ar="📸 زيارات" data-en="📸 Visits">📸 زيارات</button>
-    </div>
+  <div id="report-branch" style="display:none">
+    <div id="branch-report-content"></div>
+  </div>
 
-بيعات</button>
-        </div>
+  <div id="report-display" style="display:none">
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="display-report-emp" style="flex:1;padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px">
+          <option value="">كل الموظفين</option>
+        </select>
+
+        <input type="month" id="display-report-month" style="padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px">
+
+        <button onclick="loadDisplayReport()" class="btn btn-green" style="width:auto;padding:9px 16px;font-size:13px">
+          بحث
+        </button>
       </div>
     </div>
 
-    <div id="report-products" style="display:none">
-      <div id="products-report-content"></div>
-      <div class="card excel-export-card" style="margin-top:10px;background:rgba(0,200,83,.04);border-color:rgba(0,200,83,.2)">
-        <div style="font-size:13px;font-weight:800;margin-bottom:10px">📥 تحميل البيانات</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button onclick="exportToExcel('attendance')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--green);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📊 حضور وانصراف</button>
-          <button onclick="exportToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
-        </div>
+    <div id="display-report-content"></div>
+  </div>
+
+  <div id="report-visits" style="display:none">
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select
+          id="visit-report-emp"
+          style="flex:1;padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px"
+        >
+          <option value="">كل الموظفين</option>
+        </select>
+
+        <input
+          type="month"
+          id="visit-report-month"
+          style="padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px"
+        >
+
+        <button
+          onclick="loadVisitsReport()"
+          class="btn btn-green"
+          style="width:auto;padding:9px 16px;font-size:13px"
+        >
+          بحث
+        </button>
       </div>
     </div>
 
-   ToExcel('sales')" style="flex:1;padding:10px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--blue);font-family:Cairo,sans-serif;font-size:12px;font-weight:700;cursor:pointer">🛒 المبيعات</button>
-        </div>
-      </div>
+    <div id="visits-report-content"></div>
+  </div>
+</div>
+
+
+<!-- SETTINGS -->
+<div id="admin-settings" class="content" style="display:none">
+  <div class="acc-item" id="acc-team-item">
+    <div class="acc-hdr" onclick="toggleAcc('acc-team')">
+      <span>👥 <span data-ar="إعدادات الدوام" data-en="Work Settings">إعدادات الدوام</span></span>
+      <span class="acc-arrow" id="acc-team-arrow">▼</span>
     </div>
 
-    <div id="report-display" style="display:none">
-      <div class="card" style="margin-bottom:10px">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <select id="display-report-emp" style="flex:1;padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px">
-            <option value="">كل الموظفين</option>
-          </select>
-          <input type="month" id="display-report-month" style="padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px">
-          <button onclick="loadDisplayReport()" class="btn btn-green" style="width:auto;padding:9px 16px;font-size:13px">بحث</button>
-        </div>
+    <div class="acc-body" id="acc-team" style="display:none">
+      <div class="inp-grp">
+        <label data-ar="وقت النهاية" data-en="End Time">وقت النهاية</label>
+        <input type="time" id="work-end" value="22:00">
       </div>
-      <div id="display-report-content"></div>
-    </div>
-
-   <div id="report-visits" style="display:none">
-  <div class="card" style="margin-bottom:10px">
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <select
-        id="visit-report-emp"
-        style="flex:1;padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px"
-      >
-        <option value="">كل الموظفين</option>
-      </select>
-
-      <input
-        type="month"
-        id="visit-report-month"
-        style="padding:9px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px"
-      >
 
       <button
-        onclick="loadVisitsReport()"
         class="btn btn-green"
-        style="width:auto;padding:9px 16px;font-size:13px"
+        style="width:auto;padding:9px 18px"
+        onclick="saveWorkTime()"
+        data-ar="حفظ"
+        data-en="Save"
       >
-        بحث
+        حفظ
       </button>
     </div>
   </div>
 
-  <div id="visits-report-content"></div>
-</div>
-
-
-  <!-- SETTINGS -->
-  <div id="admin-settings" class="content" style="display:none">
-    <div class="acc-item" id="acc-team-item">
-      <div class="acc-hdr" onclick="toggleAcc('acc-team')">
-        <span>👥 <-en="End Time">وقت النهاية</label><input type="time" id="work-end" value="22:00"></div>
-        <button class="btn btn-green" style="width:auto;padding:9px 18px" onclick="saveWorkTime()" data-ar="حفظ" data-en="Save">حفظ</button>
-      </div>
+  <div class="acc-item">
+    <div class="acc-hdr" onclick="toggleAcc('acc-branches')">
+      <span>🏪 <span data-ar="إدارة الفروع" data-en="Manage Branches">إدارة الفروع</span></span>
+      <span class="acc-arrow" id="acc-branches-arrow">▼</span>
     </div>
 
-   <div class="acc-item">
-<div class="acc-hdr" onclick="toggleAcc('acc-branches')">
-<span>🏪 <span data-ar="إدارة الفروع" data-en="Manage Branches">إدارة الفروع</span></span>
-<span class="acc-arrow" id="acc-branches-arrow">▼</span>
-</div>
-<div class="acc-body" id="acc-branches" style="display:none">
-<div class="sh" style="margin-bottom:10px">
-<div></div>
-<div class="sh-action" onclick="openAddBranch()" data-ar="+ إضافة فرع" data-en="+ Add Branch">+ إضافة فرع</div>
-</div>
-<div id="branches-list"></div>
-</div>
+    <div class="acc-body" id="acc-branches" style="display:none">
+      <div class="sh" style="margin-bottom:10px">
+        <div></div>
+        <div class="sh-action" onclick="openAddBranch()" data-ar="+ إضافة فرع" data-en="+ Add Branch">+ إضافة فرع</div>
+      </div>
+      <div id="branches-list"></div>
+    </div>
+  </div>
+
+  <div class="acc-item">
+    <div class="acc-hdr" onclick="toggleAcc('acc-products')">
+      <span>📦 <span data-ar="أسعار المنتجات" data-en="Product Prices">أسعار المنتجات</span></span>
+      <span class="acc-arrow" id="acc-products-arrow">▼</span>
+    </div>
+
+    <div class="acc-body" id="acc-products" style="display:none">
+      <div id="products-settings-list"></div>
+    </div>
+  </div>
+
+  <div class="acc-item">
+    <div class="acc-hdr" onclick="toggleAcc('acc-targets')">
+      <span>🎯 <span data-ar="التارجتات الشهرية" data-en="Monthly Targets">التارجتات الشهرية</span></span>
+      <span class="acc-arrow" id="acc-targets-arrow">▼</span>
+    </div>
+
+    <div class="acc-body" id="acc-targets" style="display:none">
+      <div class="sh" style="margin-bottom:10px">
+        <div></div>
+        <div class="sh-action" onclick="openTargetModal()" data-ar="+ تعيين تارجت" data-en="+ Set Target">+ تعيين تارجت</div>
+      </div>
+      <div id="targets-list"></div>
+    </div>
+  </div>
+
+  <div class="acc-item" id="admins-section" style="display:none">
+    <div class="acc-hdr" onclick="toggleAcc('acc-admins')">
+      <span>👑 <span data-ar="إدارة المسؤولين" data-en="Manage Admins">إدارة المسؤولين</span></span>
+      <span class="acc-arrow" id="acc-admins-arrow">▼</span>
+    </div>
+
+    <div class="acc-body" id="acc-admins" style="display:none">
+      <div class="sh" style="margin-bottom:10px">
+        <div></div>
+        <div class="sh-action" onclick="openAddAdmin()" data-ar="+ إضافة مسؤول" data-en="+ Add Admin">+ إضافة مسؤول</div>
+      </div>
+      <div id="admins-list"></div>
+    </div>
+  </div>
+
+  <div class="acc-item" style="border-color:rgba(255,59,59,.2)">
+    <div class="acc-hdr" onclick="toggleAcc('acc-danger')" style="color:var(--red)">
+      <span>🗑️ <span data-ar="منطقة الخطر" data-en="Danger Zone">منطقة الخطر</span></span>
+      <span class="acc-arrow" id="acc-danger-arrow">▼</span>
+    </div>
+
+    <div class="acc-body" id="acc-danger" style="display:none">
+      <div
+        style="font-size:12px;color:var(--muted);margin-bottom:12px"
+        data-ar="حذف صور السيلفي الأقدم من 30 يوم لتوفير المساحة"
+        data-en="Remove selfie photos older than 30 days to save space"
+      >
+        حذف صور السيلفي الأقدم من 30 يوم لتوفير المساحة
+      </div>
+
+      <button
+        class="btn btn-outline"
+        style="width:auto;padding:9px 18px;border-color:var(--red);color:var(--red)"
+        onclick="clearOldPhotos()"
+        data-ar="حذف الصور القديمة"
+        data-en="Clear Old Photos"
+      >
+        حذف الصور القديمة
+      </button>
+    </div>
+  </div>
 </div>
 
-<div class="acc-item">
-<div class="acc-hdr" onclick="toggleAcc('acc-products')">
-<span>📦 <span data-ar="أسعار المنتجات" data-en="Product Prices">أسعار المنتجات</span></span>
-<span class="acc-arrow" id="acc-products-arrow">▼</span>
-</div>
-<div class="acc-body" id="acc-products" style="display:none">
-<div id="products-settings-list"></div>
-</div>
-</div>
-
-<div class="acc-item">
-<div class="acc-hdr" onclick="toggleAcc('acc-targets')">
-<span>🎯 <span data-ar="التارجتات الشهرية" data-en="Monthly Targets">التارجتات الشهرية</span></span>
-<span class="acc-arrow" id="acc-targets-arrow">▼</span>
-</div>
-<div class="acc-body" id="acc-targets" style="display:none">
-<div class="sh" style="margin-bottom:10px">
-<div></div>
-<div class="sh-action" onclick="openTargetModal()" data-ar="+ تعيين تارجت" data-en="+ Set Target">+ تعيين تارجت</div>
-</div>
-<div id="targets-list"></div>
-</div>
-</div>
-
-<div class="acc-item" id="admins-section" style="display:none">
-<div class="acc-hdr" onclick="toggleAcc('acc-admins')">
-<span>👑 <span data-ar="إدارة المسؤولين" data-en="Manage Admins">إدارة المسؤولين</span></span>
-<span class="acc-arrow" id="acc-admins-arrow">▼</span>
-</div>
-<div class="acc-body" id="acc-admins" style="display:none">
-<div class="sh" style="margin-bottom:10px">
-<div></div>
-<div class="sh-action" onclick="openAddAdmin()" data-ar="+ إضافة مسؤول" data-en="+ Add Admin">+ إضافة مسؤول</div>
-</div>
-<div id="admins-list"></div>
-</div>
-</div>
-
-<div class="acc-item" style="border-color:rgba(255,59,59,.2)">
-<div class="acc-hdr" onclick="toggleAcc('acc-danger')" style="color:var(--red)">
-<span>🗑️ <span data-ar="منطقة الخطر" data-en="Danger Zone">منطقة الخطر</span></span>
-<span class="acc-arrow" id="acc-danger-arrow">▼</span>
-</div>
-<div class="acc-body" id="acc-danger" style="display:none">
-<div style="font-size:12px;color:var(--muted);margin-bottom:12px" data-ar="حذف صور السيلفي الأقدم من 30 يوم لتوفير المساحة" data-en="Remove selfie photos older than 30 days to save space">حذف صور السيلفي الأقدم من 30 يوم لتوفير المساحة</div>
-<button class="btn btn-outline" style="width:auto;padding:9px 18px;border-color:var(--red);color:var(--red)" onclick="clearOldPhotos()" data-ar="حذف الصور القديمة" data-en="Clear Old Photos">حذف الصور القديمة</button>
-</div>
-</div>
-</div>
 
 <div id="admin-visits" class="content" style="display:none">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">

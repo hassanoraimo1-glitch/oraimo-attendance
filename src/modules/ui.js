@@ -831,3 +831,324 @@ Object.assign(window, {
   showPhotoSourceModal,
   fixNavDirection
 });
+// ─────────────────────────────
+// HOTFIX: recover broken navigation / settings leakage
+// Paste at END of src/modules/ui.js
+// ─────────────────────────────
+(function () {
+  function roleOfSafe() {
+    if (typeof window.normalizeRole === 'function') {
+      return window.normalizeRole(window.currentUser?.role);
+    }
+    return String(window.currentUser?.role || '').trim().toLowerCase();
+  }
+
+  function isTLSafe() {
+    return roleOfSafe() === 'team_leader';
+  }
+
+  function isAdminLikeSafe() {
+    return ['admin', 'super_admin'].includes(roleOfSafe());
+  }
+
+  function showEl(el, display = 'block') {
+    if (el) el.style.display = display;
+  }
+
+  function hideEl(el) {
+    if (el) el.style.display = 'none';
+  }
+
+  function safeCall(fn, ...args) {
+    if (typeof window[fn] === 'function') {
+      try { return window[fn](...args); } catch (e) { console.error(fn, e); }
+    }
+  }
+
+  function hideAdminSections() {
+    [
+      'admin-dashboard',
+      'admin-attendance',
+      'admin-employees',
+      'admin-branches',
+      'admin-reports',
+      'admin-settings',
+      'admin-visits',
+      'admin-chat'
+    ].forEach(id => hideEl(document.getElementById(id)));
+  }
+
+  function hideEmpSections() {
+    [
+      'emp-home',
+      'emp-sales',
+      'emp-visits',
+      'emp-display',
+      'emp-profile',
+      'emp-chat',
+      'emp-specs'
+    ].forEach(id => hideEl(document.getElementById(id)));
+  }
+
+  function deactivateNav(scope) {
+    document.querySelectorAll(scope + ' .nav-item').forEach(n => n.classList.remove('active'));
+  }
+
+  function cleanupSettingsState() {
+    // اخفاء أي عناصر مؤقتة أو خاصة بالإعدادات خارج تاب settings
+    const settings = document.getElementById('admin-settings');
+    if (!settings) return;
+
+    // خفّي كل accordion bodies ما عدا لما ندخل settings
+    settings.querySelectorAll('.acc-body').forEach(b => {
+      b.style.display = 'none';
+    });
+
+    settings.querySelectorAll('.acc-arrow').forEach(a => {
+      a.classList.remove('open');
+    });
+  }
+
+  function prepareSettingsUI() {
+    const settings = document.getElementById('admin-settings');
+    if (!settings) return;
+
+    const allItems = settings.querySelectorAll('.acc-item');
+    allItems.forEach(item => {
+      item.style.display = '';
+    });
+
+    // قسم "فريقي" للتيم ليدر فقط
+    let tlSection = document.getElementById('tl-team-acc-item');
+    if (isTLSafe()) {
+      if (!tlSection) {
+        tlSection = document.createElement('div');
+        tlSection.id = 'tl-team-acc-item';
+        tlSection.className = 'acc-item';
+        tlSection.innerHTML = `
+          <div class="acc-hdr" onclick="toggleAcc('acc-tl-myteam')">
+            <span>👥 فريقي</span>
+            <span class="acc-arrow" id="acc-tl-myteam-arrow">▼</span>
+          </div>
+          <div class="acc-body" id="acc-tl-myteam" style="display:none">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:10px">الموظفون المسجلون في فريقك</div>
+            <div id="tl-myteam-list">
+              <div style="text-align:center;padding:16px"><div class="loader"></div></div>
+            </div>
+          </div>
+        `;
+        settings.prepend(tlSection);
+      } else {
+        tlSection.style.display = '';
+      }
+
+      // أخفي باقي الإعدادات غير المطلوبة للتيم ليدر
+      allItems.forEach(item => item.style.display = 'none');
+      tlSection.style.display = '';
+      safeCall('loadTLMyTeamSettings');
+    } else {
+      if (tlSection) tlSection.style.display = 'none';
+    }
+
+    // إدارة الشيفتات للإدمن فقط
+    let shiftSection = document.getElementById('acc-shifts-item');
+    if (isAdminLikeSafe()) {
+      if (!shiftSection) {
+        shiftSection = document.createElement('div');
+        shiftSection.id = 'acc-shifts-item';
+        shiftSection.className = 'acc-item';
+        shiftSection.innerHTML = `
+          <div class="acc-hdr" onclick="toggleAcc('acc-shifts')">
+            <span>🌗 إدارة الشيفتات</span>
+            <span class="acc-arrow" id="acc-shifts-arrow">▼</span>
+          </div>
+          <div class="acc-body" id="acc-shifts" style="display:none">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+              🌅 صباحي: 10:00 – 18:00 | 🌙 مسائي: 14:00 – 22:00
+            </div>
+            <div id="shift-settings-list">
+              <div style="text-align:center;padding:16px"><div class="loader"></div></div>
+            </div>
+          </div>
+        `;
+        settings.appendChild(shiftSection);
+      } else {
+        shiftSection.style.display = '';
+      }
+    } else {
+      if (shiftSection) shiftSection.style.display = 'none';
+    }
+
+    cleanupSettingsState();
+  }
+
+  function prepareReportsUI() {
+    const reportTabsWrap = document.getElementById('report-tabs');
+    if (!reportTabsWrap) return;
+
+    const tabs = reportTabsWrap.querySelectorAll('.tab');
+    if (!tabs.length) return;
+
+    if (isTLSafe()) {
+      tabs.forEach(t => {
+        const oc = t.getAttribute('onclick') || '';
+        t.style.display = oc.includes('visits') ? '' : 'none';
+      });
+
+      const visTab = reportTabsWrap.querySelector('.tab[onclick*="visits"]');
+      if (visTab) visTab.click();
+    } else {
+      tabs.forEach(t => t.style.display = '');
+    }
+  }
+
+  function restoreTopArea() {
+    // لو فيه هيدر / شريط علوي اختفى بسبب display none
+    [
+      '.topbar',
+      '.page-header',
+      '.screen-header',
+      '.admin-top',
+      '.emp-top',
+      '.sh'
+    ].forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => {
+        if (el.style.display === 'none') el.style.display = '';
+      });
+    });
+  }
+
+  function empTabFixed(tab, el) {
+    hideEmpSections();
+    deactivateNav('#emp-app');
+
+    const target = document.getElementById('emp-' + tab);
+    showEl(target, 'block');
+    if (el) el.classList.add('active');
+
+    restoreTopArea();
+
+    if (tab === 'sales') {
+      safeCall('renderProducts');
+      safeCall('loadTodaySales');
+    }
+
+    if (tab === 'profile') {
+      const nameEl = document.getElementById('profile-name');
+      const branchEl = document.getElementById('profile-branch');
+      if (nameEl) nameEl.textContent = window.currentUser?.name || '-';
+      if (branchEl) branchEl.textContent = window.currentUser?.branch || '-';
+      safeCall('loadEmpMonthlyReport');
+      safeCall('loadEmpDailyLog');
+      safeCall('loadProfilePhoto');
+    }
+
+    if (tab === 'home') safeCall('loadModelTargetAlert');
+    if (tab === 'visits') safeCall('loadVisitsTab');
+    if (tab === 'display') safeCall('loadDisplayTab');
+    if (tab === 'chat') safeCall('loadChatUI');
+    if (tab === 'specs') safeCall('renderSpecsList');
+
+    if (typeof window.applyLang === 'function') window.applyLang();
+  }
+
+  function adminTabFixed(tab, el) {
+    hideAdminSections();
+    deactivateNav('#admin-app');
+
+    const target = document.getElementById('admin-' + tab);
+    showEl(target, 'block');
+    if (el) el.classList.add('active');
+
+    restoreTopArea();
+
+    // مهم: أول ما نخرج من settings ننضف حالة الإعدادات
+    if (tab !== 'settings') {
+      cleanupSettingsState();
+    }
+
+    if (tab === 'dashboard') safeCall('loadAdminDashboard');
+    if (tab === 'attendance') safeCall('loadAdminAttendanceTab');
+    if (tab === 'employees') safeCall('loadAllEmployees');
+    if (tab === 'branches') safeCall('initBranchDashboard');
+    if (tab === 'visits') safeCall('loadTLVisitsTab');
+    if (tab === 'chat') safeCall('loadAdminChatList');
+
+    if (tab === 'settings') {
+      prepareSettingsUI();
+    }
+
+    if (tab === 'reports') {
+      safeCall('loadAllEmployees');
+      setTimeout(prepareReportsUI, 50);
+    }
+
+    if (typeof window.applyLang === 'function') window.applyLang();
+  }
+
+  function toggleAccFixed(id) {
+    const body = document.getElementById(id);
+    const arrow = document.getElementById(id + '-arrow');
+    if (!body) return;
+
+    const isHidden = getComputedStyle(body).display === 'none';
+
+    // اقفل باقي الأكوردينز داخل نفس settings لتحسين السلوك
+    const settings = document.getElementById('admin-settings');
+    if (settings && isHidden) {
+      settings.querySelectorAll('.acc-body').forEach(b => {
+        if (b.id !== id) b.style.display = 'none';
+      });
+      settings.querySelectorAll('.acc-arrow').forEach(a => {
+        if (a.id !== id + '-arrow') a.classList.remove('open');
+      });
+    }
+
+    body.style.display = isHidden ? 'block' : 'none';
+    if (arrow) arrow.classList.toggle('open', isHidden);
+
+    if (!isHidden) return;
+
+    if (id === 'acc-branches') safeCall('loadBranches');
+    if (id === 'acc-products') safeCall('loadProductsSettings');
+    if (id === 'acc-targets') safeCall('loadTargetsList');
+    if (id === 'acc-admins') safeCall('loadAdminsList');
+    if (id === 'acc-team') safeCall('loadSettingsEmpList');
+    if (id === 'acc-shifts') safeCall('loadShiftSettings');
+    if (id === 'acc-tl-myteam') safeCall('loadTLMyTeamSettings');
+  }
+
+  // Override globals
+  window.empTab = empTabFixed;
+  window.adminTab = adminTabFixed;
+  window.toggleAcc = toggleAccFixed;
+
+  // شغّل استرجاع سريع للواجهة الحالية
+  setTimeout(() => {
+    restoreTopArea();
+
+    // لو مفيش أي تاب ظاهر، افتح dashboard/admin أو home/emp حسب التطبيق الحالي
+    const adminApp = document.getElementById('admin-app');
+    const empApp = document.getElementById('emp-app');
+
+    const adminVisible = ['dashboard','attendance','employees','branches','reports','settings','visits','chat']
+      .some(t => {
+        const el = document.getElementById('admin-' + t);
+        return el && getComputedStyle(el).display !== 'none';
+      });
+
+    const empVisible = ['home','sales','visits','display','profile','chat','specs']
+      .some(t => {
+        const el = document.getElementById('emp-' + t);
+        return el && getComputedStyle(el).display !== 'none';
+      });
+
+    if (adminApp && getComputedStyle(adminApp).display !== 'none' && !adminVisible) {
+      window.adminTab('dashboard');
+    }
+
+    if (empApp && getComputedStyle(empApp).display !== 'none' && !empVisible) {
+      window.empTab('home');
+    }
+  }, 30);
+})();

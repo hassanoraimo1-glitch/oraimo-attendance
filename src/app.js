@@ -1,5 +1,5 @@
 // ────────────────────────────────────────────────────────────
-// APP ENTRY POINT  (v3 + FIX VISITS ACCESS)
+// APP ENTRY POINT  (FIXED ROLES + ROUTING + VISITS ACCESS)
 // ────────────────────────────────────────────────────────────
 
 import { state, loadUserFromStorage } from './state.js';
@@ -15,15 +15,245 @@ import { applyTheme, toggleTheme } from './utils/theme.js';
 import { exportToExcel, exportToPDF } from './utils/exports.js';
 import { DAYS_AR, DAYS_EN, ROLES } from './config.js';
 
-
 // ── STATE BINDING
 Object.defineProperties(window, {
-  currentUser:   { get: () => state.currentUser,   set: v => { state.currentUser = v; }, configurable: true },
-  currentLang:   { get: () => state.currentLang,   set: v => { state.currentLang = v; }, configurable: true },
-  allEmployees:  { get: () => state.allEmployees,  set: v => { state.allEmployees = v; }, configurable: true },
-  branches:      { get: () => state.branches,      set: v => { state.branches = v; },    configurable: true },
+  currentUser: { get: () => state.currentUser, set: v => { state.currentUser = v; }, configurable: true },
+  currentLang: { get: () => state.currentLang, set: v => { state.currentLang = v; }, configurable: true },
+  allEmployees: { get: () => state.allEmployees, set: v => { state.allEmployees = v; }, configurable: true },
+  branches: { get: () => state.branches, set: v => { state.branches = v; }, configurable: true },
 });
 
+// ── HELPERS
+const ROLE_MAP = {
+  superadmin: 'super_admin',
+  super_admin: 'super_admin',
+  admin: 'admin',
+  manager: 'team_leader',
+  teamleader: 'team_leader',
+  team_leader: 'team_leader',
+  employee: 'employee',
+};
+
+function normalizeRole(role = '') {
+  return ROLE_MAP[String(role).trim().toLowerCase()] || String(role || '').trim().toLowerCase();
+}
+
+function getUser() {
+  const user = state.currentUser || window.currentUser || null;
+  if (user && user.role) user.role = normalizeRole(user.role);
+  return user;
+}
+
+function isEmployee(role) {
+  return normalizeRole(role) === 'employee';
+}
+
+function isTeamLeader(role) {
+  return normalizeRole(role) === 'team_leader';
+}
+
+function isAdmin(role) {
+  return normalizeRole(role) === 'admin';
+}
+
+function isSuperAdmin(role) {
+  return normalizeRole(role) === 'super_admin';
+}
+
+function isAdminLike(role) {
+  role = normalizeRole(role);
+  return role === 'admin' || role === 'super_admin';
+}
+
+function canSeeVisits(role) {
+  role = normalizeRole(role);
+  return role === 'team_leader' || role === 'admin' || role === 'super_admin';
+}
+
+function canSeeBranches(role) {
+  return isAdminLike(role);
+}
+
+function canSeeSettings(role) {
+  return isAdminLike(role);
+}
+
+function canManageAdmins(role) {
+  return isSuperAdmin(role);
+}
+
+function setVisible(elOrId, show, displayMode = '') {
+  const el = typeof elOrId === 'string' ? document.getElementById(elOrId) : elOrId;
+  if (!el) return;
+  if (!show) {
+    el.style.display = 'none';
+    return;
+  }
+  if (displayMode) {
+    el.style.display = displayMode;
+    return;
+  }
+  if (el.classList.contains('nav-item')) {
+    el.style.display = 'flex';
+  } else if (el.classList.contains('page')) {
+    el.style.display = 'block';
+  } else {
+    el.style.display = '';
+  }
+}
+
+function setActivePage(pageId) {
+  $$('.page').forEach(p => p.classList.remove('active'));
+  const page = document.getElementById(pageId);
+  if (page) page.classList.add('active');
+}
+
+function hideSplash() {
+  const splash = document.getElementById('splash');
+  if (splash) splash.classList.add('hide');
+}
+
+function syncCurrentUserRole() {
+  const user = getUser();
+  if (!user) return null;
+  user.role = normalizeRole(user.role);
+  state.currentUser = user;
+  window.currentUser = user;
+  return user;
+}
+
+// ── ACCESS CONTROL
+function controlVisitsAccess() {
+  const user = syncCurrentUserRole();
+  const role = normalizeRole(user?.role);
+
+  const visitsNav = document.getElementById('adm-visits-nav');
+  const visitsPage = document.getElementById('admin-visits');
+
+  const allow = canSeeVisits(role);
+  setVisible(visitsNav, allow, 'flex');
+  if (!allow && visitsPage) visitsPage.style.display = 'none';
+}
+
+function controlSettingsAccess() {
+  const user = syncCurrentUserRole();
+  const role = normalizeRole(user?.role);
+
+  setVisible('settings-nav-item', canSeeSettings(role), 'flex');
+  setVisible('admins-section', canManageAdmins(role));
+  setVisible('acc-team-item', isAdminLike(role));
+  setVisible('add-emp-btn', isAdminLike(role), 'inline-flex');
+}
+
+function controlBranchesAccess() {
+  const user = syncCurrentUserRole();
+  const role = normalizeRole(user?.role);
+
+  setVisible('adm-branches-nav', canSeeBranches(role), 'flex');
+
+  const branchesPage = document.getElementById('admin-branches');
+  if (!canSeeBranches(role) && branchesPage) branchesPage.style.display = 'none';
+}
+
+function controlReportsAccess() {
+  const user = syncCurrentUserRole();
+  const role = normalizeRole(user?.role);
+
+  const reportsNav = [...$$('.bottom-nav .nav-item')].find(el => {
+    const txt = (el.textContent || '').trim();
+    return txt.includes('التقارير') || txt.includes('Reports');
+  });
+
+  if (reportsNav) setVisible(reportsNav, isAdminLike(role), 'flex');
+
+  const reportsPage = document.getElementById('admin-reports');
+  if (!isAdminLike(role) && reportsPage) reportsPage.style.display = 'none';
+}
+
+function controlAdminAttendanceAccess() {
+  const user = syncCurrentUserRole();
+  const role = normalizeRole(user?.role);
+
+  const attendanceNav = [...$$('.bottom-nav .nav-item')].find(el => {
+    const txt = (el.textContent || '').trim();
+    return txt.includes('الحضور') || txt.includes('Attendance');
+  });
+
+  const allow = isAdminLike(role) || isTeamLeader(role);
+  if (attendanceNav) setVisible(attendanceNav, allow, 'flex');
+
+  const attendancePage = document.getElementById('admin-attendance');
+  if (!allow && attendancePage) attendancePage.style.display = 'none';
+}
+
+function controlAppShell() {
+  const user = syncCurrentUserRole();
+
+  const loginPage = document.getElementById('login-page');
+  const empApp = document.getElementById('emp-app');
+  const adminApp = document.getElementById('admin-app');
+
+  if (!user) {
+    setVisible(loginPage, true);
+    setVisible(empApp, false);
+    setVisible(adminApp, false);
+    setActivePage('login-page');
+    return;
+  }
+
+  const role = normalizeRole(user.role);
+
+  if (isEmployee(role)) {
+    setVisible(loginPage, false);
+    setVisible(empApp, true);
+    setVisible(adminApp, false);
+    setActivePage('emp-app');
+    return;
+  }
+
+  setVisible(loginPage, false);
+  setVisible(empApp, false);
+  setVisible(adminApp, true);
+  setActivePage('admin-app');
+}
+
+function routeByRole() {
+  const user = syncCurrentUserRole();
+  if (!user) return;
+
+  const role = normalizeRole(user.role);
+
+  if (isEmployee(role)) {
+    if (typeof window.empTab === 'function') {
+      const homeNav = document.querySelector(".bottom-nav .nav-item[onclick*=\"empTab('home'\"]");
+      try { window.empTab('home', homeNav || null); } catch (_) {}
+    }
+    return;
+  }
+
+  if (isTeamLeader(role)) {
+    if (typeof window.adminTab === 'function') {
+      const visitsNav = document.getElementById('adm-visits-nav');
+      try { window.adminTab('visits', visitsNav || null); } catch (_) {}
+    }
+    return;
+  }
+
+  if (typeof window.adminTab === 'function') {
+    const dashNav = document.querySelector(".bottom-nav .nav-item[onclick*=\"adminTab('dashboard'\"]");
+    try { window.adminTab('dashboard', dashNav || null); } catch (_) {}
+  }
+}
+
+function refreshAppAccess() {
+  controlAppShell();
+  controlVisitsAccess();
+  controlSettingsAccess();
+  controlBranchesAccess();
+  controlReportsAccess();
+  controlAdminAttendanceAccess();
+  fixNavDirection();
+}
 
 // ── GLOBAL FUNCTIONS
 Object.assign(window, {
@@ -31,9 +261,7 @@ Object.assign(window, {
   dbPost: db.post,
 
   dbPatch: async (table, body, query) => {
-    if (typeof body === 'string') {
-      return db.patch(table, body, query);
-    }
+    if (typeof body === 'string') return db.patch(table, body, query);
     return db.patch(table, query, body);
   },
 
@@ -84,32 +312,18 @@ Object.assign(window, {
 
   exportToExcel,
   exportToPDF,
+
+  normalizeRole,
+  refreshAppAccess,
+  controlVisitsAccess,
 });
-
-
-// ─────────────────────────────────────────
-// 🔒 التحكم في ظهور "الزيارات"
-// ─────────────────────────────────────────
-function controlVisitsAccess() {
-  const el = document.getElementById('nav-visits');
-  if (!el) return;
-
-  const user = window.currentUser;
-
-  // 👇 المسموح فقط manager (التيم ليدر)
-  if (!user || user.role !== 'manager') {
-    el.style.display = 'none';
-  } else {
-    el.style.display = 'flex';
-  }
-}
-
 
 // ── BOOTSTRAP
 loadUserFromStorage();
+syncCurrentUserRole();
 applyTheme();
 applyLang();
-
+fixNavDirection();
 
 // ── ERROR HANDLING
 window.addEventListener('error', e => {
@@ -121,37 +335,59 @@ window.addEventListener('unhandledrejection', e => {
   console.warn('[app] unhandled rejection:', msg);
 });
 
-
 // ── APP READY
 window.__APP_READY__ = true;
 window.dispatchEvent(new Event('app:ready'));
-
 
 // ── DOM READY
 document.addEventListener('DOMContentLoaded', () => {
   const chat = document.getElementById('chat-modal');
   if (chat) chat.style.display = 'none';
 
-  // 🔥 مهم
-  setTimeout(controlVisitsAccess, 300);
-});
+  refreshAppAccess();
 
+  setTimeout(() => {
+    refreshAppAccess();
+    routeByRole();
+  }, 250);
+});
 
 // ── SPLASH
 window.addEventListener('load', () => {
   setTimeout(() => {
-    const splash = document.getElementById('splash');
-    if (splash) splash.classList.add('hide');
-  }, 2000);
+    hideSplash();
+    refreshAppAccess();
+  }, 1200);
 });
 
 window.addEventListener('app:ready', () => {
-  const splash = document.getElementById('splash');
-  if (splash) splash.classList.add('hide');
-
-  // 🔥 مهم
-  setTimeout(controlVisitsAccess, 300);
+  hideSplash();
+  refreshAppAccess();
+  setTimeout(routeByRole, 200);
 });
 
+// ── OPTIONAL REFRESH TRIGGERS
+window.addEventListener('storage', () => {
+  syncCurrentUserRole();
+  refreshAppAccess();
+});
+
+window.addEventListener('focus', () => {
+  syncCurrentUserRole();
+  refreshAppAccess();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    syncCurrentUserRole();
+    refreshAppAccess();
+  }
+});
+
+window.addEventListener('auth:changed', () => {
+  syncCurrentUserRole();
+  refreshAppAccess();
+  setTimeout(routeByRole, 150);
+});
 
 export { state };

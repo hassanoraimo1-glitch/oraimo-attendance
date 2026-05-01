@@ -528,6 +528,7 @@ function doLogout() {
   window.currentChat = null;
   window.currentUser = null;
   window._isSubmitting = false;
+  window.__SESSION_RESTORED__ = false;  // allow re-login
 
   window.allAdmins = [];
   window.allBranches = [];
@@ -592,6 +593,8 @@ function startClock() {
 
 // ── RESTORE SESSION ───────────────────────────────────────
 function restoreSavedSession() {
+  if (window.__SESSION_RESTORED__) return true;
+  window.__SESSION_RESTORED__ = true;
   try {
     if (window.currentUser) {
       showApp();
@@ -628,18 +631,25 @@ function restoreSavedSession() {
 
 // ── AUTO INIT ─────────────────────────────────────────────
 (function initAuthModule() {
+  function _tryRestore(retries) {
+    // If bootstrap already triggered restoreSavedSession, skip
+    if (window.__SESSION_RESTORED__) return;
+    // Wait for showPage to be available (app.js ES module may load slightly later)
+    if (typeof window.showPage !== 'function' && retries > 0) {
+      setTimeout(() => _tryRestore(retries - 1), 100);
+      return;
+    }
+    restoreSavedSession();
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       startClock();
-      setTimeout(() => {
-        restoreSavedSession();
-      }, 0);
+      setTimeout(() => _tryRestore(20), 50);
     });
   } else {
     startClock();
-    setTimeout(() => {
-      restoreSavedSession();
-    }, 0);
+    setTimeout(() => _tryRestore(20), 50);
   }
 })();
 

@@ -25,13 +25,14 @@ Object.defineProperties(window, {
 
 // ── HELPERS
 const ROLE_MAP = {
-  superadmin: 'super_admin',
+  superadmin:  'super_admin',
   super_admin: 'super_admin',
-  admin: 'admin',
-  manager: 'team_leader',
-  teamleader: 'team_leader',
+  admin:       'admin',
+  manager:     'admin',
+  viewer:      'admin',
+  teamleader:  'team_leader',
   team_leader: 'team_leader',
-  employee: 'employee',
+  employee:    'employee',
 };
 
 function normalizeRole(role = '') {
@@ -62,7 +63,7 @@ function isSuperAdmin(role) {
 
 function isAdminLike(role) {
   role = normalizeRole(role);
-  return role === 'admin' || role === 'super_admin';
+  return role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'viewer';
 }
 
 function canSeeVisits(role) {

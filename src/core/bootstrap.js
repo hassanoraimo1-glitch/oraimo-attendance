@@ -109,12 +109,19 @@ function _runInitApp() {
     if (saved) {
       try {
         window.currentUser = JSON.parse(saved);
-
-        if (typeof showApp === 'function') {
-          showApp();
-        } else {
-          showPage('login-page');
+        // auth.js loads after bootstrap — wait for restoreSavedSession to be ready
+        function _waitForAuth(retries) {
+          if (typeof window.restoreSavedSession === 'function') {
+            window.restoreSavedSession();
+          } else if (retries > 0) {
+            setTimeout(() => _waitForAuth(retries - 1), 100);
+          } else if (typeof showApp === 'function') {
+            showApp();
+          } else {
+            showPage('login-page');
+          }
         }
+        _waitForAuth(30);
       } catch (e) {
         try { localStorage.removeItem('oraimo_user'); } catch (_) {}
         try { sessionStorage.removeItem('oraimo_user'); } catch (_) {}

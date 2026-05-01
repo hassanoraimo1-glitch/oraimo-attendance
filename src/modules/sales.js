@@ -42,7 +42,12 @@
   }
 
   function getProducts() {
-    return Array.isArray(window.PRODUCTS) ? window.PRODUCTS : [];
+    // Normalize products: support both {name, price} and shorthand {n, p}
+    const raw = Array.isArray(window.PRODUCTS) ? window.PRODUCTS : [];
+    return raw.map(p => ({
+      name:  p.name  !== undefined ? p.name  : (p.n  !== undefined ? p.n  : ''),
+      price: p.price !== undefined ? p.price : (p.p  !== undefined ? p.p  : 0)
+    }));
   }
 
   function getDayOff() {

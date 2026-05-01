@@ -1,106 +1,314 @@
 // ═══════════════════════════════════════════════════════════
 // modules/sales.js — Product selection, sale submit, daily sales
-// Provides globals: renderProducts, filterProducts, displayProducts,
-//   selectProduct, changeQty, cancelSale, submitSale, loadTodaySales,
-//   renderDailySalesGrid, renderEmpPerfChart
-// Depends on: PRODUCTS (from data.js), currentUser, dbGet/dbPost, notify
+// Globals:
+// renderProducts, filterProducts, displayProducts,
+// selectProduct, changeQty, cancelSale, submitSale, loadTodaySales,
+// renderDailySalesGrid, renderEmpPerfChart
 // ═══════════════════════════════════════════════════════════
 
-// ── SALE CHARTS (daily grid + perf chart; shared by home + profile) ──
-function renderDailySalesGrid(monthSales,pm){
-  const el=document.getElementById('daily-sales-grid');if(!el)return;
-  const salesByDate={};(monthSales||[]).forEach(s=>{salesByDate[s.date]=(salesByDate[s.date]||0)+s.total_amount});
-  const startD=new Date(pm.start),endD=new Date(pm.end),today=new Date();
-  let html='';
-  for(let d=new Date(startD);d<=endD;d.setDate(d.getDate()+1)){
-    const ds=fmtDate(new Date(d)),isToday=ds===fmtDate(today),isDayOff=d.getDay()===currentUser.day_off,amt=salesByDate[ds]||0;
-    let cls='day-cell';
-    if(isToday)cls+=' today';
-    if(isDayOff)cls+=' day-off';
-    else if(amt>0)cls+=' has-sale';
-    else if(d<today)cls+=' absent';
-    html+=`<div class="${cls}"><span class="day-num">${d.getDate()}</span>${amt>0?`<span class="day-amt">${fmtEGP(amt)}</span>`:''}</div>`;
-  }
-  el.innerHTML=html;
+let selectedProduct = null;
+let selectedQty = 1;
+let filteredProducts = Array.isArray(window.PRODUCTS) ? [...window.PRODUCTS] : [];
+let _saleSending = false;
+
+function getProducts() {
+  return Array.isArray(window.PRODUCTS) ? window.PRODUCTS : [];
 }
 
-function renderEmpPerfChart(monthSales,pm){
-  const el=document.getElementById('emp-perf-chart');if(!el)return;
-  const salesByDate={};(monthSales||[]).forEach(s=>{salesByDate[s.date]=(salesByDate[s.date]||0)+s.total_amount});
-  const days=[];const startD=new Date(pm.start),endD=new Date(pm.end),today=new Date();
-  for(let d=new Date(startD);d<=endD&&d<=today;d.setDate(d.getDate()+1)){
-    if(d.getDay()!==currentUser.day_off)days.push({ds:fmtDate(new Date(d)),day:d.getDate()});
+function getDayOff() {
+  const v = Number(window.currentUser?.day_off);
+  return Number.isFinite(v) ? v : -1;
+}
+
+function safeNum(v) {
+  return Number(v || 0);
+}
+
+// ─────────────────────────────
+// SALE CHARTS
+// ─────────────────────────────
+function renderDailySalesGrid(monthSales = [], pm = {}) {
+  const el = document.getElementById('daily-sales-grid');
+  if (!el || !pm.start || !pm.end) return;
+
+  const salesByDate = {};
+  monthSales.forEach(s => {
+    const ds = s?.date;
+    if (!ds) return;
+    salesByDate[ds] = (salesByDate[ds] || 0) + safeNum(s.total_amount);
+  });
+
+  const startD = new Date(pm.start);
+  const endD = new Date(pm.end);
+  const today = new Date();
+  const dayOff = getDayOff();
+
+  let html = '';
+  for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
+    const current = new Date(d);
+    const ds = window.fmtDate ? window.fmtDate(current) : current.toISOString().slice(0, 10);
+    const amt = salesByDate[ds] || 0;
+    const isToday = ds === (window.fmtDate ? window.fmtDate(today) : today.toISOString().slice(0, 10));
+    const isPast = current < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const isDayOff = current.getDay() === dayOff;
+
+    let cls = 'day-cell';
+    if (isToday) cls += ' today';
+    if (isDayOff) cls += ' day-off';
+    else if (amt > 0) cls += ' has-sale';
+    else if (isPast) cls += ' absent';
+
+    html += `
+      <div class="${cls}">
+        <span class="day-num">${current.getDate()}</span>
+        ${amt > 0 ? `<span class="day-amt">${window.fmtEGP ? window.fmtEGP(amt) : amt}</span>` : ''}
+      </div>
+    `;
   }
-  const vals=days.map(d=>salesByDate[d.ds]||0);const max=Math.max(...vals,1);
-  el.innerHTML=days.slice(-14).map(d=>{const v=salesByDate[d.ds]||0;const h=Math.max(4,Math.round((v/max)*120));
-    return`<div class="chart-bar-wrap"><div class="chart-bar" style="height:${h}px;background:${v>0?'var(--green)':'var(--border)'}"></div><div class="chart-label">${d.day}</div></div>`;
+
+  el.innerHTML = html;
+}
+
+function renderEmpPerfChart(monthSales = [], pm = {}) {
+  const el = document.getElementById('emp-perf-chart');
+  if (!el || !pm.start || !pm.end) return;
+
+  const salesByDate = {};
+  monthSales.forEach(s => {
+    const ds = s?.date;
+    if (!ds) return;
+    salesByDate[ds] = (salesByDate[ds] || 0) + safeNum(s.total_amount);
+  });
+
+  const startD = new Date(pm.start);
+  const endD = new Date(pm.end);
+  const today = new Date();
+  const dayOff = getDayOff();
+  const days = [];
+
+  for (let d = new Date(startD); d <= endD && d <= today; d.setDate(d.getDate() + 1)) {
+    const current = new Date(d);
+    if (current.getDay() === dayOff) continue;
+    days.push({
+      ds: window.fmtDate ? window.fmtDate(current) : current.toISOString().slice(0, 10),
+      day: current.getDate()
+    });
+  }
+
+  const lastDays = days.slice(-14);
+  const vals = lastDays.map(d => salesByDate[d.ds] || 0);
+  const max = Math.max(...vals, 1);
+
+  el.innerHTML = lastDays.map(d => {
+    const v = salesByDate[d.ds] || 0;
+    const h = Math.max(4, Math.round((v / max) * 120));
+    return `
+      <div class="chart-bar-wrap">
+        <div class="chart-bar" style="height:${h}px;background:${v > 0 ? 'var(--green)' : 'var(--border)'}"></div>
+        <div class="chart-label">${d.day}</div>
+      </div>
+    `;
   }).join('');
 }
 
+// ─────────────────────────────
+// PRODUCT LIST / SEARCH / SELECT
+// ─────────────────────────────
+function renderProducts() {
+  filteredProducts = [...getProducts()];
+  displayProducts();
+}
 
-// ── PRODUCT LIST, SEARCH, SELECTION ──
-let filteredProducts=[...PRODUCTS];
-function renderProducts(){filteredProducts=[...PRODUCTS];displayProducts()}
-const _filterProductsDebounced=(function(){
-  let t;return function(){clearTimeout(t);t=setTimeout(()=>{
-    const q=(document.getElementById('product-search')||{}).value||'';
-    filteredProducts=PRODUCTS.filter(p=>p.name.toLowerCase().includes(q.toLowerCase()));
-    displayProducts();
-  },150);};
+const _filterProductsDebounced = (() => {
+  let t;
+  return function () {
+    clearTimeout(t);
+    t = setTimeout(() => {
+      const q = ((document.getElementById('product-search') || {}).value || '').trim().toLowerCase();
+      filteredProducts = getProducts().filter(p => String(p.name || '').toLowerCase().includes(q));
+      displayProducts();
+    }, 150);
+  };
 })();
-function filterProducts(){_filterProductsDebounced();}
-function displayProducts(){
-  const el=document.getElementById('product-list');if(!el)return;
-  const ar=currentLang==='ar';
-  if(filteredProducts.length===0){el.innerHTML=`<div style="padding:16px;text-align:center;color:var(--muted)">${ar?'لا توجد نتائج':'No results'}</div>`;return}
-  el.innerHTML=filteredProducts.slice(0,30).map(p=>`<div class="product-item" onclick="selectProduct('${p.name.replace(/'/g,"\'")}',${p.price})"><div class="product-name">${p.name}</div><div class="product-price">${p.price.toLocaleString()} EGP</div></div>`).join('');
+
+function filterProducts() {
+  _filterProductsDebounced();
 }
-function selectProduct(name,price){
-  selectedProduct={name,price};selectedQty=1;
-  document.getElementById('selected-product-name').textContent=name;
-  document.getElementById('selected-product-price').textContent=price.toLocaleString();
-  document.getElementById('qty-val').textContent=1;
-  document.getElementById('sale-total').textContent=price.toLocaleString()+' EGP';
-  const w=document.getElementById('sale-form-wrap');
-  w.style.display='flex';
-  w.style.position='fixed';
-  w.style.bottom='0';
-  w.style.left='0';
-  w.style.right='0';
-  w.style.top='0';
-  w.style.zIndex='5000';
-  w.style.background='rgba(0,0,0,.75)';
-  w.style.alignItems='flex-end';
-  w.style.backdropFilter='blur(4px)';
-}
-function changeQty(d){selectedQty=Math.max(1,selectedQty+d);document.getElementById('qty-val').textContent=selectedQty;document.getElementById('sale-total').textContent=(selectedProduct.price*selectedQty).toLocaleString()+' EGP'}
-function cancelSale(){
-  selectedProduct=null;
-  const w=document.getElementById('sale-form-wrap');
-  if(w){w.style.display='none';w.style.position='';w.style.bottom='';w.style.left='';w.style.right='';w.style.zIndex='';w.style.background='';w.style.alignItems='';}
-  renderProducts();
-}
-let _saleSending=false;
-async function submitSale(){
-  if(_saleSending||!selectedProduct)return;
-  const total=selectedProduct.price*selectedQty;const ar=currentLang==='ar';
-  _saleSending=true;
-  try{
-    await dbPost('sales',{employee_id:currentUser.id,date:todayStr(),product_name:selectedProduct.name,unit_price:selectedProduct.price,quantity:selectedQty,total_amount:total});
-    notify(ar?'تم تسجيل البيع ✅':'Sale recorded ✅','success');
-    cancelSale();loadTodaySales();loadEmpData();
-  }catch(e){notify((ar?'خطأ: ':'Error: ')+e.message,'error');}
-  finally{_saleSending=false;}
-}
-async function loadTodaySales(){
-  const sales=await dbGet('sales',`?employee_id=eq.${currentUser.id}&date=eq.${todayStr()}&order=created_at.desc&select=*`);
-  const el=document.getElementById('emp-sales-list');let total=0;const ar=currentLang==='ar';
-  if(!sales||sales.length===0){if(el)el.innerHTML=`<div class="empty"><div class="empty-icon">🛒</div>${ar?'لا توجد مبيعات اليوم':'No sales today'}</div>`;}
-  else{
-    sales.forEach(s=>total+=s.total_amount);
-    if(el)el.innerHTML=sales.map(s=>`<div class="history-item"><div class="hist-top"><div class="hist-name">${s.product_name}</div><div class="hist-amount">${s.total_amount.toLocaleString()} EGP</div></div><div style="display:flex;justify-content:space-between"><div class="hist-meta">${ar?'الكمية':'Qty'}: ${s.quantity}</div><div class="hist-meta">${s.unit_price.toLocaleString()} EGP</div></div></div>`).join('');
+
+function displayProducts() {
+  const el = document.getElementById('product-list');
+  if (!el) return;
+
+  const ar = window.currentLang === 'ar';
+  const list = filteredProducts || [];
+
+  if (!list.length) {
+    el.innerHTML = `<div style="padding:16px;text-align:center;color:var(--muted)">${ar ? 'لا توجد نتائج' : 'No results'}</div>`;
+    return;
   }
-  const tel=document.getElementById('emp-today-total');
-  if(tel)tel.textContent=(ar?'اليوم: ':'Today: ')+'EGP '+total.toLocaleString();
+
+  el.innerHTML = list.slice(0, 30).map(p => {
+    const name = String(p.name || '');
+    const price = safeNum(p.price);
+    const safeName = encodeURIComponent(name);
+    return `
+      <div class="product-item" onclick="selectProduct(decodeURIComponent('${safeName}'), ${price})">
+        <div class="product-name">${name}</div>
+        <div class="product-price">${price.toLocaleString()} EGP</div>
+      </div>
+    `;
+  }).join('');
 }
-// _leaveSending moved to modules/leaves.js
+
+function selectProduct(name, price) {
+  selectedProduct = { name, price: safeNum(price) };
+  selectedQty = 1;
+
+  const nameEl = document.getElementById('selected-product-name');
+  const priceEl = document.getElementById('selected-product-price');
+  const qtyEl = document.getElementById('qty-val');
+  const totalEl = document.getElementById('sale-total');
+  const wrap = document.getElementById('sale-form-wrap');
+
+  if (nameEl) nameEl.textContent = name || '-';
+  if (priceEl) priceEl.textContent = selectedProduct.price.toLocaleString();
+  if (qtyEl) qtyEl.textContent = '1';
+  if (totalEl) totalEl.textContent = selectedProduct.price.toLocaleString() + ' EGP';
+
+  if (wrap) {
+    wrap.style.display = 'flex';
+    wrap.style.position = 'fixed';
+    wrap.style.inset = '0';
+    wrap.style.zIndex = '5000';
+    wrap.style.background = 'rgba(0,0,0,.75)';
+    wrap.style.alignItems = 'flex-end';
+    wrap.style.backdropFilter = 'blur(4px)';
+  }
+}
+
+function changeQty(delta) {
+  if (!selectedProduct) return;
+  selectedQty = Math.max(1, safeNum(selectedQty) + safeNum(delta));
+
+  const qtyEl = document.getElementById('qty-val');
+  const totalEl = document.getElementById('sale-total');
+
+  if (qtyEl) qtyEl.textContent = String(selectedQty);
+  if (totalEl) totalEl.textContent = (selectedProduct.price * selectedQty).toLocaleString() + ' EGP';
+}
+
+function cancelSale() {
+  selectedProduct = null;
+  selectedQty = 1;
+
+  const wrap = document.getElementById('sale-form-wrap');
+  if (wrap) {
+    wrap.style.display = 'none';
+    wrap.style.position = '';
+    wrap.style.inset = '';
+    wrap.style.zIndex = '';
+    wrap.style.background = '';
+    wrap.style.alignItems = '';
+    wrap.style.backdropFilter = '';
+  }
+}
+
+async function submitSale() {
+  if (_saleSending || !selectedProduct || !window.currentUser?.id) return;
+
+  const ar = window.currentLang === 'ar';
+  const total = safeNum(selectedProduct.price) * safeNum(selectedQty);
+
+  _saleSending = true;
+  try {
+    await window.dbPost('sales', {
+      employee_id: window.currentUser.id,
+      date: window.todayStr ? window.todayStr() : new Date().toISOString().slice(0, 10),
+      product_name: selectedProduct.name,
+      unit_price: selectedProduct.price,
+      quantity: selectedQty,
+      total_amount: total
+    });
+
+    notify(ar ? 'تم تسجيل البيع ✅' : 'Sale recorded ✅', 'success');
+    cancelSale();
+    await loadTodaySales();
+
+    if (typeof window.loadEmpData === 'function') {
+      try { await window.loadEmpData(); } catch (_) {}
+    }
+  } catch (e) {
+    notify((ar ? 'خطأ: ' : 'Error: ') + (e?.message || e), 'error');
+  } finally {
+    _saleSending = false;
+  }
+}
+
+async function loadTodaySales() {
+  const el = document.getElementById('emp-sales-list');
+  const tel = document.getElementById('emp-today-total');
+  const ar = window.currentLang === 'ar';
+
+  if (!window.currentUser?.id) {
+    if (el) el.innerHTML = '';
+    if (tel) tel.textContent = (ar ? 'اليوم: ' : 'Today: ') + 'EGP 0';
+    return [];
+  }
+
+  try {
+    const sales = await window.dbGet(
+      'sales',
+      `?employee_id=eq.${window.currentUser.id}&date=eq.${window.todayStr()}&order=created_at.desc&select=*`
+    ) || [];
+
+    let total = 0;
+    sales.forEach(s => { total += safeNum(s.total_amount); });
+
+    if (!sales.length) {
+      if (el) {
+        el.innerHTML = `<div class="empty"><div class="empty-icon">🛒</div>${ar ? 'لا توجد مبيعات اليوم' : 'No sales today'}</div>`;
+      }
+    } else if (el) {
+      el.innerHTML = sales.map(s => `
+        <div class="history-item">
+          <div class="hist-top">
+            <div class="hist-name">${s.product_name || '-'}</div>
+            <div class="hist-amount">${safeNum(s.total_amount).toLocaleString()} EGP</div>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <div class="hist-meta">${ar ? 'الكمية' : 'Qty'}: ${safeNum(s.quantity)}</div>
+            <div class="hist-meta">${safeNum(s.unit_price).toLocaleString()} EGP</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    if (tel) tel.textContent = (ar ? 'اليوم: ' : 'Today: ') + 'EGP ' + total.toLocaleString();
+
+    window._todaySales = sales;
+    window._todaySalesTotal = total;
+    return sales;
+  } catch (e) {
+    if (el) {
+      el.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>${ar ? 'تعذر تحميل المبيعات' : 'Failed to load sales'}</div>`;
+    }
+    if (tel) tel.textContent = (ar ? 'اليوم: ' : 'Today: ') + 'EGP 0';
+    return [];
+  }
+}
+
+// ─────────────────────────────
+// GLOBALS
+// ─────────────────────────────
+Object.assign(window, {
+  renderProducts,
+  filterProducts,
+  displayProducts,
+  selectProduct,
+  changeQty,
+  cancelSale,
+  submitSale,
+  loadTodaySales,
+  renderDailySalesGrid,
+  renderEmpPerfChart
+});

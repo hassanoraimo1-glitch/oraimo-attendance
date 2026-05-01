@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════
-// modules/admin/dashboard.js — Admin dashboard (home) + perf ranking
-// Globals: loadAdminDashboard, renderPerformanceRanking, showAttList
+// modules/admin/dashboard.js — Admin dashboard (home) + perf ranking + attendance tab + sales details
+// Globals: loadAdminDashboard, renderPerformanceRanking, showAttList, showSalesDetails, loadAdminAttendance
 // Safe version to avoid global redeclare conflicts
 // ═══════════════════════════════════════════════════════════
 
@@ -9,9 +9,7 @@
     if (typeof window.normalizeRole === 'function') {
       try { return window.normalizeRole(role); } catch (_) {}
     }
-
     const raw = String(role || '').trim().toLowerCase();
-
     if (['superadmin', 'super_admin', 'super admin'].includes(raw)) return 'super_admin';
     if (['teamleader', 'team_leader', 'team leader', 'tl', 'manager'].includes(raw)) return 'team_leader';
     return raw;
@@ -65,13 +63,11 @@
     if (typeof window.getPayrollMonth === 'function') {
       try { return window.getPayrollMonth(); } catch (_) {}
     }
-
     const now = new Date();
     const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
     const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     const pad = n => String(n).padStart(2, '0');
     const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
     return { start: fmt(startDate), end: fmt(endDate) };
   }
 
@@ -106,7 +102,7 @@
 
   function _dashSetText(id, value) {
     const el = document.getElementById(id);
-    if (el) el.textContent = value;
+    if (el) el.textContent = String(value ?? '');
   }
 
   function _dashSetHTML(id, value) {
@@ -118,7 +114,6 @@
     ['adm-sales-today', 'adm-sales-month'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
-
       const card = el.closest('.stat-card, .card, .dash-card') || el.parentElement;
       if (card) card.style.display = show ? '' : 'none';
       else el.style.display = show ? '' : 'none';
@@ -134,6 +129,130 @@
 
   function _dashGetEmployeesRef() {
     return Array.isArray(window.allEmployees) ? window.allEmployees : [];
+  }
+
+  function _dashDayOffOf(emp) {
+    const v = Number(emp?.day_off);
+    return Number.isFinite(v) ? v : -1;
+  }
+
+  function _dashBindSalesCards() {
+    const todayEl = document.getElementById('adm-sales-today');
+    const monthEl = document.getElementById('adm-sales-month');
+
+    if (todayEl && !todayEl.dataset.boundSalesDetails) {
+      todayEl.style.cursor = 'pointer';
+      todayEl.addEventListener('click', () => showSalesDetails('today'));
+      todayEl.dataset.boundSalesDetails = '1';
+    }
+
+    if (monthEl && !monthEl.dataset.boundSalesDetails) {
+      monthEl.style.cursor = 'pointer';
+      monthEl.addEventListener('click', () => showSalesDetails('month'));
+      monthEl.dataset.boundSalesDetails = '1';
+    }
+  }
+
+  function _dashGetEmpName(empId) {
+    const emp = _dashGetEmployeesRef().find(e => Number(e.id) === Number(empId));
+    return emp?.name || `#${empId}`;
+  }
+
+  function _dashRenderEmpTodayList(employees, todayAtt, ar) {
+    const empTodayEl = document.getElementById('adm-emp-today');
+    if (!empTodayEl) return;
+
+    if (!employees.length) {
+      empTodayEl.innerHTML = `<div class="empty"><div class="empty-icon">👥</div>${ar ? 'لا يوجد موظفون' : 'No employees'}</div>`;
+      return;
+    }
+
+    empTodayEl.innerHTML = employees.map(emp => {
+      const att = todayAtt.find(a => _dashSameId(a.employee_id, emp.id));
+      const mapLink = att && att.location_lat
+        ? `https://maps.google.com/?q=${att.location_lat},${att.location_lng}`
+        : null;
+
+      const avatar = emp.profile_photo
+        ? `<img src="${_dashEscapeHtml(emp.profile_photo)}" style="width:100%;height:100%;object-fit:cover">`
+        : _dashEscapeHtml(((emp.name || '?')[0] || '?').toUpperCase());
+
+      const attLine = att
+        ? `<div style="font-size:10px;color:var(--green);margin-top:2px">
+             ${ar ? 'دخول' : 'In'}: ${_dashEscapeHtml(att.check_in || '-')}
+             ${_dashN(att.late_minutes) > 0 ? (ar ? ` (تأخر ${_dashEscapeHtml(att.late_minutes)} د)` : ` (${_dashEscapeHtml(att.late_minutes)}m late)`) : ''}
+             ${att.check_out ? ((ar ? ' · خروج: ' : ' · Out: ') + _dashEscapeHtml(att.check_out)) : ''}
+           </div>`
+        : '';
+
+      const locationLine = mapLink
+        ? `<a href="${_dashEscapeHtml(mapLink)}" target="_blank" style="font-size:10px;color:var(--blue);text-decoration:none">📍 ${ar ? 'عرض الموقع' : 'View Location'}</a>`
+        : (att ? `<div style="font-size:10px;color:var(--muted)">📍 ${ar ? 'لا يوجد موقع' : 'No location'}</div>` : '');
+
+      const badge = att
+        ? (att.check_out
+            ? `<span class="badge badge-blue">${ar ? 'غادر' : 'Left'}</span>`
+            : `<span class="badge badge-green">${ar ? 'حاضر' : 'Present'}</span>`)
+        : `<span class="badge badge-red">${ar ? 'غائب' : 'Absent'}</span>`;
+
+      const selfie = att && att.selfie_in
+        ? `<img src="${_dashEscapeHtml(att.selfie_in)}" class="selfie-preview" onclick="viewSelfie && viewSelfie('${_dashEscapeJsStr(emp.name || '')}','${_dashEscapeJsStr(att.selfie_in)}','${_dashEscapeJsStr(att.selfie_out || '')}','${_dashEscapeJsStr(mapLink || '')}')">`
+        : '';
+
+      const warnBtn = typeof window.openWarnModal === 'function'
+        ? `<button class="action-btn warn" onclick="openWarnModal(${Number(emp.id)},'${_dashEscapeJsStr(emp.name || '')}')">⚠️</button>`
+        : '';
+
+      return `
+        <div class="emp-card">
+          <div class="emp-avatar" style="overflow:hidden">${avatar}</div>
+          <div class="emp-info">
+            <div class="emp-name">${_dashEscapeHtml(emp.name || '-')}</div>
+            <div class="emp-branch">${_dashEscapeHtml(emp.branch || '-')}</div>
+            ${attLine}
+            ${locationLine}
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+            ${badge}
+            ${selfie}
+            ${warnBtn}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function _dashRenderPendingLeaves(leaves, ar) {
+    const leaveEl = document.getElementById('adm-leave-requests');
+    if (!leaveEl) return;
+
+    if (!leaves.length) {
+      leaveEl.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:8px">${ar ? 'لا توجد طلبات معلقة' : 'No pending requests'}</div>`;
+      return;
+    }
+
+    leaveEl.innerHTML = leaves.map(l => `
+      <div class="perm-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:13px;font-weight:700">${_dashEscapeHtml(l.employee_name || '-')}</div>
+          <span class="badge ${l.leave_type === 'vacation' ? 'badge-blue' : 'badge-yellow'}">
+            ${l.leave_type === 'vacation' ? (ar ? 'إجازة' : 'Vacation') : (ar ? 'إذن' : 'Permission')}
+          </span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${_dashEscapeHtml(l.reason || '-')}</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+          ${
+            l.leave_type === 'vacation'
+              ? (ar ? 'تاريخ: ' : 'Date: ') + _dashEscapeHtml(l.leave_date || '')
+              : (ar ? 'المدة: ' : 'Duration: ') + _dashN(l.duration_minutes) + (ar ? ' د' : ' min')
+          }
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="perm-btn approve" onclick="respondLeave && respondLeave(${Number(l.id)},'approved')">✅ ${ar ? 'موافقة' : 'Approve'}</button>
+          <button class="perm-btn reject" onclick="respondLeave && respondLeave(${Number(l.id)},'rejected')">❌ ${ar ? 'رفض' : 'Reject'}</button>
+        </div>
+      </div>
+    `).join('');
   }
 
   async function loadAdminDashboard() {
@@ -164,8 +283,8 @@
         dbGet('employees', '?select=*').catch(() => []),
         dbGet('attendance', `?date=eq.${today}&select=*`).catch(() => []),
         dbGet('attendance', `?date=eq.${yestDate}&select=*`).catch(() => []),
-        dbGet('sales', `?date=eq.${today}&select=total_amount,employee_id`).catch(() => []),
-        dbGet('sales', `?date=gte.${pm.start}&date=lte.${pm.end}&select=total_amount,employee_id,product_name`).catch(() => []),
+        dbGet('sales', `?date=eq.${today}&select=id,employee_id,product_name,quantity,unit_price,total_amount,date,created_at&order=created_at.desc`).catch(() => []),
+        dbGet('sales', `?date=gte.${pm.start}&date=lte.${pm.end}&select=id,employee_id,product_name,quantity,unit_price,total_amount,date,created_at&order=date.desc,created_at.desc`).catch(() => []),
         dbGet('leave_requests', '?status=eq.pending&select=*').catch(() => [])
       ]);
 
@@ -191,14 +310,16 @@
       window._todayPresentIds = todayAtt.map(a => Number(a.employee_id));
       window._yestAtt = yestAtt;
       window._yestPresentIds = yestAtt.map(a => Number(a.employee_id));
+      window._dashboardTodaySales = todaySales;
+      window._dashboardMonthSales = monthSales;
 
       const present = todayAtt.length;
-      const absent = Math.max(0, employees.length - present);
+      const absent = Math.max(0, employees.filter(e => _dashDayOffOf(e) !== new Date().getDay()).length - present);
       const yPresent = yestAtt.length;
-      const yAbsent = Math.max(0, employees.length - yPresent);
+      const yAbsent = Math.max(0, employees.filter(e => _dashDayOffOf(e) !== new Date(yestDate).getDay()).length - yPresent);
 
       _dashSetText('adm-present', String(present));
-      _dashSetText('adm-absent', String(absent));
+      _dashSetText('adm-absent', String(yAbsent < 0 ? 0 : absent));
       _dashSetText('adm-present-yest', String(yPresent));
       _dashSetText('adm-absent-yest', String(yAbsent));
 
@@ -214,9 +335,6 @@
         _dashSetText('adm-sales-today', 'EGP ' + _dashFmtEGP(todayTotal));
         _dashSetText('adm-sales-month', 'EGP ' + _dashFmtEGP(monthTotal));
 
-        window._dashboardTodaySales = todaySales;
-        window._dashboardMonthSales = monthSales;
-
         renderPerformanceRanking(monthSales);
       } else {
         _dashSetText('adm-sales-today', ar ? 'غير متاح' : 'N/A');
@@ -227,100 +345,107 @@
         );
       }
 
+      _dashBindSalesCards();
+      _dashRenderEmpTodayList(employees, todayAtt, ar);
+      _dashRenderPendingLeaves(leaves, ar);
+      await loadAdminAttendance();
+
       if (typeof window.applyLang === 'function') {
         try { window.applyLang(); } catch (_) {}
       }
-
-      const empTodayEl = document.getElementById('adm-emp-today');
-      if (empTodayEl) {
-        if (!employees.length) {
-          empTodayEl.innerHTML = `<div class="empty"><div class="empty-icon">👥</div>${ar ? 'لا يوجد موظفون' : 'No employees'}</div>`;
-        } else {
-          empTodayEl.innerHTML = employees.map(emp => {
-            const att = todayAtt.find(a => _dashSameId(a.employee_id, emp.id));
-            const mapLink = att && att.location_lat
-              ? `https://maps.google.com/?q=${att.location_lat},${att.location_lng}`
-              : null;
-
-            const avatar = emp.profile_photo
-              ? `<img src="${_dashEscapeHtml(emp.profile_photo)}" style="width:100%;height:100%;object-fit:cover">`
-              : _dashEscapeHtml(((emp.name || '?')[0] || '?').toUpperCase());
-
-            const attLine = att
-              ? `<div style="font-size:10px;color:var(--green);margin-top:2px">
-                   ${ar ? 'دخول' : 'In'}: ${_dashEscapeHtml(att.check_in || '-')}
-                   ${_dashN(att.late_minutes) > 0 ? (ar ? ` (تأخر ${_dashEscapeHtml(att.late_minutes)} د)` : ` (${_dashEscapeHtml(att.late_minutes)}m late)`) : ''}
-                   ${att.check_out ? ((ar ? ' · خروج: ' : ' · Out: ') + _dashEscapeHtml(att.check_out)) : ''}
-                 </div>`
-              : '';
-
-            const locationLine = mapLink
-              ? `<a href="${_dashEscapeHtml(mapLink)}" target="_blank" style="font-size:10px;color:var(--blue);text-decoration:none">📍 ${ar ? 'عرض الموقع' : 'View Location'}</a>`
-              : (att ? `<div style="font-size:10px;color:var(--muted)">📍 ${ar ? 'لا يوجد موقع' : 'No location'}</div>` : '');
-
-            const badge = att
-              ? (att.check_out
-                  ? `<span class="badge badge-blue">${ar ? 'غادر' : 'Left'}</span>`
-                  : `<span class="badge badge-green">${ar ? 'حاضر' : 'Present'}</span>`)
-              : `<span class="badge badge-red">${ar ? 'غائب' : 'Absent'}</span>`;
-
-            const selfie = att && att.selfie_in
-              ? `<img src="${_dashEscapeHtml(att.selfie_in)}" class="selfie-preview" onclick="viewSelfie('${_dashEscapeJsStr(emp.name || '')}','${_dashEscapeJsStr(att.selfie_in)}','${_dashEscapeJsStr(att.selfie_out || '')}','${_dashEscapeJsStr(mapLink || '')}')">`
-              : '';
-
-            const warnBtn = `<button class="action-btn warn" onclick="openWarnModal(${Number(emp.id)},'${_dashEscapeJsStr(emp.name || '')}')">⚠️</button>`;
-
-            return `
-              <div class="emp-card">
-                <div class="emp-avatar" style="overflow:hidden">${avatar}</div>
-                <div class="emp-info">
-                  <div class="emp-name">${_dashEscapeHtml(emp.name || '-')}</div>
-                  <div class="emp-branch">${_dashEscapeHtml(emp.branch || '-')}</div>
-                  ${attLine}
-                  ${locationLine}
-                </div>
-                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
-                  ${badge}
-                  ${selfie}
-                  ${warnBtn}
-                </div>
-              </div>
-            `;
-          }).join('');
-        }
-      }
-
-      const leaveEl = document.getElementById('adm-leave-requests');
-      if (leaveEl) {
-        if (!leaves.length) {
-          leaveEl.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:8px">${ar ? 'لا توجد طلبات معلقة' : 'No pending requests'}</div>`;
-        } else {
-          leaveEl.innerHTML = leaves.map(l => `
-            <div class="perm-card">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                <div style="font-size:13px;font-weight:700">${_dashEscapeHtml(l.employee_name || '-')}</div>
-                <span class="badge ${l.leave_type === 'vacation' ? 'badge-blue' : 'badge-yellow'}">
-                  ${l.leave_type === 'vacation' ? (ar ? 'إجازة' : 'Vacation') : (ar ? 'إذن' : 'Permission')}
-                </span>
-              </div>
-              <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${_dashEscapeHtml(l.reason || '-')}</div>
-              <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
-                ${
-                  l.leave_type === 'vacation'
-                    ? (ar ? 'تاريخ: ' : 'Date: ') + _dashEscapeHtml(l.leave_date || '')
-                    : (ar ? 'المدة: ' : 'Duration: ') + _dashN(l.duration_minutes) + (ar ? ' د' : ' min')
-                }
-              </div>
-              <div style="display:flex;gap:8px">
-                <button class="perm-btn approve" onclick="respondLeave(${Number(l.id)},'approved')">✅ ${ar ? 'موافقة' : 'Approve'}</button>
-                <button class="perm-btn reject" onclick="respondLeave(${Number(l.id)},'rejected')">❌ ${ar ? 'رفض' : 'Reject'}</button>
-              </div>
-            </div>
-          `).join('');
-        }
-      }
     } catch (e) {
       console.error('[dashboard]', e);
+    }
+  }
+
+  async function loadAdminAttendance() {
+    const ar = window.currentLang === 'ar';
+    const today = _dashTodayStr();
+    const employees = _dashGetEmployeesRef();
+    const listEl = document.getElementById('admin-attendance-list');
+
+    try {
+      let attendance = Array.isArray(window._todayAtt) ? window._todayAtt : [];
+
+      if (!attendance.length) {
+        attendance = await dbGet('attendance', `?date=eq.${today}&select=*&order=check_in.asc`).catch(() => []) || [];
+
+        if (_dashIsTL()) {
+          const teamIds = await _dashGetCurrentTeamIds();
+          const ids = Array.isArray(teamIds) ? teamIds : [];
+          attendance = attendance.filter(a => ids.includes(Number(a.employee_id)));
+        }
+      }
+
+      const empMap = {};
+      employees.forEach(e => { empMap[Number(e.id)] = e; });
+
+      const presentCount = attendance.length;
+      const leftCount = attendance.filter(a => !!a.check_out).length;
+      const insideCount = attendance.filter(a => !!a.check_in && !a.check_out).length;
+
+      const todayWeekDay = new Date().getDay();
+      const activeEmployees = employees.filter(e => _dashDayOffOf(e) !== todayWeekDay);
+      const absentCount = Math.max(0, activeEmployees.length - presentCount);
+
+      _dashSetText('att-tab-present', String(presentCount));
+      _dashSetText('att-tab-left', String(leftCount));
+      _dashSetText('att-tab-inside', String(insideCount));
+      _dashSetText('att-tab-absent', String(absentCount));
+
+      if (!listEl) return;
+
+      if (!attendance.length) {
+        listEl.innerHTML = `<div class="empty"><div class="empty-icon">👥</div>${ar ? 'لا يوجد حضور اليوم' : 'No attendance today'}</div>`;
+        return;
+      }
+
+      const sorted = [...attendance].sort((a, b) => {
+        const an = String(a.check_in || '');
+        const bn = String(b.check_in || '');
+        return an.localeCompare(bn);
+      });
+
+      listEl.innerHTML = sorted.map(a => {
+        const emp = empMap[Number(a.employee_id)] || {};
+        const status = a.check_out
+          ? `<span class="badge badge-blue">${ar ? 'انصرف' : 'Checked Out'}</span>`
+          : `<span class="badge badge-green">${ar ? 'داخل الشيفت' : 'In Shift'}</span>`;
+
+        const mapLink = a.location_lat
+          ? `https://maps.google.com/?q=${a.location_lat},${a.location_lng}`
+          : '';
+
+        const avatar = emp.profile_photo
+          ? `<img src="${_dashEscapeHtml(emp.profile_photo)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+          : _dashEscapeHtml(((emp.name || '?')[0] || '?').toUpperCase());
+
+        return `
+          <div class="emp-card">
+            <div class="emp-avatar" style="overflow:hidden">${avatar}</div>
+            <div class="emp-info">
+              <div class="emp-name">${_dashEscapeHtml(emp.name || `#${a.employee_id}`)}</div>
+              <div class="emp-branch">${_dashEscapeHtml(emp.branch || '-')}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:3px">
+                ${ar ? 'دخول' : 'In'}: ${_dashEscapeHtml(a.check_in || '-')}
+                ${a.check_out ? ` · ${ar ? 'خروج' : 'Out'}: ${_dashEscapeHtml(a.check_out)}` : ''}
+              </div>
+              <div style="font-size:10px;color:${_dashN(a.late_minutes) > 0 ? 'var(--yellow)' : 'var(--muted)'};margin-top:3px">
+                ${_dashN(a.late_minutes) > 0 ? (ar ? `تأخير ${_dashN(a.late_minutes)} د` : `${_dashN(a.late_minutes)}m late`) : (ar ? 'في الميعاد' : 'On time')}
+              </div>
+              ${mapLink ? `<a href="${_dashEscapeHtml(mapLink)}" target="_blank" style="font-size:10px;color:var(--blue);text-decoration:none">📍 ${ar ? 'عرض الموقع' : 'View Location'}</a>` : ''}
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+              ${status}
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (e) {
+      console.error('[loadAdminAttendance]', e);
+      if (listEl) {
+        listEl.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>${ar ? 'تعذر تحميل الحضور' : 'Failed to load attendance'}</div>`;
+      }
     }
   }
 
@@ -373,6 +498,100 @@
         <div class="perf-val">EGP ${_dashFmtEGP(e.sales)}</div>
       </div>
     `).join('');
+  }
+
+  function showSalesDetails(period = 'today') {
+    const ar = window.currentLang === 'ar';
+    const sales = period === 'month'
+      ? (Array.isArray(window._dashboardMonthSales) ? window._dashboardMonthSales : [])
+      : (Array.isArray(window._dashboardTodaySales) ? window._dashboardTodaySales : []);
+
+    if (!sales.length) {
+      if (typeof window.notify === 'function') {
+        window.notify(ar ? 'لا توجد مبيعات' : 'No sales', 'info');
+      }
+      return;
+    }
+
+    const total = sales.reduce((sum, s) => sum + _dashN(s.total_amount), 0);
+    const byEmp = {};
+    sales.forEach(s => {
+      const empId = Number(s.employee_id);
+      if (!byEmp[empId]) {
+        byEmp[empId] = {
+          employee_id: empId,
+          employee_name: _dashGetEmpName(empId),
+          total: 0,
+          items: []
+        };
+      }
+      byEmp[empId].total += _dashN(s.total_amount);
+      byEmp[empId].items.push(s);
+    });
+
+    const groups = Object.values(byEmp).sort((a, b) => b.total - a.total);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9500;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
+
+    overlay.innerHTML = `
+      <div style="background:var(--card);border-radius:22px 22px 0 0;padding:20px 16px;width:100%;max-height:80vh;overflow-y:auto;border-top:2px solid var(--green)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div style="font-size:16px;font-weight:800;color:var(--green)">
+            ${period === 'month' ? (ar ? '📊 تفاصيل مبيعات الشهر' : '📊 Month Sales Details') : (ar ? '📊 تفاصيل مبيعات اليوم' : '📊 Today Sales Details')}
+          </div>
+          <button id="dash-sales-close-btn" style="width:38px;height:38px;border:none;border-radius:50%;background:var(--card2);color:var(--text);font-size:18px;cursor:pointer">✕</button>
+        </div>
+
+        <div class="card" style="margin-bottom:12px;background:rgba(0,200,83,.06);border-color:rgba(0,200,83,.2)">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:12px;color:var(--muted)">${ar ? 'إجمالي المبيعات' : 'Total Sales'}</div>
+            <div style="font-size:18px;font-weight:800;color:var(--green)">EGP ${_dashFmtEGP(total)}</div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          ${groups.map((g, gi) => `
+            <div class="card" style="padding:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <div style="font-size:14px;font-weight:800">${gi + 1}. ${_dashEscapeHtml(g.employee_name)}</div>
+                <span class="badge badge-green">EGP ${_dashFmtEGP(g.total)}</span>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:8px">
+                ${g.items.map(item => `
+                  <div style="padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--card2)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                      <div style="flex:1">
+                        <div style="font-size:13px;font-weight:700">${_dashEscapeHtml(item.product_name || (ar ? 'منتج غير محدد' : 'Unknown product'))}</div>
+                        <div style="font-size:11px;color:var(--muted);margin-top:3px">
+                          ${ar ? 'الكمية' : 'Qty'}: ${_dashN(item.quantity || 1)}
+                          ${item.unit_price ? ` · ${ar ? 'سعر الوحدة' : 'Unit Price'}: EGP ${_dashFmtEGP(item.unit_price)}` : ''}
+                          ${item.date ? ` · ${_dashEscapeHtml(item.date)}` : ''}
+                        </div>
+                      </div>
+                      <div style="font-size:13px;font-weight:800;color:var(--green)">EGP ${_dashFmtEGP(item.total_amount)}</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) overlay.remove();
+    });
+
+    document.body.appendChild(overlay);
+
+    const closeBtn = document.getElementById('dash-sales-close-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => overlay.remove(), { once: true });
+    }
   }
 
   function showAttList(type, day) {
@@ -449,4 +668,6 @@
   window.loadAdminDashboard = loadAdminDashboard;
   window.renderPerformanceRanking = renderPerformanceRanking;
   window.showAttList = showAttList;
+  window.showSalesDetails = showSalesDetails;
+  window.loadAdminAttendance = loadAdminAttendance;
 })();

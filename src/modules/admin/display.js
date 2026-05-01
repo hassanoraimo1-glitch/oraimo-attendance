@@ -489,6 +489,14 @@ function renderDisplayPreviews() {
     if (_dCanUploadDisplay() !== true) zone.style.display = 'none';
   }
 
+  const saveBtn = _dId('display-save-btn');
+  if (saveBtn) {
+    const canUpload = _dCanUploadDisplay() === true;
+    saveBtn.style.display = canUpload ? 'block' : 'none';
+    saveBtn.disabled = displayPhotos.length === 0;
+    saveBtn.style.opacity = displayPhotos.length === 0 ? '0.45' : '';
+  }
+
   _dSetRemoveButtonsVisibility();
 }
 

@@ -146,16 +146,22 @@
     const todayEl = document.getElementById('adm-sales-today');
     const monthEl = document.getElementById('adm-sales-month');
 
-    if (todayEl && !todayEl.dataset.boundSalesDetails) {
-      todayEl.style.cursor = 'pointer';
-      todayEl.onclick = () => showSalesDetails('today');
-      todayEl.dataset.boundSalesDetails = '1';
+    if (todayEl) {
+      const todayCard = todayEl.closest('.stat-card') || todayEl;
+      if (!todayCard.dataset.boundSalesDetails) {
+        todayCard.style.cursor = 'pointer';
+        todayCard.onclick = () => showSalesDetails('today');
+        todayCard.dataset.boundSalesDetails = '1';
+      }
     }
 
-    if (monthEl && !monthEl.dataset.boundSalesDetails) {
-      monthEl.style.cursor = 'pointer';
-      monthEl.onclick = () => showSalesDetails('month');
-      monthEl.dataset.boundSalesDetails = '1';
+    if (monthEl) {
+      const monthCard = monthEl.closest('.stat-card') || monthEl;
+      if (!monthCard.dataset.boundSalesDetails) {
+        monthCard.style.cursor = 'pointer';
+        monthCard.onclick = () => showSalesDetails('month');
+        monthCard.dataset.boundSalesDetails = '1';
+      }
     }
   }
 
@@ -640,6 +646,7 @@
     });
 
     document.body.appendChild(overlay);
+    overlay.classList.add('open');
 
     const closeBtn = document.getElementById('dash-sales-close-btn');
     if (closeBtn) {
@@ -707,6 +714,7 @@
     });
 
     document.body.appendChild(overlay);
+    overlay.classList.add('open');
 
     const closeBtn = document.getElementById('dash-att-close-btn');
     if (closeBtn) {

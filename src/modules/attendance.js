@@ -34,6 +34,53 @@ function _normalizeTimeToHHMMSS(timeStr) {
   return null;
 }
 
+function _sumSalesRows(rows) {
+  let total = 0;
+  (rows || []).forEach(r => {
+    total += Number(r?.total_amount || 0);
+  });
+  return total;
+}
+
+function _setCardLabelByValueId(valueId, labelAr, labelEn) {
+  const valueEl = document.getElementById(valueId);
+  if (!valueEl) return;
+
+  const card =
+    valueEl.closest('.stat-card') ||
+    valueEl.closest('.mini-stat') ||
+    valueEl.closest('.kpi-card') ||
+    valueEl.parentElement;
+
+  if (!card) return;
+
+  const labelEl =
+    card.querySelector('.stat-label') ||
+    card.querySelector('.mini-label') ||
+    card.querySelector('.kpi-label') ||
+    card.querySelector('[data-ar][data-en]');
+
+  if (!labelEl) return;
+
+  labelEl.textContent = currentLang === 'ar' ? labelAr : labelEn;
+}
+
+function _calcAbsentDays(monthAtt, pm) {
+  const startD = new Date(pm.start);
+  const endD = new Date(Math.min(new Date(pm.end), new Date()));
+  let absent = 0;
+
+  for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
+    const currentLoopDate = new Date(d);
+    if (currentLoopDate.getDay() === currentUser.day_off) continue;
+
+    const ds = fmtDate(currentLoopDate);
+    if (!(monthAtt || []).find(a => a.date === ds)) absent++;
+  }
+
+  return absent;
+}
+
 // Helper: ensure shift-info element exists on the home screen
 function _ensureShiftInfoEl() {
   let el = document.getElementById('emp-shift-info');
@@ -78,43 +125,6 @@ function _resetAttendanceCaptureState() {
   if (locStatusEl) {
     locStatusEl.textContent = currentLang === 'ar' ? '📍 جاري تحديد الموقع...' : '📍 Getting location...';
   }
-}
-
-function _setStatCardLabelByValueEl(valueElId, labelAr, labelEn) {
-  const valueEl = document.getElementById(valueElId);
-  if (!valueEl) return;
-
-  const card = valueEl.closest('.stat-card, .mini-stat, .kpi-card, .dash-stat');
-  if (!card) return;
-
-  const labelEl = card.querySelector('.stat-label, .mini-stat-label, .kpi-label');
-  if (!labelEl) return;
-
-  labelEl.textContent = currentLang === 'ar' ? labelAr : labelEn;
-}
-
-function _sumSalesRows(rows) {
-  let total = 0;
-  (rows || []).forEach(r => {
-    total += Number(r?.total_amount || 0);
-  });
-  return total;
-}
-
-function _calcAbsentDays(monthAtt, pm) {
-  const startD = new Date(pm.start);
-  const endD = new Date(Math.min(new Date(pm.end), new Date()));
-  let absent = 0;
-
-  for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
-    const currentLoopDate = new Date(d);
-    if (currentLoopDate.getDay() === currentUser.day_off) continue;
-
-    const ds = fmtDate(currentLoopDate);
-    if (!(monthAtt || []).find(a => a.date === ds)) absent++;
-  }
-
-  return absent;
 }
 
 async function _hasTodayDisplayPhotos(employeeId, dateStr) {
@@ -226,7 +236,7 @@ async function loadEmpData() {
     const attCountEl = document.getElementById('emp-attend-count');
     if (attCountEl) attCountEl.textContent = (monthAtt || []).length;
 
-    // ── Sales: month + today ──
+    // ── Month's sales + Today's sales ──
     const [monthSales, todaySales] = await Promise.all([
       dbGet(
         'sales',
@@ -244,14 +254,13 @@ async function loadEmpData() {
     const salesEl = document.getElementById('emp-sales-total');
     if (salesEl) salesEl.textContent = 'EGP ' + fmtEGP(salesTotal);
 
-    // IMPORTANT:
-    // emp-late-total is reused now as "today sales" instead of "late minutes"
+    // IMPORTANT: old late card now shows today's sales
     const todaySalesEl = document.getElementById('emp-late-total');
     if (todaySalesEl) todaySalesEl.textContent = 'EGP ' + fmtEGP(todaySalesTotal);
 
-    // Force labels to correct titles
-    _setStatCardLabelByValueEl('emp-sales-total', 'مبيعات الشهر', 'Month Sales');
-    _setStatCardLabelByValueEl('emp-late-total', 'مبيعات اليوم', 'Today Sales');
+    // rename labels without touching HTML
+    _setCardLabelByValueId('emp-sales-total', 'إجمالي المبيعات', 'Total Sales');
+    _setCardLabelByValueId('emp-late-total', 'مبيعات اليوم', 'Today Sales');
 
     // ── Target & K Model ──
     const mon = pm.start.substring(0, 7);
@@ -598,14 +607,14 @@ async function loadEmpMonthlyReport() {
     ? [
         ['أيام الحضور', (att || []).length + ' أيام', 'var(--green)'],
         ['أيام الغياب', absentTotal + ' يوم', 'var(--red)'],
-        ['إجمالي مبيعات الشهر', 'EGP ' + salesTotal.toLocaleString(), 'var(--green)'],
+        ['إجمالي المبيعات', 'EGP ' + salesTotal.toLocaleString(), 'var(--green)'],
         ['مبيعات اليوم', 'EGP ' + todaySalesTotal.toLocaleString(), 'var(--blue)'],
         ['عدد المعاملات', (sales || []).length, 'var(--text)']
       ]
     : [
         ['Attendance', (att || []).length + ' days', 'var(--green)'],
         ['Absent Days', absentTotal + ' days', 'var(--red)'],
-        ['Month Sales', 'EGP ' + salesTotal.toLocaleString(), 'var(--green)'],
+        ['Total Sales', 'EGP ' + salesTotal.toLocaleString(), 'var(--green)'],
         ['Today Sales', 'EGP ' + todaySalesTotal.toLocaleString(), 'var(--blue)'],
         ['Transactions', (sales || []).length, 'var(--text)']
       ];

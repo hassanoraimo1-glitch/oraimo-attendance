@@ -1,17 +1,12 @@
 // ═══════════════════════════════════════════════════════════
 // modules/sales.js — Product selection, sale submit, daily sales
-// Globals:
-// renderProducts, filterProducts, displayProducts,
-// selectProduct, changeQty, cancelSale, submitSale, loadTodaySales,
-// renderDailySalesGrid, renderEmpPerfChart
-// Safe version to avoid global redeclare conflicts
 // ═══════════════════════════════════════════════════════════
 
 (() => {
   window.__salesState = window.__salesState || {
     selectedProduct: null,
     selectedQty: 1,
-    filteredProducts: Array.isArray(window.PRODUCTS) ? [...window.PRODUCTS] : [],
+    filteredProducts: [],
     sending: false
   };
 
@@ -41,13 +36,13 @@
     return new Date(d).toISOString().slice(0, 10);
   }
 
+  // ─── NORMALIZE: يدعم {name,price} و {n,p} ───
   function getProducts() {
-    // Normalize products: support both {name, price} and shorthand {n, p}
     const raw = Array.isArray(window.PRODUCTS) ? window.PRODUCTS : [];
     return raw.map(p => ({
-      name:  p.name  !== undefined ? p.name  : (p.n  !== undefined ? p.n  : ''),
-      price: p.price !== undefined ? p.price : (p.p  !== undefined ? p.p  : 0)
-    }));
+      name:  p.name  !== undefined ? String(p.name)  : (p.n  !== undefined ? String(p.n)  : ''),
+      price: p.price !== undefined ? Number(p.price) : (p.p  !== undefined ? Number(p.p)  : 0)
+    })).filter(p => p.name);
   }
 
   function getDayOff() {
@@ -124,10 +119,7 @@
     for (let d = new Date(startD); d <= endD && d <= today; d.setDate(d.getDate() + 1)) {
       const current = new Date(d);
       if (current.getDay() === dayOff) continue;
-      days.push({
-        ds: _salesFmtDate(current),
-        day: current.getDate()
-      });
+      days.push({ ds: _salesFmtDate(current), day: current.getDate() });
     }
 
     const lastDays = days.slice(-14);
@@ -150,7 +142,9 @@
   // PRODUCT LIST / SEARCH / SELECT
   // ─────────────────────────────
   function renderProducts() {
-    _salesState().filteredProducts = [...getProducts()];
+    const products = getProducts();
+    console.log('[sales] renderProducts — found', products.length, 'products from window.PRODUCTS');
+    _salesState().filteredProducts = products;
     displayProducts();
   }
 
@@ -174,17 +168,22 @@
 
   function displayProducts() {
     const el = document.getElementById('product-list');
-    if (!el) return;
+    if (!el) {
+      console.warn('[sales] product-list element not found in DOM');
+      return;
+    }
 
     const list = _salesState().filteredProducts || [];
     const ar = window.currentLang === 'ar';
+
+    console.log('[sales] displayProducts — rendering', list.length, 'items');
 
     if (!list.length) {
       el.innerHTML = `<div style="padding:16px;text-align:center;color:var(--muted)">${ar ? 'لا توجد نتائج' : 'No results'}</div>`;
       return;
     }
 
-    el.innerHTML = list.slice(0, 30).map(p => {
+    el.innerHTML = list.slice(0, 50).map(p => {
       const name = String(p.name || '');
       const price = safeNum(p.price);
       const safeName = encodeURIComponent(name);

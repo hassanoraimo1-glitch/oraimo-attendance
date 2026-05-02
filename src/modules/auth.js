@@ -366,7 +366,6 @@ function showApp() {
   // ── EMPLOYEE ──
   _safeCall('showPage', 'emp-app');
   _openEmployeeDefaultTab();
-  _hideSplash();  // Hide splash immediately once correct page is shown
 
   _setText('emp-name-top', user.name || '');
   _setText('profile-name', user.name || '');
@@ -382,7 +381,6 @@ function showApp() {
     `<span class="badge badge-blue">${lang === 'ar' ? 'الإجازة:' : 'Day Off:'} ${dayLabel || '-'}</span>`
   );
 
-  // Load data in background (doesn't block UI)
   _safeCall('loadEmpData');
   _safeCall('renderProducts');
   _safeCall('loadModelTargetAlert');
@@ -400,6 +398,7 @@ function showApp() {
   }
 
   setTimeout(() => _safeCall('fixNavDirection'), 100);
+  _hideSplash();
 }
 
 // ── AUTH ──────────────────────────────────────────────────
@@ -446,11 +445,14 @@ async function doLogin() {
 
     const uname = encodeURIComponent(username);
 
-    // Query admins and employees in parallel to reduce login time
-    const [admRes, empRes] = await Promise.all([
-      dbGet('admins', `?username=eq.${uname}&select=*`).catch(e => { console.warn('[admins login query]', e); return []; }),
-      dbGet('employees', `?username=eq.${uname}&select=*`).catch(e => { console.warn('[employees login query]', e); return []; })
-    ]);
+    // Admins
+    let admRes = [];
+    try {
+      admRes = await dbGet('admins', `?username=eq.${uname}&select=*`);
+    } catch (e) {
+      console.warn('[admins login query]', e);
+      admRes = [];
+    }
 
     const admMatch = (admRes || []).find(r => String(r.password || '') === pass);
     if (admMatch) {
@@ -461,6 +463,15 @@ async function doLogin() {
 
       _finalizeLogin(adminUser);
       return;
+    }
+
+    // Employees
+    let empRes = [];
+    try {
+      empRes = await dbGet('employees', `?username=eq.${uname}&select=*`);
+    } catch (e) {
+      console.warn('[employees login query]', e);
+      empRes = [];
     }
 
     const empMatch = (empRes || []).find(r => String(r.password || '') === pass);
@@ -529,7 +540,6 @@ function doLogout() {
   window.currentChat = null;
   window.currentUser = null;
   window._isSubmitting = false;
-  window.__SESSION_RESTORED__ = false;  // allow re-login
 
   window.allAdmins = [];
   window.allBranches = [];
@@ -594,19 +604,12 @@ function startClock() {
 
 // ── RESTORE SESSION ───────────────────────────────────────
 function restoreSavedSession() {
-  // Skip if already have valid user loaded
-  if (window.currentUser) {
-    if (!window.__SESSION_RESTORED__) {
-      window.__SESSION_RESTORED__ = true;
-      showApp();
-    }
-    return true;
-  }
-
-  if (window.__SESSION_RESTORED__) return false;
-  window.__SESSION_RESTORED__ = true;
-
   try {
+    if (window.currentUser) {
+      showApp();
+      return true;
+    }
+
     const saved = _getSavedUser();
     if (!saved) {
       _safeCall('showPage', 'login-page');
@@ -637,25 +640,18 @@ function restoreSavedSession() {
 
 // ── AUTO INIT ─────────────────────────────────────────────
 (function initAuthModule() {
-  function _tryRestore(retries) {
-    // If bootstrap already triggered restoreSavedSession, skip
-    if (window.__SESSION_RESTORED__) return;
-    // Wait for showPage to be available (app.js ES module may load slightly later)
-    if (typeof window.showPage !== 'function' && retries > 0) {
-      setTimeout(() => _tryRestore(retries - 1), 100);
-      return;
-    }
-    restoreSavedSession();
-  }
-
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       startClock();
-      setTimeout(() => _tryRestore(20), 50);
+      setTimeout(() => {
+        restoreSavedSession();
+      }, 0);
     });
   } else {
     startClock();
-    setTimeout(() => _tryRestore(20), 50);
+    setTimeout(() => {
+      restoreSavedSession();
+    }, 0);
   }
 })();
 

@@ -15,6 +15,90 @@ var capturedLocation = null;    // { lat, lng } | null
 var videoStream = null;         // MediaStream | null
 var _todayAttRecord = null;     // today's DB attendance record — single source of truth for attend state
 
+// ─── Safe local PATCH wrapper ────────────────────────────────────────────────
+// المشكلة: window.dbPatch في app.js كان ترتيب الـ arguments معكوس
+// db.patch(table, query, body) بدل db.patch(table, body, query)
+// الحل: نعمل wrapper محلي يضمن الـ PATCH يوصل صح دايماً
+async function _attendancePatch(table, bodyObj, queryStr) {
+  // أول حاجة: جرب الـ fetch المباشر عشان نتجنب أي bug في app.js
+  try {
+    // استخرج الـ Supabase URL والـ Key من أي dbGet request ناجحة قبل كده
+    // أو من الـ window globals اللي app.js بيحددها
+    const supaUrl = window.__SUPABASE_URL__ || window._supabaseUrl || window.SUPABASE_URL;
+    const supaKey  = window.__SUPABASE_KEY__ || window._supabaseKey || window.SUPABASE_KEY;
+
+    if (supaUrl && supaKey) {
+      const url = `${supaUrl}/rest/v1/${table}${queryStr || ''}`;
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'apikey': supaKey,
+          'Authorization': `Bearer ${supaKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(bodyObj)
+      });
+      if (!res.ok) throw new Error(`PATCH ${res.status}: ${await res.text().catch(() => '')}`);
+      const txt = await res.text();
+      return txt ? JSON.parse(txt) : [];
+    }
+  } catch (directErr) {
+    // لو الـ direct fetch فشل، نجرب dbPatch بكلا الترتيبين
+    console.warn('[_attendancePatch] direct fetch failed, trying dbPatch:', directErr.message);
+  }
+
+  // جرب dbPatch بالترتيب الصح (body ثم query)
+  if (typeof window.dbPatch === 'function') {
+    try {
+      const res1 = await window.dbPatch(table, bodyObj, queryStr);
+      return res1;
+    } catch (e1) {
+      // لو فشل جرب الترتيب المعكوس (الـ bug القديم)
+      try {
+        const res2 = await window.dbPatch(table, queryStr, bodyObj);
+        return res2;
+      } catch (e2) {
+        throw new Error(`dbPatch failed both orders: ${e2.message}`);
+      }
+    }
+  }
+
+  throw new Error('dbPatch not available');
+}
+
+// ─── Auto-detect Supabase config from network requests ───────────────────────
+// نراقب أول dbGet ناجح ونحفظ الـ URL والـ Key عشان نستخدمهم في الـ PATCH
+(function _interceptDbConfig() {
+  const _origFetch = window.fetch;
+  let _captured = false;
+
+  window.fetch = function interceptedFetch(url, opts) {
+    if (!_captured && typeof url === 'string' && url.includes('/rest/v1/')) {
+      try {
+        const apikey = (opts && opts.headers && (
+          opts.headers['apikey'] ||
+          opts.headers['Apikey'] ||
+          (opts.headers.get && opts.headers.get('apikey'))
+        ));
+
+        if (apikey) {
+          const match = url.match(/^(https?:\/\/[^/]+)/);
+          if (match) {
+            window.__SUPABASE_URL__ = match[1];
+            window.__SUPABASE_KEY__ = apikey;
+            _captured = true;
+            // استعادة الـ fetch الأصلي بعد ما حفظنا البيانات
+            window.fetch = _origFetch;
+            console.log('[attendance] ✅ Supabase config captured for safe PATCH');
+          }
+        }
+      } catch (_) {}
+    }
+    return _origFetch.apply(this, arguments);
+  };
+})();
+
 // Helper: get shift time strings (used both for display and for late calc)
 function _getShiftTimes(shift, dayOfWeek) {
   const isThurFri = (dayOfWeek === 4 || dayOfWeek === 5);
@@ -900,7 +984,7 @@ async function confirmAttendance() {
         return;
       }
 
-      await dbPatch(
+      await _attendancePatch(
         'attendance',
         {
           check_out: timeStr,

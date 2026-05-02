@@ -258,20 +258,84 @@ function refreshAppAccess() {
 
 // ── GLOBAL FUNCTIONS
 Object.assign(window, {
-  dbGet: db.get,
-  dbPost: db.post,
+  // 🔥 FIX: dbGet بدون كاش نهائي + retry بسيط
+  dbGet: async (table, query = '') => {
+    try {
+      const noCacheQuery = query.includes('?')
+        ? `${query}&_=${Date.now()}`
+        : `?_${Date.now()}`;
 
-  dbPatch: async (table, body, query) => {
-    if (typeof body === 'string') return db.patch(table, body, query);
-    return db.patch(table, query, body);
+      const res = await db.get(table, noCacheQuery);
+      return res || [];
+    } catch (e) {
+      console.warn('[dbGet no-cache] first try failed:', e);
+
+      // 🔁 retry مرة كمان (مهم بعد insert مباشرة)
+      try {
+        await new Promise(r => setTimeout(r, 200));
+        const retryQuery = query.includes('?')
+          ? `${query}&_=${Date.now()}`
+          : `?_${Date.now()}`;
+
+        const res2 = await db.get(table, retryQuery);
+        return res2 || [];
+      } catch (e2) {
+        console.error('[dbGet retry failed]:', e2);
+        return [];
+      }
+    }
   },
 
-  dbDel: db.delete,
-  dbDelete: db.delete,
+  // ✅ POST عادي
+  dbPost: async (table, body) => {
+    try {
+      const res = await db.post(table, body);
+      return res;
+    } catch (e) {
+      console.error('[dbPost error]:', e);
+      throw e;
+    }
+  },
+
+  // 🔥 FIX: patch يحل مشكلة ترتيب الباراميتر نهائي
+  dbPatch: async (table, body, query) => {
+    try {
+      // الشكل الصح
+      return await db.patch(table, query, body);
+    } catch (e1) {
+      try {
+        // fallback لو السيستم القديم شغال بالعكس
+        return await db.patch(table, body, query);
+      } catch (e2) {
+        console.error('[dbPatch failed both ways]:', e2);
+        throw e2;
+      }
+    }
+  },
+
+  // ✅ DELETE
+  dbDel: async (table, query) => {
+    try {
+      return await db.delete(table, query);
+    } catch (e) {
+      console.error('[dbDelete error]:', e);
+      throw e;
+    }
+  },
+
+  dbDelete: async (table, query) => {
+    try {
+      return await db.delete(table, query);
+    } catch (e) {
+      console.error('[dbDelete error]:', e);
+      throw e;
+    }
+  },
 
   safeFilterValue,
   invalidateCache,
   clearAllCache,
+});
 
   notify,
   applyLang,

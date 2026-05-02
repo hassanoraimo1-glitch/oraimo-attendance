@@ -64,6 +64,7 @@ function _dStopDisplayCameraStream() {
 
 function _dApplyDisplayUploadPermissions() {
   const canUpload = _dCanUploadDisplay();
+  console.log('[display.js] _dApplyDisplayUploadPermissions called, canUpload:', canUpload, 'currentUser:', window.currentUser?.role, window.currentUser?.id);
 
   // عناصر الإدخال والرفع
   [
@@ -72,11 +73,15 @@ function _dApplyDisplayUploadPermissions() {
     'display-camera-modal'
   ].forEach(id => {
     const el = _dId(id);
-    if (!el) return;
+    if (!el) {
+      console.log('[display.js] Element not found:', id);
+      return;
+    }
 
     if (id !== 'display-camera-modal') {
       if ('disabled' in el) el.disabled = !canUpload;
       el.style.pointerEvents = canUpload ? '' : 'none';
+      console.log('[display.js] Applied to', id, 'pointerEvents:', el.style.pointerEvents, 'disabled:', el.disabled);
     }
   });
 
@@ -148,6 +153,7 @@ function _dCanvasToOptimizedJpeg(canvas) {
 
 // ── CAMERA ────────────────────────────────────────────────
 async function openDisplayCamera() {
+  console.log('[display.js] openDisplayCamera clicked, currentUser:', window.currentUser?.role, 'canUpload:', _dCanUploadDisplay());
   if (!_dCanUploadDisplay()) {
     _dNotify('هذا القسم للموظف أو التيم ليدر فقط', 'This section is only for employee or team leader', 'info');
     return;
@@ -161,12 +167,17 @@ async function openDisplayCamera() {
   const modal = _dId('display-camera-modal');
   const video = _dId('display-camera-video');
 
+  console.log('[display.js] Modal element:', !!modal, 'Video element:', !!video);
+  if (modal) console.log('[display.js] Modal current display:', modal.style.display, 'classList:', modal.classList.toString());
+
   if (!modal || !video) {
+    console.log('[display.js] ERROR: Modal or video not found');
     _dNotify('واجهة الكاميرا غير موجودة', 'Camera UI not found', 'error');
     return;
   }
 
   try {
+    console.log('[display.js] Requesting camera permission...');
     displayCameraStream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: { ideal: 'environment' },
@@ -175,21 +186,36 @@ async function openDisplayCamera() {
       },
       audio: false
     });
+    console.log('[display.js] Camera stream obtained:', !!displayCameraStream);
 
     video.srcObject = displayCameraStream;
     video.setAttribute('playsinline', '');
     video.setAttribute('autoplay', '');
     video.muted = true;
 
-    await video.play().catch(() => {});
+    await video.play().catch((err) => { console.log('[display.js] Video play error:', err); });
+    console.log('[display.js] Setting modal display to flex');
+
+    // Use !important to override inline style
+    modal.setAttribute('style', 'display:flex!important;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;background:#000;z-index:99999;align-items:center;justify-content:center;overflow:hidden;');
     modal.classList.add('open');
-    modal.style.display = 'flex';
+
+    console.log('[display.js] Modal should be visible now');
+
+    console.log('[display.js] Modal display after:', modal.style.display, 'classList:', modal.classList.toString());
+
+    // Force reflow to ensure display applies
+    void modal.offsetHeight;
+    console.log('[display.js] Modal computed display:', getComputedStyle(modal).display);
   } catch (e) {
+    console.log('[display.js] Camera error (first attempt):', e.name, e.message);
     try {
+      console.log('[display.js] Trying fallback camera...');
       displayCameraStream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: false
       });
+      console.log('[display.js] Fallback camera stream obtained');
 
       video.srcObject = displayCameraStream;
       video.setAttribute('playsinline', '');
@@ -197,9 +223,10 @@ async function openDisplayCamera() {
       video.muted = true;
 
       await video.play().catch(() => {});
+      modal.setAttribute('style', 'display:flex!important;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;background:#000;z-index:99999;align-items:center;justify-content:center;overflow:hidden;');
       modal.classList.add('open');
-      modal.style.display = 'flex';
     } catch (e2) {
+      console.log('[display.js] Camera error (fallback):', e2.name, e2.message);
       _dNotify(
         `❌ تعذر فتح الكاميرا: ${e2.message || ''}`,
         `❌ Camera error: ${e2.message || ''}`,
@@ -241,6 +268,7 @@ function roundRect(ctx, x, y, width, height, radius) {
 }
 
 function captureDisplayPhoto() {
+  console.log('[display.js] captureDisplayPhoto called!');
   if (!_dCanUploadDisplay()) {
     _dNotify('هذا القسم للموظف أو التيم ليدر فقط', 'This section is only for employee or team leader', 'info');
     return;
@@ -359,6 +387,9 @@ function renderDisplayPreviews() {
   if (zone) {
     zone.style.display = displayPhotos.length >= 3 ? 'none' : 'block';
     if (!_dCanUploadDisplay()) zone.style.display = 'none';
+    console.log('[display.js] renderDisplayPreviews - zone display set to:', zone.style.display, 'canUpload:', _dCanUploadDisplay(), 'photos:', displayPhotos.length);
+  } else {
+    console.log('[display.js] renderDisplayPreviews - zone element NOT FOUND');
   }
 
   _dSetRemoveButtonsVisibility();
@@ -466,6 +497,7 @@ async function submitDisplayPhotos() {
 
 // ── HISTORY ───────────────────────────────────────────────
 async function loadDisplayTab() {
+  console.log('[display.js] loadDisplayTab called, currentUser:', window.currentUser?.role, window.currentUser?.id);
   _dApplyDisplayUploadPermissions();
 
   const el = _dId('display-date-label');
@@ -600,9 +632,41 @@ function downloadCSV(csv, filename) {
 
 // ── INIT ──────────────────────────────────────────────────
 function initDisplayModule() {
+  console.log('[display.js] initDisplayModule called, currentUser:', window.currentUser?.role, window.currentUser?.id);
   _dApplyDisplayUploadPermissions();
   renderDisplayPreviews();
+
+  // Attach click handler directly to ensure it works
+  const zone = _dId('display-upload-zone');
+  if (zone) {
+    zone.onclick = function(e) {
+      console.log('[display.js] Zone clicked!');
+      openDisplayCamera();
+    };
+    console.log('[display.js] Click handler attached to zone');
+  }
+
+  console.log('[display.js] initDisplayModule finished, zone display:', _dId('display-upload-zone')?.style?.display);
 }
+
+// Re-apply permissions when currentUser changes (fix race condition with bootstrap)
+let _dLastUserId = null;
+function _dCheckUserChange() {
+  const currentId = window.currentUser?.id;
+  if (currentId !== _dLastUserId) {
+    _dLastUserId = currentId;
+    _dApplyDisplayUploadPermissions();
+    renderDisplayPreviews();
+  }
+}
+
+// Poll for user changes (lightweight check every 500ms for first 10 seconds)
+let _dPollCount = 0;
+const _dPollInterval = setInterval(() => {
+  _dCheckUserChange();
+  _dPollCount++;
+  if (_dPollCount > 20) clearInterval(_dPollInterval);
+}, 500);
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initDisplayModule);
@@ -616,6 +680,7 @@ window.renderDisplayPreviews = renderDisplayPreviews;
 window.removeDisplayPhoto = removeDisplayPhoto;
 window.submitDisplayPhotos = submitDisplayPhotos;
 window.loadDisplayTab = loadDisplayTab;
+window.loadDisplayHistory = loadDisplayTab; // alias for auth.js
 window.exportToExcel = exportToExcel;
 window.downloadCSV = downloadCSV;
 window.openDisplayCamera = openDisplayCamera;

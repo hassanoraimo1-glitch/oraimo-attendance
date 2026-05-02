@@ -8,11 +8,12 @@
 let attendCountdownTimer = null;
 let isConfirmingAttendance = false;
 
-// ─── Global state variables (must be declared before use) ───
+// ─── Global state variables (source of truth — must be declared before use) ───
 var attendMode = 'in';          // 'in' | 'out'
 var capturedPhoto = null;       // base64 selfie string
 var capturedLocation = null;    // { lat, lng } | null
 var videoStream = null;         // MediaStream | null
+var _todayAttRecord = null;     // today's DB attendance record — single source of truth for attend state
 
 // Helper: get shift time strings (used both for display and for late calc)
 function _getShiftTimes(shift, dayOfWeek) {
@@ -323,6 +324,9 @@ async function loadEmpData() {
 }
 
 function updateAttendBtn(record) {
+  // ── Store as global source of truth ──────────────────────
+  _todayAttRecord = record || null;
+
   const btn = document.getElementById('attend-btn');
   const status = document.getElementById('attend-status');
   if (!btn) return;
@@ -334,10 +338,8 @@ function updateAttendBtn(record) {
 
   if (countdownEl) countdownEl.style.display = 'none';
 
-  // always keep click available through HTML onclick
-  btn.dataset.attState = 'none';
-
   if (record && record.check_in && !record.check_out) {
+    // ── Checked in, not yet checked out ──
     btn.classList.add('checked-in');
     btn.dataset.attState = 'checked-in';
 
@@ -361,6 +363,7 @@ function updateAttendBtn(record) {
   }
 
   if (record && record.check_out) {
+    // ── Fully done for today ──
     btn.classList.remove('checked-in');
     btn.dataset.attState = 'done';
 
@@ -375,11 +378,12 @@ function updateAttendBtn(record) {
     return;
   }
 
+  // ── No record yet ──
   btn.classList.remove('checked-in');
   btn.dataset.attState = 'ready';
 
   if (iconEl) iconEl.textContent = '🟢';
-  if (labelEl) labelEl.textContent = ar ? 'تسجيل دخول' : 'Check In';
+  if (labelEl) labelEl.textContent = ar ? 'تسجيل الدخول' : 'Check In';
   if (status) status.textContent = ar ? 'لم يتم تسجيل حضور اليوم' : 'No attendance recorded today';
 
   stopAttendanceCountdown();
@@ -389,12 +393,34 @@ async function handleAttendClick() {
   const btn = document.getElementById('attend-btn');
   if (!btn || !currentUser) return;
 
-  const state = btn.dataset.attState || 'ready';
-  if (state === 'done') return;
-
-  attendMode = btn.classList.contains('checked-in') ? 'out' : 'in';
-
+  // ── Determine mode from DB record (source of truth), not DOM ──
+  // If _todayAttRecord is stale/missing, re-fetch from DB first
   const ar = currentLang === 'ar';
+
+  // Re-fetch today's record fresh every click to avoid stale state after refresh
+  let freshRecord = _todayAttRecord;
+  try {
+    const rows = await dbGet(
+      'attendance',
+      `?employee_id=eq.${currentUser.id}&date=eq.${todayStr()}&select=*`
+    ).catch(() => []);
+    freshRecord = (rows && rows.length > 0) ? rows[0] : null;
+    // Update global + button with fresh data
+    updateAttendBtn(freshRecord);
+  } catch (_) {
+    // fallback to cached record
+    freshRecord = _todayAttRecord;
+  }
+
+  // Block if already completed
+  if (freshRecord && freshRecord.check_in && freshRecord.check_out) {
+    notify(ar ? 'تم إنهاء الحضور اليوم بالفعل ✅' : 'Attendance already completed today ✅', 'info');
+    return;
+  }
+
+  // Determine check-in or check-out from DB data
+  attendMode = (freshRecord && freshRecord.check_in && !freshRecord.check_out) ? 'out' : 'in';
+
   const titleEl = document.getElementById('selfie-modal-title');
   const camLabelEl = document.getElementById('camera-label');
 
@@ -661,7 +687,7 @@ async function openCamera() {
     await video.play().catch(() => {});
 
     const modal = document.getElementById('camera-modal');
-    if (modal) { modal.style.display = 'block'; }
+    if (modal) modal.style.display = 'block';
     document.body.style.overflow = 'hidden';
     document.body.style.position = 'fixed';
     document.body.style.width = '100%';
@@ -683,7 +709,7 @@ async function openCamera() {
       await video.play().catch(() => {});
 
       const modal = document.getElementById('camera-modal');
-      if (modal) { modal.style.display = 'block'; }
+      if (modal) modal.style.display = 'block';
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
       document.body.style.width = '100%';
@@ -800,28 +826,30 @@ async function confirmAttendance() {
       minute: '2-digit'
     });
 
+    // ── Always re-fetch fresh from DB to avoid stale state ──
     const todayAtt = await dbGet(
       'attendance',
       `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`
     ).catch(() => []);
 
-    if (attendMode === 'in') {
-      if (todayAtt && todayAtt.length > 0) {
-        const existing = todayAtt[0];
+    const freshRecord = (todayAtt && todayAtt.length > 0) ? todayAtt[0] : null;
 
-        if (existing.check_in && !existing.check_out) {
-          notify(ar ? 'تم تسجيل الدخول بالفعل اليوم' : 'Already checked in today', 'info');
-          closeModal('selfie-modal');
-          loadEmpData();
-          return;
-        }
+    // ── Re-derive mode from fresh DB data (overrides attendMode global) ──
+    const effectiveMode = (freshRecord && freshRecord.check_in && !freshRecord.check_out) ? 'out' : 'in';
 
-        if (existing.check_in && existing.check_out) {
-          notify(ar ? 'تم إنهاء حضور اليوم بالفعل' : 'Attendance already completed today', 'info');
-          closeModal('selfie-modal');
-          loadEmpData();
-          return;
-        }
+    if (effectiveMode === 'in') {
+      if (freshRecord && freshRecord.check_in && !freshRecord.check_out) {
+        notify(ar ? 'تم تسجيل الدخول بالفعل اليوم' : 'Already checked in today', 'info');
+        closeModal('selfie-modal');
+        loadEmpData();
+        return;
+      }
+
+      if (freshRecord && freshRecord.check_in && freshRecord.check_out) {
+        notify(ar ? 'تم إنهاء حضور اليوم بالفعل' : 'Attendance already completed today', 'info');
+        closeModal('selfie-modal');
+        loadEmpData();
+        return;
       }
 
       const dow = now.getDay();
@@ -843,14 +871,12 @@ async function confirmAttendance() {
 
       notify(ar ? 'تم تسجيل الدخول ✅' : 'Checked in ✅', 'success');
     } else {
-      if (!todayAtt || todayAtt.length === 0) {
+      if (!freshRecord) {
         notify(ar ? '❌ لا يوجد تسجيل دخول اليوم' : '❌ No check-in found for today', 'error');
         return;
       }
 
-      const record = todayAtt[0];
-
-      if (record.check_out) {
+      if (freshRecord.check_out) {
         notify(ar ? 'تم تسجيل الخروج بالفعل' : 'Already checked out', 'info');
         closeModal('selfie-modal');
         loadEmpData();
@@ -884,6 +910,7 @@ async function confirmAttendance() {
       );
 
       notify(ar ? 'تم تسجيل الخروج ✅' : 'Checked out ✅', 'success');
+    }
     }
 
     closeModal('selfie-modal');

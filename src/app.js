@@ -97,7 +97,7 @@ function setVisible(elOrId, show, displayMode = '') {
   if (el.classList.contains('nav-item')) {
     el.style.display = 'flex';
   } else if (el.classList.contains('page')) {
-    el.style.display = 'block';
+    el.style.display = el.id === 'login-page' ? 'flex' : 'block';
   } else {
     el.style.display = '';
   }
@@ -345,20 +345,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const chat = document.getElementById('chat-modal');
   if (chat) chat.style.display = 'none';
 
-  refreshAppAccess();
-
+  // Delay refreshAppAccess to allow session restoration to complete
+  // auth.js will handle the initial restore; we check after a brief delay
   setTimeout(() => {
     refreshAppAccess();
-    routeByRole();
-  }, 250);
+    setTimeout(() => {
+      refreshAppAccess();
+      routeByRole();
+    }, 150);
+  }, 300);
 });
 
 // ── SPLASH
 window.addEventListener('load', () => {
+  // Ensure splash stays until session is ready
   setTimeout(() => {
-    hideSplash();
     refreshAppAccess();
-  }, 1200);
+    hideSplash();
+  }, 1000);
 });
 
 window.addEventListener('app:ready', () => {
@@ -374,14 +378,26 @@ window.addEventListener('storage', () => {
 });
 
 window.addEventListener('focus', () => {
+  window._isSubmitting = false;
   syncCurrentUserRole();
   refreshAppAccess();
 });
 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
-    syncCurrentUserRole();
-    refreshAppAccess();
+    // Reset any stuck submit guard so login is always usable on resume
+    window._isSubmitting = false;
+    window.__SESSION_RESTORED__ = false;
+
+    // Try to restore if we have localStorage user but no currentUser
+    let saved = null;
+    try { saved = localStorage.getItem('oraimo_user') || sessionStorage.getItem('oraimo_user'); } catch (_) {}
+    if (saved && !getUser() && typeof window.restoreSavedSession === 'function') {
+      window.restoreSavedSession();
+    } else {
+      syncCurrentUserRole();
+      refreshAppAccess();
+    }
   }
 });
 

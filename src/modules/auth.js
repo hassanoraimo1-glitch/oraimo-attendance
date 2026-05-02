@@ -694,25 +694,25 @@ async function restoreSavedSession() {
 }
 
 // ── AUTO INIT ─────────────────────────────────────────────
+// bootstrap.js calls restoreSavedSession() after this file loads.
+// This auto-init is a backup in case bootstrap didn't trigger it.
+// The __sessionRestored guard prevents double execution.
 (function initAuthModule() {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       startClock();
       setTimeout(() => {
-        restoreSavedSession();
-      }, 0);
+        if (!__sessionRestored) restoreSavedSession();
+      }, 100);
     });
   } else {
     startClock();
     setTimeout(() => {
-      restoreSavedSession();
-    }, 0);
+      if (!__sessionRestored) restoreSavedSession();
+    }, 100);
   }
 })();
 
 // ── EXPOSE GLOBALS ────────────────────────────────────────
 window.showApp = showApp;
 window.doLogin = doLogin;
-window.doLogout = doLogout;
-window.startClock = startClock;
-window.restoreSavedSession = restoreSavedSession;

@@ -108,19 +108,24 @@ function _runInitApp() {
 
     if (saved) {
       try {
-        // Don't set window.currentUser here — let restoreSavedSession
-        // handle everything (DB refresh + showApp) to avoid double init
-        if (typeof restoreSavedSession === 'function') {
-          restoreSavedSession();
-        } else {
-          // Fallback if auth.js hasn't loaded yet
-          window.currentUser = JSON.parse(saved);
-          if (typeof showApp === 'function') {
-            showApp();
+        // Wait for auth.js to load (it provides restoreSavedSession)
+        // This prevents double-calling showApp + loadEmpData
+        const _tryRestore = (retries) => {
+          if (typeof restoreSavedSession === 'function') {
+            restoreSavedSession();
+          } else if (retries > 0) {
+            setTimeout(() => _tryRestore(retries - 1), 50);
           } else {
-            showPage('login-page');
+            // Fallback: auth.js didn't load in time
+            window.currentUser = JSON.parse(saved);
+            if (typeof showApp === 'function') {
+              showApp();
+            } else {
+              showPage('login-page');
+            }
           }
-        }
+        };
+        _tryRestore(20);  // wait up to 1 second for auth.js
       } catch (e) {
         try { localStorage.removeItem('oraimo_user'); } catch (_) {}
         try { sessionStorage.removeItem('oraimo_user'); } catch (_) {}

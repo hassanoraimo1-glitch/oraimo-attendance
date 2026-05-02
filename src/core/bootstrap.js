@@ -108,12 +108,18 @@ function _runInitApp() {
 
     if (saved) {
       try {
-        window.currentUser = JSON.parse(saved);
-
-        if (typeof showApp === 'function') {
-          showApp();
+        // Don't set window.currentUser here — let restoreSavedSession
+        // handle everything (DB refresh + showApp) to avoid double init
+        if (typeof restoreSavedSession === 'function') {
+          restoreSavedSession();
         } else {
-          showPage('login-page');
+          // Fallback if auth.js hasn't loaded yet
+          window.currentUser = JSON.parse(saved);
+          if (typeof showApp === 'function') {
+            showApp();
+          } else {
+            showPage('login-page');
+          }
         }
       } catch (e) {
         try { localStorage.removeItem('oraimo_user'); } catch (_) {}

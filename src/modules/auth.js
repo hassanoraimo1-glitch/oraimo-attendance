@@ -58,12 +58,18 @@ function _clearSavedUser() {
 }
 
 function _saveUser(u) {
+  // Save a stripped version without large fields (profile_photo etc.)
+  const stripped = _sanitizeForStorage(u);
+  const json = JSON.stringify(stripped);
   try {
-    localStorage.setItem('oraimo_user', JSON.stringify(u));
-  } catch (_) {
+    localStorage.setItem('oraimo_user', json);
+  } catch (e) {
+    console.warn('[auth] localStorage save failed:', e.message);
     try {
-      sessionStorage.setItem('oraimo_user', JSON.stringify(u));
-    } catch (_) {}
+      sessionStorage.setItem('oraimo_user', json);
+    } catch (e2) {
+      console.warn('[auth] sessionStorage save also failed:', e2.message);
+    }
   }
 }
 
@@ -106,6 +112,18 @@ function _sanitizeUser(userObj) {
   delete clean.password;
   clean.role = _normalizeRole(clean.role);
 
+  return clean;
+}
+
+// Stripped version for localStorage (no large fields like profile_photo)
+function _sanitizeForStorage(userObj) {
+  if (!userObj || typeof userObj !== 'object') return null;
+  const clean = { ...userObj };
+  delete clean.password;
+  delete clean.profile_photo;  // Can be several MB as base64 — loaded separately
+  delete clean.selfie_in;
+  delete clean.selfie_out;
+  clean.role = _normalizeRole(clean.role);
   return clean;
 }
 
@@ -609,7 +627,7 @@ function startClock() {
 }
 
 // ── RESTORE SESSION ───────────────────────────────────────
-function restoreSavedSession() {
+async function restoreSavedSession() {
   try {
     if (window.currentUser) {
       showApp();
@@ -632,6 +650,25 @@ function restoreSavedSession() {
     }
 
     window.currentUser = clean;
+
+    // Fetch fresh employee data from DB to ensure complete fields
+    // (old employees may have stale/incomplete data in localStorage)
+    if (typeof dbGet === 'function' && clean.id && clean.role === 'employee') {
+      try {
+        const freshEmp = await dbGet('employees', `?id=eq.${clean.id}&select=*`);
+        if (freshEmp && freshEmp.length > 0) {
+          const fresh = _sanitizeUser({ ...freshEmp[0], role: freshEmp[0].role || 'employee' });
+          if (fresh) {
+            window.currentUser = fresh;
+            _saveUser(fresh);
+            console.log('[auth] Refreshed employee data from DB for', fresh.id);
+          }
+        }
+      } catch (e) {
+        console.warn('[auth] Could not refresh employee data:', e.message);
+      }
+    }
+
     showApp();
     return true;
   } catch (e) {

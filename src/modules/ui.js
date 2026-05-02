@@ -235,7 +235,8 @@ async function uploadProfilePhoto(event){
         await dbPatch('employees',{profile_photo:base64},`?id=eq.${currentUser.id}`).catch(()=>{});
         // Update currentUser
         currentUser.profile_photo = base64;
-        localStorage.setItem('oraimo_user', JSON.stringify(currentUser));
+        if (typeof _saveUser === 'function') _saveUser(currentUser);
+        else localStorage.setItem('oraimo_user', JSON.stringify(currentUser));
         notify(ar?'تم تحديث الصورة ✅':'Photo updated ✅','success');
       } catch(e){ notify('Error: '+e.message,'error'); }
     };

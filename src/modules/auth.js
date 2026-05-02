@@ -350,6 +350,7 @@ function showApp() {
       _configureAdminUI(user);
 
       setTimeout(() => _safeCall('fixNavDirection'), 100);
+      setTimeout(() => _safeCall('initDisplayModule'), 150);
       _hideSplash();
       return;
     }
@@ -358,6 +359,7 @@ function showApp() {
       _configureTeamLeaderUI();
 
       setTimeout(() => _safeCall('fixNavDirection'), 100);
+      setTimeout(() => _safeCall('initDisplayModule'), 150);
       _hideSplash();
       return;
     }
@@ -398,6 +400,10 @@ function showApp() {
   }
 
   setTimeout(() => _safeCall('fixNavDirection'), 100);
+
+  // Re-apply display permissions after user is fully loaded (fixes camera button)
+  setTimeout(() => _safeCall('initDisplayModule'), 150);
+
   _hideSplash();
 }
 

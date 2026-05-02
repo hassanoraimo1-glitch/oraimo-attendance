@@ -228,16 +228,26 @@ async function loadEmpData() {
     const pm = getPayrollMonth();
 
     // ── Today's attendance ──
+    let dbFailed = false;
     const todayAtt = await dbGet(
       'attendance',
       `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`
-    ).catch(() => []);
+    ).catch((e) => {
+      console.warn('[loadEmpData] attendance query failed:', e?.message || e);
+      dbFailed = true;
+      return [];
+    });
 
-    const record = todayAtt && todayAtt.length > 0 ? todayAtt[0] : null;
-    updateAttendBtn(record);
+    if (!dbFailed) {
+      const record = todayAtt && todayAtt.length > 0 ? todayAtt[0] : null;
+      updateAttendBtn(record);
 
-    // Cache attendance state for instant restore on next app open
-    _cacheAttendance(record);
+      // Cache attendance state for instant restore on next app open
+      _cacheAttendance(record);
+    } else {
+      // DB failed — keep the cached state, don't overwrite with null
+      console.warn('[loadEmpData] DB failed, keeping cached attendance state');
+    }
 
     // ── Month's attendance & stats ──
     const monthAtt = await dbGet(
@@ -492,18 +502,17 @@ async function handleAttendClick() {
     openCamera();
   }
 
-  function _onLocationError(err) {
+  function _onLocationFinalError(err) {
+    // Both GPS and network location failed — allow attendance without location
     capturedLocation = null;
     btn.style.pointerEvents = '';
 
-    if (err.code === 1) {
-      notify(
-        ar ? '❌ افتح الإعدادات ← المتصفح ← الموقع وافعّله' : '❌ Settings → Browser → Location → Allow',
-        'error'
-      );
-    } else {
-      notify(ar ? '❌ تعذر تحديد الموقع، حاول مرة أخرى' : '❌ Location failed, try again', 'error');
-    }
+    console.warn('[attendance] Location failed completely:', err.code, err.message);
+    notify(
+      ar ? '⚠️ لم يتم تحديد الموقع، يمكنك التسجيل بدون موقع' : '⚠️ Location unavailable, you can register without it',
+      'info'
+    );
+    openCamera();
   }
 
   // First attempt: high accuracy (GPS)
@@ -516,7 +525,7 @@ async function handleAttendClick() {
       // Second attempt: low accuracy (network/wifi) — works on Huawei without GMS
       navigator.geolocation.getCurrentPosition(
         _onLocationSuccess,
-        _onLocationError,
+        _onLocationFinalError,
         { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 }
       );
     },
@@ -817,10 +826,15 @@ async function confirmAttendance() {
       minute: '2-digit'
     });
 
+    console.log('[confirmAttendance] mode:', attendMode, 'user:', currentUser.id, 'photo size:', capturedPhoto?.length, 'location:', capturedLocation);
+
     const todayAtt = await dbGet(
       'attendance',
       `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`
-    ).catch(() => []);
+    ).catch((e) => {
+      console.warn('[confirmAttendance] dbGet failed:', e);
+      return [];
+    });
 
     if (attendMode === 'in') {
       if (todayAtt && todayAtt.length > 0) {
@@ -907,8 +921,9 @@ async function confirmAttendance() {
     _resetAttendanceCaptureState();
     loadEmpData();
   } catch (e) {
-    console.error('[confirmAttendance]', e);
-    notify((ar ? 'خطأ: ' : 'Error: ') + (e.message || ''), 'error');
+    console.error('[confirmAttendance] FULL ERROR:', e, 'status:', e?.status, 'detail:', e?.detail, 'message:', e?.message);
+    const errMsg = e?.detail || e?.message || String(e);
+    notify((ar ? 'خطأ: ' : 'Error: ') + errMsg, 'error');
   } finally {
     isConfirmingAttendance = false;
     if (confirmBtn) confirmBtn.disabled = false;

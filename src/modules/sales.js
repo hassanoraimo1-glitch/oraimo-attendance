@@ -213,10 +213,9 @@
     if (totalEl) totalEl.textContent = state.selectedProduct.price.toLocaleString() + ' EGP';
 
     if (wrap) {
-      wrap.classList.add('show');
-      setTimeout(() => {
-        wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }, 80);
+      wrap.style.display = 'flex';
+      // Lock body scroll while overlay is open
+      document.body.style.overflow = 'hidden';
     }
   }
 
@@ -239,7 +238,8 @@
     state.selectedQty = 1;
 
     const wrap = document.getElementById('sale-form-wrap');
-    if (wrap) wrap.classList.remove('show');
+    if (wrap) wrap.style.display = 'none';
+    document.body.style.overflow = '';
   }
 
   async function submitSale() {

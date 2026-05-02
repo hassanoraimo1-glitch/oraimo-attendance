@@ -51,7 +51,6 @@ const PRODUCTS=[
   {n:"Oraimo Watch Strap WB03",p:101},{n:"Oraimo Wired Headphone OEP-E11",p:85},
   {n:"Oraimo Wired Headphone OEP-E21P",p:122}
 ].map(x=>({name:x.n,price:x.p}));
-window.PRODUCTS = PRODUCTS;
 
 
 // ── MANAGERS (team leaders) ──

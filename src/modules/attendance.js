@@ -943,17 +943,20 @@ async function confirmAttendance() {
       const [ah, am] = timeStr.split(':').map(Number);
       const lateMin = Math.max(0, (ah * 60 + am) - (wh * 60 + wm));
 
-      await dbPost('attendance', {
-        employee_id: currentUser.id,
-        date: today,
-        check_in: timeStr,
-        late_minutes: lateMin,
-        selfie_in: capturedPhoto,
-        location_lat: capturedLocation?.lat || null,
-        location_lng: capturedLocation?.lng || null
-      });
+   await dbPost('attendance', { ... });
 
-      notify(ar ? 'تم تسجيل الدخول ✅' : 'Checked in ✅', 'success');
+// 🔥 مهم: استنى شوية بسيطة عشان DB تلحق تكتب
+await new Promise(res => setTimeout(res, 400));
+
+// 🔥 اسحب الداتا من جديد
+const fresh = await dbGet(
+  'attendance',
+  `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`
+).catch(() => []);
+
+updateAttendBtn(fresh && fresh.length ? fresh[0] : null);
+
+notify(ar ? 'تم تسجيل الدخول ✅' : 'Checked in ✅', 'success');
     } else {
       if (!freshRecord) {
         notify(ar ? '❌ لا يوجد تسجيل دخول اليوم' : '❌ No check-in found for today', 'error');

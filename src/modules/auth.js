@@ -55,6 +55,16 @@ function _hideSplash() {
 function _clearSavedUser() {
   try { localStorage.removeItem('oraimo_user'); } catch (_) {}
   try { sessionStorage.removeItem('oraimo_user'); } catch (_) {}
+  // Clear attendance cache for previous user
+  try {
+    const uid = window.currentUser && window.currentUser.id;
+    if (uid) localStorage.removeItem('att_cache_' + uid);
+  } catch (_) {}
+  // Also clear any att_cache keys
+  try {
+    const keys = Object.keys(localStorage);
+    keys.forEach(k => { if (k.startsWith('att_cache_')) localStorage.removeItem(k); });
+  } catch (_) {}
 }
 
 function _saveUser(u) {
@@ -564,6 +574,7 @@ function doLogout() {
   window.currentChat = null;
   window.currentUser = null;
   window._isSubmitting = false;
+  __sessionRestored = false;  // Allow session restore on next login
 
   window.allAdmins = [];
   window.allBranches = [];
@@ -627,13 +638,14 @@ function startClock() {
 }
 
 // ── RESTORE SESSION ───────────────────────────────────────
-async function restoreSavedSession() {
-  try {
-    if (window.currentUser) {
-      showApp();
-      return true;
-    }
+let __sessionRestored = false;
 
+async function restoreSavedSession() {
+  // Prevent double execution (bootstrap + auth auto-init)
+  if (__sessionRestored) return;
+  __sessionRestored = true;
+
+  try {
     const saved = _getSavedUser();
     if (!saved) {
       _safeCall('showPage', 'login-page');

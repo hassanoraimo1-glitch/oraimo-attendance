@@ -189,14 +189,6 @@ async function loadEmpData() {
     const attCountEl = document.getElementById('emp-attend-count');
     if (attCountEl) attCountEl.textContent = (monthAtt || []).length;
 
-    let lateTotal = 0;
-    (monthAtt || []).forEach(a => {
-      lateTotal += (a.late_minutes || 0);
-    });
-
-    const lateEl = document.getElementById('emp-late-total');
-    if (lateEl) lateEl.textContent = lateTotal + (currentLang === 'ar' ? ' د' : 'm');
-
     // ── Month's sales ──
     const monthSales = await dbGet(
       'sales',
@@ -210,6 +202,24 @@ async function loadEmpData() {
 
     const salesEl = document.getElementById('emp-sales-total');
     if (salesEl) salesEl.textContent = 'EGP ' + fmtEGP(salesTotal);
+
+    // ── Today's sales ──
+    const todaySales = await dbGet(
+      'sales',
+      `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`
+    ).catch(() => []);
+
+    let todaySalesTotal = 0;
+    (todaySales || []).forEach(s => {
+      todaySalesTotal += (s.total_amount || 0);
+    });
+
+    const todaySalesEl = document.getElementById('emp-today-sales');
+    if (todaySalesEl) todaySalesEl.textContent = 'EGP ' + fmtEGP(todaySalesTotal);
+
+    // Store sales data for details view
+    window._monthSalesData = monthSales || [];
+    window._todaySalesData = todaySales || [];
 
     // ── Target & K Model ──
     const mon = pm.start.substring(0, 7);
@@ -841,3 +851,38 @@ window.renderAttendHistory = renderAttendHistory;
 window.loadEmpWarnings = loadEmpWarnings;
 window.loadEmpDailyLog = loadEmpDailyLog;
 window.loadEmpMonthlyReport = loadEmpMonthlyReport;
+
+// ── RELOAD DATA WHEN APP RETURNS TO FOREGROUND ──
+function _onAppResume() {
+  if (!window.currentUser) return;
+  const role = (window.currentUser.role || '').toLowerCase().replace(/\s+/g, '_');
+  if (role === 'employee') {
+    // Invalidate cache so we fetch fresh data from server
+    if (typeof window.invalidateCache === 'function') {
+      window.invalidateCache('attendance');
+      window.invalidateCache('sales');
+    }
+    console.log('[attendance] App resumed — refreshing employee data');
+    loadEmpData();
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') _onAppResume();
+});
+
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) _onAppResume();
+});
+
+// Also handle focus event (user switches tabs or returns to PWA)
+window.addEventListener('focus', () => {
+  // Only if we've been away for more than 5 seconds
+  if (!window._lastBlurTime) return;
+  const away = Date.now() - window._lastBlurTime;
+  if (away > 5000) _onAppResume();
+});
+
+window.addEventListener('blur', () => {
+  window._lastBlurTime = Date.now();
+});

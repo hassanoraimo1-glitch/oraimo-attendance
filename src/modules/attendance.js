@@ -8,6 +8,12 @@
 let attendCountdownTimer = null;
 let isConfirmingAttendance = false;
 
+// ─── Global state variables (must be declared before use) ───
+var attendMode = 'in';          // 'in' | 'out'
+var capturedPhoto = null;       // base64 selfie string
+var capturedLocation = null;    // { lat, lng } | null
+var videoStream = null;         // MediaStream | null
+
 // Helper: get shift time strings (used both for display and for late calc)
 function _getShiftTimes(shift, dayOfWeek) {
   const isThurFri = (dayOfWeek === 4 || dayOfWeek === 5);
@@ -336,7 +342,7 @@ function updateAttendBtn(record) {
     btn.dataset.attState = 'checked-in';
 
     if (iconEl) iconEl.textContent = '🔴';
-    if (labelEl) labelEl.textContent = ar ? 'تسجيل خروج' : 'Check Out';
+    if (labelEl) labelEl.textContent = ar ? 'تسجيل الخروج' : 'Check Out';
 
     if (status) {
       status.textContent =
@@ -655,7 +661,10 @@ async function openCamera() {
     await video.play().catch(() => {});
 
     const modal = document.getElementById('camera-modal');
-    if (modal) modal.classList.add('open');
+    if (modal) { modal.style.display = 'block'; }
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
   } catch (e) {
     try {
       videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
@@ -674,7 +683,10 @@ async function openCamera() {
       await video.play().catch(() => {});
 
       const modal = document.getElementById('camera-modal');
-      if (modal) modal.classList.add('open');
+      if (modal) { modal.style.display = 'block'; }
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
     } catch (e2) {
       _openCameraFallback(ar);
     }
@@ -714,7 +726,11 @@ function closeCamera() {
   if (video) video.srcObject = null;
 
   const m = document.getElementById('camera-modal');
-  if (m) m.classList.remove('open');
+  if (m) m.style.display = 'none';
+
+  document.body.style.overflow = '';
+  document.body.style.position = '';
+  document.body.style.width = '';
 }
 
 function capturePhoto() {

@@ -152,8 +152,8 @@ navigator.serviceWorker.register('/sw.js')
 <div class="stats-grid">
 <div class="stat-card"><div class="stat-label" data-ar="أيام الحضور" data-en="Attendance">أيام الحضور</div><div class="stat-val" style="color:var(--green)" id="emp-attend-count">0</div></div>
 <div class="stat-card"><div class="stat-label" data-ar="أيام الغياب" data-en="Absent">أيام الغياب</div><div class="stat-val" style="color:var(--red)" id="emp-absent-count">0</div></div>
-<div class="stat-card"><div class="stat-label" data-ar="إجمالي المبيعات" data-en="Total Sales">إجمالي المبيعات</div><div class="stat-val" style="color:var(--green);font-size:15px" id="emp-sales-total">0</div></div>
-<div class="stat-card"><div class="stat-label" data-ar="دقائق التأخير" data-en="Late (min)">دقائق التأخير</div><div class="stat-val" style="color:var(--yellow)" id="emp-late-total">0</div></div>
+<div class="stat-card" onclick="showSalesDetails('month')" style="cursor:pointer"><div class="stat-label" data-ar="إجمالي مبيعات الشهر" data-en="Month Sales">إجمالي مبيعات الشهر</div><div class="stat-val" style="color:var(--green);font-size:15px" id="emp-sales-total">0</div></div>
+<div class="stat-card" onclick="showSalesDetails('today')" style="cursor:pointer"><div class="stat-label" data-ar="مبيعات اليوم" data-en="Today Sales">مبيعات اليوم</div><div class="stat-val" style="color:var(--yellow)" id="emp-today-sales">0</div></div>
 </div>
 
 <div class="card card-glow">

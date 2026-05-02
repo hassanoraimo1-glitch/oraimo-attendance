@@ -104,3 +104,51 @@ async function loadTodaySales(){
   if(tel)tel.textContent=(ar?'اليوم: ':'Today: ')+'EGP '+total.toLocaleString();
 }
 // _leaveSending moved to modules/leaves.js
+
+// ── SHOW SALES DETAILS (when clicking on stats) ──
+function showSalesDetails(period) {
+  const ar = currentLang === 'ar';
+  const salesData = period === 'today' ? (window._todaySalesData || []) : (window._monthSalesData || []);
+  const title = period === 'today' 
+    ? (ar ? '📅 مبيعات اليوم' : '📅 Today Sales')
+    : (ar ? '📊 مبيعات الشهر' : '📊 Month Sales');
+  
+  let total = 0;
+  salesData.forEach(s => total += (s.total_amount || 0));
+  
+  // Create overlay modal
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:8000;display:flex;align-items:flex-end;backdrop-filter:blur(4px)';
+  
+  const salesList = salesData.length === 0 
+    ? `<div class="empty"><div class="empty-icon">🛒</div>${ar?'لا توجد مبيعات':'No sales'}</div>`
+    : salesData.map(s => `
+      <div class="history-item">
+        <div class="hist-top">
+          <div class="hist-name">${s.product_name}</div>
+          <div class="hist-amount">${s.total_amount.toLocaleString()} EGP</div>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <div class="hist-meta">${ar?'التاريخ':'Date'}: ${s.date}</div>
+          <div class="hist-meta">${ar?'الكمية':'Qty'}: ${s.quantity} × ${s.unit_price.toLocaleString()} EGP</div>
+        </div>
+      </div>
+    `).join('');
+  
+  overlay.innerHTML = `
+    <div style="background:var(--card);border-radius:22px 22px 0 0;padding:22px 18px;width:100%;max-height:70vh;overflow-y:auto;border-top:2px solid var(--green)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="font-size:16px;font-weight:800;color:var(--green)">${title}</div>
+        <div style="font-size:14px;font-weight:700">${ar?'الإجمالي: ':'Total: '}EGP ${total.toLocaleString()}</div>
+      </div>
+      <div style="margin-bottom:14px">${salesList}</div>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:Cairo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">${ar?'إغلاق':'Close'}</button>
+    </div>
+  `;
+  
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+// Expose globally
+window.showSalesDetails = showSalesDetails;

@@ -1,7 +1,7 @@
 // Service Worker for Oraimo HR PWA
 // Safe cache version to avoid addAll failures and stale JS issues
 
-const CACHE_NAME = 'oraimo-hr-v20260501-3';
+const CACHE_NAME = 'oraimo-hr-v20260502-12';
 
 const APP_SHELL = [
   '/',

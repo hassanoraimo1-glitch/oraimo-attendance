@@ -46,7 +46,7 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./src/styles/main.css">
+<link rel="stylesheet" href="./src/styles/main.css?v=12">
 </head>
 <body>
 
@@ -234,37 +234,37 @@ if ('serviceWorker' in navigator) {
     </div>
   </div>
 
-  <div id="emp-sales" class="content" style="display:none">
-    <div class="sh">
-      <div class="sh-title" data-ar="🛒 بيع جديد" data-en="🛒 New Sale">🛒 بيع جديد</div>
-      <div id="emp-today-total" style="color:var(--green);font-weight:800;font-size:12px">اليوم: EGP 0</div>
-    </div>
-    <input class="product-search" id="product-search" placeholder="🔍 ابحث عن منتج..." oninput="filterProducts()" data-ar-ph="🔍 ابحث عن منتج..." data-en-ph="🔍 Search product...">
-    <div class="product-list" id="product-list"></div>
-
-    <div id="sale-form-wrap" style="display:none" onclick="if(event.target===this)cancelSale()">
-      <div class="sale-form" style="border-radius:22px 22px 0 0;width:100%;border-top:2px solid rgba(0,200,83,.3)">
-        <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:8px" id="selected-product-name"></div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
-          <span data-ar="السعر:" data-en="Price:">السعر:</span>
-          <span id="selected-product-price" style="color:var(--text);font-weight:700"></span> EGP
+  <div id="emp-sales">
+    <div class="sales-top">
+      <div class="sh">
+        <div class="sh-title" data-ar="🛒 بيع جديد" data-en="🛒 New Sale">🛒 بيع جديد</div>
+        <div id="emp-today-total" style="color:var(--green);font-weight:800;font-size:12px">اليوم: EGP 0</div>
+      </div>
+      <input class="product-search" id="product-search" placeholder="🔍 ابحث عن منتج..." oninput="filterProducts()" data-ar-ph="🔍 ابحث عن منتج..." data-en-ph="🔍 Search product...">
+      <div class="product-list" id="product-list"></div>
+      <div id="sale-form-wrap">
+        <div class="sale-form">
+          <div class="sale-product-name" id="selected-product-name"></div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+            <span data-ar="السعر:" data-en="Price:">السعر:</span>
+            <span id="selected-product-price" style="color:var(--text);font-weight:700"></span> EGP
+          </div>
+          <div class="qty-row">
+            <button class="qty-btn" onclick="changeQty(-1)">−</button>
+            <div class="qty-val" id="qty-val">1</div>
+            <button class="qty-btn" onclick="changeQty(1)">+</button>
+          </div>
+          <div class="total-row">
+            <span style="font-size:13px;color:var(--muted)" data-ar="الإجمالي" data-en="Total">الإجمالي</span>
+            <span style="font-size:22px;font-weight:800;color:var(--green)" id="sale-total">0 EGP</span>
+          </div>
+          <button class="btn btn-green" onclick="submitSale()" style="margin-top:8px" data-ar="✅ تسجيل البيع" data-en="✅ Record Sale">✅ تسجيل البيع</button>
+          <button class="btn btn-outline" onclick="cancelSale()" style="margin-top:6px" data-ar="إلغاء" data-en="Cancel">إلغاء</button>
         </div>
-        <div class="qty-row">
-          <button class="qty-btn" onclick="changeQty(-1)">−</button>
-          <div class="qty-val" id="qty-val">1</div>
-          <button class="qty-btn" onclick="changeQty(1)">+</button>
-        </div>
-        <div class="total-row">
-          <span style="font-size:13px;color:var(--muted)" data-ar="الإجمالي" data-en="Total">الإجمالي</span>
-          <span style="font-size:22px;font-weight:800;color:var(--green)" id="sale-total">0 EGP</span>
-        </div>
-        <button class="btn btn-green" onclick="submitSale()" style="margin-top:8px" data-ar="✅ تسجيل البيع" data-en="✅ Record Sale">✅ تسجيل البيع</button>
-        <button class="btn btn-outline" onclick="cancelSale()" style="margin-top:6px" data-ar="إلغاء" data-en="Cancel">إلغاء</button>
       </div>
     </div>
-
-    <div style="margin-top:16px">
-      <div class="sh"><div class="sh-title" data-ar="مبيعات اليوم" data-en="Today's Sales">مبيعات اليوم</div></div>
+    <div class="sales-bottom">
+      <div class="sh"><div class="sh-title" data-ar="📊 مبيعات اليوم" data-en="📊 Today's Sales">📊 مبيعات اليوم</div></div>
       <div id="emp-sales-list"></div>
     </div>
   </div>
@@ -1253,7 +1253,11 @@ if ('serviceWorker' in navigator) {
   }
 
   function hideEmpSections() {
-    EMP_TABS.forEach(t => hide(document.getElementById('emp-' + t)));
+    EMP_TABS.forEach(t => {
+      const el = document.getElementById('emp-' + t);
+      hide(el);
+      if (el) el.classList.remove('split-active');
+    });
   }
 
   function deactivateNav(scope) {
@@ -1297,7 +1301,11 @@ if ('serviceWorker' in navigator) {
     deactivateNav('#emp-app');
 
     const target = document.getElementById('emp-' + tab);
-    show(target, 'block');
+    if (tab === 'sales') {
+      target.classList.add('split-active');
+    } else {
+      show(target, 'block');
+    }
     if (el) el.classList.add('active');
 
     restoreTopArea();

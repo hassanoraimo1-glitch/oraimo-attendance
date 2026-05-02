@@ -236,7 +236,15 @@ async function uploadProfilePhoto(event){
         // Update currentUser
         currentUser.profile_photo = base64;
         if (typeof _saveUser === 'function') _saveUser(currentUser);
-        else localStorage.setItem('oraimo_user', JSON.stringify(currentUser));
+        else {
+          // Fallback: strip large fields before saving to prevent quota exceeded
+          const toSave = { ...currentUser };
+          delete toSave.profile_photo;
+          delete toSave.selfie_in;
+          delete toSave.selfie_out;
+          delete toSave.password;
+          localStorage.setItem('oraimo_user', JSON.stringify(toSave));
+        }
         notify(ar?'تم تحديث الصورة ✅':'Photo updated ✅','success');
       } catch(e){ notify('Error: '+e.message,'error'); }
     };

@@ -333,7 +333,10 @@ navigator.serviceWorker.register('/sw.js')
 <div id="display-camera-modal" style="
   display:none;
   position:fixed;
-  inset:0;
+  top:0;
+  left:0;
+  right:0;
+  bottom:0;
   width:100vw;
   height:100vh;
   background:#000;
@@ -362,15 +365,27 @@ navigator.serviceWorker.register('/sw.js')
 
   <div style="
     position:absolute;
-    inset:0;
+    top:0;
+    left:0;
+    right:0;
+    bottom:0;
     display:flex;
     flex-direction:column;
     align-items:center;
     justify-content:flex-end;
     padding:32px 20px calc(32px + env(safe-area-inset-bottom));
-    background:linear-gradient(to top, rgba(0,0,0,.45), rgba(0,0,0,.08), rgba(0,0,0,.2));
-    pointer-events:none;
+    z-index:100001;
   ">
+    <div style="
+      position:absolute;
+      top:0;
+      left:0;
+      right:0;
+      bottom:0;
+      background:linear-gradient(to top, rgba(0,0,0,.45), rgba(0,0,0,.08), rgba(0,0,0,.2));
+      pointer-events:none;
+      z-index:-1;
+    "></div>
     <div style="
       color:#fff;
       font-size:14px;
@@ -393,8 +408,11 @@ navigator.serviceWorker.register('/sw.js')
         border:6px solid #fff;
         background:rgba(255,255,255,.18);
         box-shadow:0 0 0 6px rgba(255,255,255,.18);
-        cursor:pointer;
-        pointer-events:auto;
+        cursor:pointer !important;
+        pointer-events:auto !important;
+        -webkit-pointer-events:auto !important;
+        position:relative;
+        z-index:100002;
       "
     ></button>
 

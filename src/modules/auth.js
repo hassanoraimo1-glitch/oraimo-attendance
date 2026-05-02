@@ -366,6 +366,7 @@ function showApp() {
   // ── EMPLOYEE ──
   _safeCall('showPage', 'emp-app');
   _openEmployeeDefaultTab();
+  _hideSplash();  // Hide splash immediately once correct page is shown
 
   _setText('emp-name-top', user.name || '');
   _setText('profile-name', user.name || '');
@@ -381,6 +382,7 @@ function showApp() {
     `<span class="badge badge-blue">${lang === 'ar' ? 'الإجازة:' : 'Day Off:'} ${dayLabel || '-'}</span>`
   );
 
+  // Load data in background (doesn't block UI)
   _safeCall('loadEmpData');
   _safeCall('renderProducts');
   _safeCall('loadModelTargetAlert');
@@ -398,7 +400,6 @@ function showApp() {
   }
 
   setTimeout(() => _safeCall('fixNavDirection'), 100);
-  _hideSplash();
 }
 
 // ── AUTH ──────────────────────────────────────────────────
@@ -593,14 +594,19 @@ function startClock() {
 
 // ── RESTORE SESSION ───────────────────────────────────────
 function restoreSavedSession() {
-  if (window.__SESSION_RESTORED__) return true;
-  window.__SESSION_RESTORED__ = true;
-  try {
-    if (window.currentUser) {
+  // Skip if already have valid user loaded
+  if (window.currentUser) {
+    if (!window.__SESSION_RESTORED__) {
+      window.__SESSION_RESTORED__ = true;
       showApp();
-      return true;
     }
+    return true;
+  }
 
+  if (window.__SESSION_RESTORED__) return false;
+  window.__SESSION_RESTORED__ = true;
+
+  try {
     const saved = _getSavedUser();
     if (!saved) {
       _safeCall('showPage', 'login-page');

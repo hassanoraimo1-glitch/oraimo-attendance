@@ -8,6 +8,57 @@
 let attendCountdownTimer = null;
 let isConfirmingAttendance = false;
 
+// ── ATTENDANCE CACHE (instant UI on app resume) ──
+function _cacheAttendance(record) {
+  try {
+    if (!currentUser || !currentUser.id) return;
+    const key = 'att_cache_' + currentUser.id;
+    if (record) {
+      const cache = {
+        date: todayStr(),
+        check_in: record.check_in || null,
+        check_out: record.check_out || null,
+        late_minutes: record.late_minutes || 0,
+        ts: Date.now()
+      };
+      localStorage.setItem(key, JSON.stringify(cache));
+    } else {
+      // No record today — only cache if the cached date is today
+      // (don't overwrite yesterday's cache with "no record")
+      const existing = localStorage.getItem(key);
+      if (existing) {
+        const parsed = JSON.parse(existing);
+        if (parsed.date !== todayStr()) {
+          localStorage.removeItem(key);
+        }
+      }
+    }
+  } catch (_) {}
+}
+
+function _restoreCachedAttendance() {
+  try {
+    if (!currentUser || !currentUser.id) return;
+    const key = 'att_cache_' + currentUser.id;
+    const raw = localStorage.getItem(key);
+    if (!raw) return;
+    const cache = JSON.parse(raw);
+    // Only restore if cache is from today
+    if (cache.date !== todayStr()) {
+      localStorage.removeItem(key);
+      return;
+    }
+    // Don't restore stale cache (older than 12 hours)
+    if (Date.now() - cache.ts > 12 * 60 * 60 * 1000) {
+      localStorage.removeItem(key);
+      return;
+    }
+    // Apply cached state to UI immediately
+    updateAttendBtn(cache.check_in ? cache : null);
+    console.log('[attendance] Restored cached attendance state:', cache.check_in ? 'checked-in' : 'none');
+  } catch (_) {}
+}
+
 // Helper: get shift time strings (used both for display and for late calc)
 function _getShiftTimes(shift, dayOfWeek) {
   const isThurFri = (dayOfWeek === 4 || dayOfWeek === 5);
@@ -168,6 +219,10 @@ function stopAttendanceCountdown() {
 async function loadEmpData() {
   if (!currentUser) return;
 
+  // Immediately restore cached attendance state from localStorage
+  // so employee sees their status instantly (before DB response)
+  _restoreCachedAttendance();
+
   try {
     const today = todayStr();
     const pm = getPayrollMonth();
@@ -178,7 +233,11 @@ async function loadEmpData() {
       `?employee_id=eq.${currentUser.id}&date=eq.${today}&select=*`
     ).catch(() => []);
 
-    updateAttendBtn(todayAtt && todayAtt.length > 0 ? todayAtt[0] : null);
+    const record = todayAtt && todayAtt.length > 0 ? todayAtt[0] : null;
+    updateAttendBtn(record);
+
+    // Cache attendance state for instant restore on next app open
+    _cacheAttendance(record);
 
     // ── Month's attendance & stats ──
     const monthAtt = await dbGet(
@@ -421,28 +480,45 @@ async function handleAttendClick() {
   notify(ar ? '📍 جاري تحديد موقعك...' : '📍 Getting your location...', 'info');
   btn.style.pointerEvents = 'none';
 
+  // Try high accuracy first (GPS), then fall back to low accuracy (network/wifi)
+  // This fixes Huawei phones without Google Play Services where GPS-only fails
+  function _onLocationSuccess(pos) {
+    capturedLocation = {
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude
+    };
+
+    btn.style.pointerEvents = '';
+    openCamera();
+  }
+
+  function _onLocationError(err) {
+    capturedLocation = null;
+    btn.style.pointerEvents = '';
+
+    if (err.code === 1) {
+      notify(
+        ar ? '❌ افتح الإعدادات ← المتصفح ← الموقع وافعّله' : '❌ Settings → Browser → Location → Allow',
+        'error'
+      );
+    } else {
+      notify(ar ? '❌ تعذر تحديد الموقع، حاول مرة أخرى' : '❌ Location failed, try again', 'error');
+    }
+  }
+
+  // First attempt: high accuracy (GPS)
   navigator.geolocation.getCurrentPosition(
     pos => {
-      capturedLocation = {
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude
-      };
-
-      btn.style.pointerEvents = '';
-      openCamera();
+      _onLocationSuccess(pos);
     },
     err => {
-      capturedLocation = null;
-      btn.style.pointerEvents = '';
-
-      if (err.code === 1) {
-        notify(
-          ar ? '❌ افتح الإعدادات ← Safari ← الموقع وافعّله' : '❌ Settings → Safari → Location → Allow',
-          'error'
-        );
-      } else {
-        notify(ar ? '❌ تعذر تحديد الموقع، حاول مرة أخرى' : '❌ Location failed, try again', 'error');
-      }
+      console.warn('[attendance] High accuracy location failed:', err.code, err.message);
+      // Second attempt: low accuracy (network/wifi) — works on Huawei without GMS
+      navigator.geolocation.getCurrentPosition(
+        _onLocationSuccess,
+        _onLocationError,
+        { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 }
+      );
     },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
@@ -853,17 +929,22 @@ window.loadEmpDailyLog = loadEmpDailyLog;
 window.loadEmpMonthlyReport = loadEmpMonthlyReport;
 
 // ── RELOAD DATA WHEN APP RETURNS TO FOREGROUND ──
+let _resumeTimer = null;
 function _onAppResume() {
   if (!window.currentUser) return;
   const role = (window.currentUser.role || '').toLowerCase().replace(/\s+/g, '_');
   if (role === 'employee') {
-    // Invalidate cache so we fetch fresh data from server
-    if (typeof window.invalidateCache === 'function') {
-      window.invalidateCache('attendance');
-      window.invalidateCache('sales');
-    }
-    console.log('[attendance] App resumed — refreshing employee data');
-    loadEmpData();
+    // Debounce: wait 300ms before refreshing, cancel if another event fires
+    clearTimeout(_resumeTimer);
+    _resumeTimer = setTimeout(() => {
+      // Invalidate cache so we fetch fresh data from server
+      if (typeof window.invalidateCache === 'function') {
+        window.invalidateCache('attendance');
+        window.invalidateCache('sales');
+      }
+      console.log('[attendance] App resumed — refreshing employee data');
+      loadEmpData();
+    }, 300);
   }
 }
 

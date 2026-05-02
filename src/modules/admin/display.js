@@ -273,11 +273,7 @@ async function openDisplayCamera() {
   }
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    _dNotify(
-      'هذا الجهاز لا يدعم فتح الكاميرا',
-      'This device does not support camera access',
-      'error'
-    );
+    _dOpenCameraFileFallback();
     return;
   }
 
@@ -323,13 +319,31 @@ async function openDisplayCamera() {
       await video.play().catch(() => {});
       await _dWaitForVideoReady(video);
     } catch (e2) {
-      _dNotify(
-        `❌ تعذر فتح الكاميرا: ${e2.message || ''}`,
-        `❌ Camera error: ${e2.message || ''}`,
-        'error'
-      );
+      _dOpenCameraFileFallback();
     }
   }
+}
+
+function _dOpenCameraFileFallback() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.capture = 'environment';
+  input.style.display = 'none';
+  document.body.appendChild(input);
+
+  input.onchange = () => {
+    const file = input.files && input.files[0];
+    document.body.removeChild(input);
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      addDisplayPhoto(ev.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  input.click();
 }
 
 function closeDisplayCamera() {

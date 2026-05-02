@@ -67,7 +67,7 @@ function showPage(id) {
 
   const el = document.getElementById(id);
   if (el) {
-    el.style.display = 'block';
+    el.style.display = id === 'login-page' ? 'flex' : 'block';
     el.classList.add('active');
 
     if (nextIdx < prevIdx) el.classList.add('slide-in-left');
@@ -96,6 +96,12 @@ function _runInitApp() {
       chatM.classList.remove('open');
     }
 
+    const camM = document.getElementById('camera-modal');
+    if (camM) {
+      camM.style.display = 'none';
+      camM.classList.remove('open');
+    }
+
     if (typeof applyLang === 'function') applyLang();
     if (typeof applyTheme === 'function') applyTheme();
     if (typeof startClock === 'function') startClock();
@@ -106,28 +112,13 @@ function _runInitApp() {
       try { saved = sessionStorage.getItem('oraimo_user'); } catch (_) {}
     }
 
-    if (saved) {
-      try {
-        window.currentUser = JSON.parse(saved);
-        // auth.js loads after bootstrap — wait for restoreSavedSession to be ready
-        function _waitForAuth(retries) {
-          if (typeof window.restoreSavedSession === 'function') {
-            window.restoreSavedSession();
-          } else if (retries > 0) {
-            setTimeout(() => _waitForAuth(retries - 1), 100);
-          } else if (typeof showApp === 'function') {
-            showApp();
-          } else {
-            showPage('login-page');
-          }
-        }
-        _waitForAuth(30);
-      } catch (e) {
-        try { localStorage.removeItem('oraimo_user'); } catch (_) {}
-        try { sessionStorage.removeItem('oraimo_user'); } catch (_) {}
-        showPage('login-page');
-      }
-    } else {
+    // Try immediate restoration if already have restoreSavedSession
+    // Otherwise auth.js will handle it when it loads
+    if (typeof window.restoreSavedSession === 'function') {
+      window.__SESSION_RESTORED__ = false;
+      window.restoreSavedSession();
+    } else if (!saved) {
+      // No saved session and no restore function yet — show login
       showPage('login-page');
     }
 
